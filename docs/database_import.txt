@@ -1,0 +1,99 @@
+FEATURES
+
+Terminology
+
+LABEL	Short internal identificator for items. Consist of alphanumeric characters and _. Example: DATASET_1
+DESCRIPTION	Free text description for the item. Can contain special characters. Example: Dataset comparing weight (kg) and height (cm).
+
+
+FOR ADMINS
+
+1. Import data
+
+Datasets
+=======
+- The main container unit of the data. 
+* ID
+* LABEL (Example: DRUG_STUDY_1)
+* DESCRIPTION (Example: "Drug interaction study, using mortality as outcome")
+* VARNUM (Enumeration of number of variables in associations, either 1 or 2)
+* EFFECT_TYPE (Enumeration of different effect types, e.g. "OR", "FC", "CORRELATION")
+
+DatasetMetaData
+===============
+- Meta-data further descriping the dataset. Meta-data are "tags" that can be used to group different datasets, e.g. "Men", "Drugs", "Diabetes"
+- Dataset can be linked to several meta-data
+* ID
+* LABEL (Example: T2D)
+* DESCRIPTION (Example: "Type 2 Diabetes related study")
+
+DatasetToMetaData
+=================
+* ID
+* DATASET_ID
+* DATASETMETADATA_ID
+
+Associations
+===========
+- Associations are the actual numerical data.
+- Association must be linked to a dataset
+* ID
+* N (Number of observations the association is based on)
+* EFFECT (Size of the effect (e.g. Odds ratio, correlation coefficient))
+* P (Statistical significance (p-value))
+* P_FDR (Statistical significance (p-value) adjusted for multiple comparisons)
+* EFFECT_L95 (95% lower confidence interval for the effect, NOT REQUIRED)
+* EFFECT_U95 (95% upper confidence interval for the effect, NOT REQUIRED)
+* DATASET_ID
+
+Variables
+========
+- Variables are linked to associations via AssociationToVariable table
+* ID
+* LABEL (Example: WEIGHT)
+* DESCRIPTION (Example: "Weight (kg)")
+
+AssociationToVariable
+* ID
+* ASSOCIATION_ID
+* VARIABLE_ID
+
+----------------------------
+
+Data import flow
+
+- User provides name for the database schema (e.g. as a command line parameter), allowing storing several versions of the whole database
+
+- User provides a list of datasets, e.g. tab-delimited text file: datasets.txt
+
+DATASET_FILENAME	VARIABLES_FILENAME	LABEL	DESCRIPTION	VARNUM	EFFECT_TYPE	METADATA_LABELS
+study1.txt	study1_variables.txt	DRUG_STUDY1	Drug interaction study, using mortality as outcome	2	OR	DRUG_INTERACTION;MALES;T2D
+
+- User provides a file describing meta-data: metadata.txt
+
+LABEL	DESCRIPTION
+DRUG_INTERACTION	Drug interaction study
+MALE	Only males
+T2D	Type 2 Diabetes
+
+- User can provide files with the variable descriptions, filenames are the same as in datasets.txt VARIABLES_FILENAME, e.g. study1_variables.txt
+- If this file is not specified for the dataset, variable description is set to be the same as the variable label.
+
+LABEL	DESCRIPTION
+ABCD	Best known gene to man-kind
+TP53	Cancer gene
+
+- User provides files with the associations, filenames are the same as in datasets.txt DATASET_FILENAME column, e.g. study1.txt
+
+VARIABLE1_LABEL	VARIABLE2_LABEL	EFFECT	EFFECT_L95	EFFECT_U95	N	P	P_FDR
+ABCD	TP53	8	5	10	100	0.01	1
+
+All the data is imported in the database as a single bulk.
+
+
+
+
+
+
+
+
