@@ -1,31 +1,69 @@
-library(shiny)
-library(dplyr)
-source("functions.R")
-
-db <- src_postgres(dbname = "antom", host = "biodb.uef.fi", user = "antom", password = "d0189244be")
-
-
-
 shinyServer(function(input,output){
   
-  mainlist <- eventReactive(input$submit_main,{
+  
+  associations_list <- eventReactive(input$submit_main,{
     
-    ds_labels <- input$ds_label %>% strsplit(split=",") %>% unlist
-    ds_tags <- input$ds_tags %>% strsplit(split=",") %>% unlist
-    var_labels <- input$var_label  %>% strsplit(split=",") %>% unlist
-    p_limit <- input$p_limit
+    db_conn = src_pool(pool)
     
-    list(ds_labels,ds_tags,var_labels,p_limit)
+    if (input$ds_labels != "" | input$ds_tags != ""){
+      associations_list <- get_associations_by_ds(db_conn,input$ds_labels,input$ds_tags)
+    }
+    else{
+      return (NULL)
+    }
+    
+    if (input$n_limit != ""){
+      associations_list$associations_tbl <- associations_list$associations_tb %>%
+        filter(n > as.numeric(input$n_limit))
+    }
+    
+    if(input$p_limit != ""){
+      associations_list$associations_tbl <- associations_list$associations_tb %>%
+        filter(p < as.numeric(input$p_limit))
+    }
+    
+    if (input$p_fdr_limit != ""){
+      associations_list$associations_tbl <- associations_list$associations_tb %>%
+        filter(p_fdr < as.numeric(input$p_fdr_limit))
+    }
+    
+    if (input$var_labels != ""){
+      associations_list$associations_tbl <- filter_by_var(db_conn,assocs_tbl,input$var_labels)
+    }
+    else{
+      associations_list$associations_tbl <- join_variables(db_conn,associations_list$associations_tbl,associations_list$varnum)
+    }
+    
+    return (associations_list)
+    
   })
   
-  #reactive producing the limited association table according to mainlist
-  assoc_limited <- reactive({
-    if (mainlist$ds_label){
-      db_filtered <- db_filtered %>% filter()
+  output$tabular <- renderTable({
+    datbl <- associations_list()$associations_tbl
+    disp <- switch(input$table_choice,
+           "top" = head(datbl,10),
+           "bot" = tail(datbl,10),
+           "rnd" = sample_n(datbl,10,replace = F))
+    return (disp)
+    
+  })
+  
+  output$volcano <- renderPlot({
+    datbl <- associations_list()$associations_tbl
+    make_volcanoplot(datbl,associations_list()$effect_type)
+  })
+  
+  output$heatmap <- renderPlot({
+    if (associations_list()$varnum ==2){
+      datbl <- associations_list()$associations_tbl
+      make_heatmap(datbl,associations_list()$effect_type)
     }
   })
   
-  
-  #functions for rendering plots
+  output$qqplot <- renderPlot({
+    datbl <- associations_list()$associations_tbl
+    x <- datbl$effect %>% log2()
+    gg_qq(x)
+  })
   
 })
