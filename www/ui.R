@@ -8,7 +8,8 @@ shinyUI( fluidPage(
       textInput("ds_labels",
                 label = "Labels"),
       textInput("ds_tags", #value = "BIVARIATE",
-                label = "Keyword, eg. \"T2D\" or \"type 2 diabetes\""),
+                label = "Keyword, eg. \"T2D\" or \"type 2 diabetes\"",
+                value = "UNIVARIATE"),
       
       h4("Filter the search results by variable (separated by comma) or p-value"),
       textInput("var_labels",
@@ -37,21 +38,42 @@ shinyUI( fluidPage(
     ),
     mainPanel(
       tabsetPanel(
+        
+        tabPanel("Main",
+                 p("Welcome to use Ninni, the web-based visualization app"),
+                 p("You can browse Ninni's database using the search fields on the left"),
+                 p("The tabular representation tab shows the datasets found by your search as well
+                   as the associations in the datasets"),
+                 p("If the datasets have differing amounts of variables or different effect types,
+                   only the dataset information will be shown"),
+                 p("The other tabs include the visualization tools provided by Ninni")
+        ),
+        
         tabPanel("Tabular representation",
-                 selectInput("table_choice",
-                                    label = "Display",
-                                    choices = c("Top 10 rows" = "top",
-                                                "Bottom 10 rows" = "bot",
-                                                "Random 10 rows" = "rnd")),
-                 tableOutput("tabular")
+                 h3("Datasets"),
+                 dataTableOutput("dstable"),
+                 h3("Associations"),
+                 dataTableOutput("tabular")
         ),
         
         tabPanel("Heat Map",
-                 plotOutput("heatmap")
+                 plotOutput("heatmap",height = "600")
         ),
         
         tabPanel("Volcano plot",
-                 plotOutput("volcano")
+                 plotlyOutput("volcano",height = "700"),
+                 
+                 checkboxInput("df",
+                               label = "Enable double filtering",
+                               value = FALSE),
+                 
+                 conditionalPanel(condition = ("input.df == true"),
+                                  textInput("df_p_lim",
+                                            label = "Limit of p-value (FDR)",
+                                            value = 0.05),
+                                  textInput("df_effect_lim",
+                                            label = "Limit of effect, abs, log2 if OR or FC",
+                                            value = 0))
         ),
         
         tabPanel("Q-Q plot",
