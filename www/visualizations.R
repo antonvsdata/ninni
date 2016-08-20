@@ -15,22 +15,80 @@ make_heatmap <- function(dframe,effect_type){
   p + geom_tile(aes(fill = effect) , colour = "white") +
     scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab") +
     theme( axis.text.x = element_text(angle = 90))
-    
+  
+  p 
 }
 
 # Volcano plot (with double filtering?)
 # Input:  data frame with effect, p_fdr and point labels
 #         string containing the effect type
+#         varnum
+#         logical value telling if double filtering is enabled (TRUE or FALSE)
+#         limits for double filtering, p-value first
 
-make_volcanoplot <- function(dframe,effect_type){
+make_volcanoplot <- function(dframe,effect_type,varnum,df,
+                             df_p_lim = NULL, df_effect_lim = NULL){
   
+  # The variable labels are added to tooltip info
+  # The tooltip info is included in dummy aesthetics label1-5
+  if (varnum == 1){
+    p <- ggplot(dframe, aes(label1 = label))
+  }
+  if(varnum == 2){
+    p <- ggplot(dframe, aes(label1 = var_label1, label2 = var_label2))
+  }
+
+  # OR and FC require log2 transformation before plotting
+  # If double filtering is enabled, the points that pass the filtering will be colored red
+  # Hover tooltip includes: Variable label(s), effect, p_fdr and n
   if (effect_type %in% c("OR","FC")){
-    dframe$effect <- log2(dframe$effect)
+    if (df){
+      dframe <- dframe %>% mutate(df = as.factor(p_fdr < df_p_lim & abs(log2(effect)) > df_effect_lim))
+      
+      # The ggplot object needs to be redone since dframe has been altered
+      if (varnum == 1){
+        p <- ggplot(dframe, aes(label1 = label))
+      }
+      if(varnum == 2){
+        p <- ggplot(dframe, aes(label1 = var_label1, label2 = var_label2))
+      }
+      
+      p <- p +
+        geom_point(aes(x = log2(effect), y = -log10(p_fdr),color = df,
+                       label3 = effect, label4 = p_fdr, label5 = n)) +
+        scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
+                            guide = guide_legend(title = NULL))
+    }
+    else{
+      p <- p +
+        geom_point(aes(x = log2(effect), y = -log10(p_fdr), label3 = effect, label4 = p_fdr, label5 = n))
+    }
+  }
+  # Identical to above, except x = effect instead of x = log2(effect)
+  # This could be simplified
+  else{
+    if (df){
+      dframe <- dframe %>% mutate(df = as.factor(p_fdr < df_p_lim & abs(effect) > df_effect_lim))
+      p <- ggplot(dframe, aes(x = effect, y = -log10(p_fdr))) +
+        geom_point(aes(color = df)) +
+        scale_color_manual(breaks = c("TRUE", "FALSE"), values = c("grey", "red"))
+    }
+    else{
+      p <- ggplot(dframe, aes(x = effect, y = -log10(p_fdr))) +
+        geom_point()
+    }
+    
   }
   
-  p <- ggplot(dframe, aes(x = effect, y = -log10(p_fdr)))
   
-  p + geom_point()
+  if (varnum == 1){
+    p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+  }
+  if(varnum == 2){
+    p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+  }
+  
+  p
 }
 
 # Q-Q plot
