@@ -30,20 +30,18 @@ get_associations_by_ds <- function(conn,ds_labels,ds_tags){
   }
   
   ds_tbl_df <- collect(ds_tbl)
-  if (dim(ds_tbl_df)[1] == 0){
-    return (NULL)
-  }
   varnum <- ds_tbl_df$varnum %>% unique()
   effect_type <-ds_tbl_df$effect_type %>% unique()
-  if (length(varnum) > 1 | length(effect_type) > 1){
-    return (-1)
+  
+  if (dim(ds_tbl_df)[1] == 0 | length(varnum) > 1 | length(effect_type) > 1){
+    return (list(ds_tbl = ds_tbl_df, associations_tbl = data.frame(),varnum = -1, effect_type = "Differs"))
   }
   
   assocs_tbl <- conn %>% tbl("associations") %>% semi_join(ds_tbl, by = c("dataset_id" = "id"))
   
   #assocs_tbl <- join_variables(conn,assocs_tbl,varnum)
   
-  return (list(associations_tbl =assocs_tbl,varnum = varnum,effect_type = effect_type))
+  return (list(ds_tbl = ds_tbl_df,associations_tbl =assocs_tbl,varnum = varnum,effect_type = effect_type))
   
 }
 # Joins the variables to the associations table
@@ -68,10 +66,10 @@ join_variables <- function(conn,assocs_tbl,varnum){
       collect() %>%
       mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
       ungroup() %>%
+      select(-association_id,-description,-label) %>%
       distinct() %>% 
       separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
-      separate(var_descriptions, c("var_description1","var_description2"), sep = ";") %>%
-      select(-association_id,-description,-label)
+      separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
   }
   
   return (assocs_tbl)
