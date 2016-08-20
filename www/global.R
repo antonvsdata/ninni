@@ -4,6 +4,7 @@ library(tidyr)
 library(RPostgreSQL)
 library(pool)
 library(ggplot2)
+library(plotly)
 
 source("visualizations.R")
 source("queries.R")
