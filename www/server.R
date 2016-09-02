@@ -1,20 +1,18 @@
 shinyServer(function(input,output){
   
+  ds_df <- get_datasets(src_pool(pool)) %>%
+    select(label,description,varnum,effect_type,rowcount)
+  
   
   associations_list <- eventReactive(input$submit_main,{
     
-    db_conn = src_pool(pool)
+    db_conn <- src_pool(pool)
     
-    if (input$ds_labels != "" | input$ds_tags != ""){
-      associations_list <- get_associations_by_ds(db_conn,input$ds_labels,input$ds_tags)
+    if (input$ds_label != "None selected"){
+      associations_list <- get_associations_by_ds(db_conn,input$ds_label)
     }
     else{
       return (NULL)
-    }
-    
-    # If non compatible datasets are found
-    if (associations_list$varnum == -1){
-      return(associations_list)
     }
     
     if (input$n_limit != ""){
@@ -43,35 +41,45 @@ shinyServer(function(input,output){
     
   })
   
-  output$dstable <- renderDataTable({
-    associations_list()$ds_tbl
+  output$dstable <- DT::renderDataTable({
+    
+    datatable(ds_df, selection = "single")
   })
   
-  output$tabular <- renderDataTable({
+  output$tabular <- DT::renderDataTable({
     associations_list()$associations_tbl
-    
+  })
+  
+  ds_label_sel <- reactive({
+    if (length(input$dstable_rows_selected) > 0){
+      ds_label <- ds_df[input$dstable_rows_selected,]$label
+    }
+    else{
+      ds_label <- "None selected"
+    }
+  })
+  
+  output$ds_choice <- renderUI({
+    textInput("ds_label",label = "Dataset", value = ds_label_sel())
   })
   
   output$volcano <- renderPlotly({
-    if (input$df){
-      make_volcanoplot(associations_list()$associations_tbl,associations_list()$effect_type,associations_list()$varnum,input$df,
+    if (input$double_filter){
+      make_volcanoplot(associations_list()$associations_tbl,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
                        as.numeric(input$df_p_lim),as.numeric(input$df_effect_lim))
     }
     else{
-      make_volcanoplot(associations_list()$associations_tbl,associations_list()$effect_type,associations_list()$varnum,input$df)
-    }
-    
-  })
-  
-  output$heatmap <- renderPlot({
-    if (associations_list()$varnum ==2){
-      make_heatmap(associations_list()$associations_tbl,associations_list()$effect_type)
+      make_volcanoplot(associations_list()$associations_tbl,associations_list()$effect_type,associations_list()$varnum,input$double_filter)
     }
   })
   
-  output$qqplot <- renderPlot({
-    x <- associations_list()$associations_tbl$effect %>% log2()
-    gg_qq(x)
+  output$heatmap <- renderPlotly({
+    make_heatmap(associations_list()$associations_tbl,associations_list()$effect_type)
+  })
+      
+  
+  output$qqplot <- renderPlotly({
+    gg_qq(associations_list()$associations_tbl, associations_list()$effect_type, associations_list()$varnum)
   })
   
 })

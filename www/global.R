@@ -1,10 +1,12 @@
 library(shiny)
+library(DT)
 library(dplyr)
 library(tidyr)
 library(RPostgreSQL)
 library(pool)
 library(ggplot2)
 library(plotly)
+library(heatmaply)
 
 source("visualizations.R")
 source("queries.R")
@@ -16,3 +18,6 @@ pool <- dbPool(
   user = "antom",
   password = "d0189244be"
 )
+
+
+
