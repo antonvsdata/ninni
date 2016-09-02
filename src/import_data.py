@@ -31,6 +31,7 @@ add_metatodata = ("INSERT INTO datasettometadata (dataset_id, datasetmetadata_id
 add_assoctovar = ("INSERT INTO associationtovariable (association_id, variable_id) VALUES (%s, %s)")
 
 add_dataset = ("INSERT INTO Datasets (label, description, varnum, effect_type) VALUES (%s, %s, %s, %s)")
+add_rowcount = ("UPDATE Datasets SET rowcount = %s WHERE id = %s")
 datasetquery = ("SELECT * FROM datasets WHERE label=%s")
 
 
@@ -87,24 +88,7 @@ def parse_variables(file):
     print"Description of ", count, "variables updated"
     
 
-# Reads the datasets file, populates the Datasets table and calls other functions to populate
-# the other tables
-def parse_datasets(file):
-    with open(file,'r') as dataset_file:
-        rdr = csv.DictReader(dataset_file, delimiter = "\t")
-        for row in rdr:
-            print "\n"
-            dataset = (row["LABEL"],row["DESCRIPTION"],row["VARNUM"],row["EFFECT_TYPE"])
-            print "Importing dataset ", row["DATASET_FILENAME"], "..."
-            cursor.execute(add_dataset, dataset)
-            datasetid = get_datasetid(row["LABEL"])
-            if (datasetid is not None):
-                print("Dataset information inserted")
-                parse_assoc(row["DATASET_FILENAME"], datasetid)
-                parse_metatodata(datasetid, row["METADATA_LABELS"])
-            if (row["VARIABLES_FILENAME"] != 'None'):
-                parse_variables(row["VARIABLES_FILENAME"])
-            
+
 
 # inserts variable into the table in the database,                  
 # sets decription identical to label, returns variable id
@@ -151,11 +135,28 @@ def parse_assoc(file, dsid, maxlines=-1):
             if(rdr.line_num % 1000 == 0):
                 dbconn.commit()
                 print("{0} rows parsed".format(rowcount))
-                
-        print("{0} rows parsed and inserted".format(rowcount))
         
+	cursor.execute(add_rowcount, (rowcount, dsid))
+        print("{0} rows parsed and inserted".format(rowcount))
 
-
+# Reads the datasets file, populates the Datasets table and calls other functions to populate
+# the other tables
+def parse_datasets(file):
+    with open(file,'r') as dataset_file:
+        rdr = csv.DictReader(dataset_file, delimiter = "\t")
+        for row in rdr:
+            print "\n"
+            dataset = (row["LABEL"],row["DESCRIPTION"],row["VARNUM"],row["EFFECT_TYPE"])
+            print "Importing dataset ", row["DATASET_FILENAME"], "..."
+            cursor.execute(add_dataset, dataset)
+            datasetid = get_datasetid(row["LABEL"])
+            if (datasetid is not None):
+                print("Dataset information inserted")
+                parse_assoc(row["DATASET_FILENAME"], datasetid)
+                parse_metatodata(datasetid, row["METADATA_LABELS"])
+            if (row["VARIABLES_FILENAME"] != 'None'):
+                parse_variables(row["VARIABLES_FILENAME"])
+            
 def main():
     file = None
     maxlines = None
