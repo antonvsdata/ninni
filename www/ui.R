@@ -26,10 +26,6 @@ shinyUI( fluidPage(
       
       textInput("p_fdr_limit",
                    label = "Show only p_fdr below"),
-                   #value = 1,
-                   #min = 0,
-                   #max = 1,
-                   #step = 0.05),
       
       textInput("n_limit",
                 label = "Show only associations with n greater than"),
@@ -80,7 +76,8 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Q-Q plot",
-                 plotlyOutput("qqplot", height = "700")
+                 plotlyOutput("qqplot", height = "700"),
+                 plotlyOutput("qq_ps", height = "700")
         )
                  
         

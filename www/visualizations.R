@@ -90,11 +90,13 @@ make_volcanoplot <- function(dframe,effect_type,varnum,double_filter,
         geom_point(aes(x = log2(effect), y = -log10(p_fdr),color = df,
                        label3 = effect, label4 = p_fdr, label5 = n)) +
         scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
-                            guide = guide_legend(title = NULL))
+                            guide = guide_legend(title = NULL)) +
+        xlab(paste("log2(",effect_type,")",sep = ""))
     }
     else{
       p <- p +
-        geom_point(aes(x = log2(effect), y = -log10(p_fdr), label3 = effect, label4 = p_fdr, label5 = n))
+        geom_point(aes(x = log2(effect), y = -log10(p_fdr), label3 = effect, label4 = p_fdr, label5 = n)) +
+        xlab(paste("log2(",effect_type,")",sep = ""))
     }
   }
   # Identical to above, except x = effect instead of x = log2(effect)
@@ -104,11 +106,13 @@ make_volcanoplot <- function(dframe,effect_type,varnum,double_filter,
       dframe <- dframe %>% mutate(doubfilt = as.factor(p_fdr < df_p_lim & abs(effect) > df_effect_lim))
       p <- ggplot(dframe, aes(x = effect, y = -log10(p_fdr))) +
         geom_point(aes(color = doubfilt)) +
-        scale_color_manual(breaks = c("TRUE", "FALSE"), values = c("grey", "red"))
+        scale_color_manual(breaks = c("TRUE", "FALSE"), values = c("grey", "red")) +
+        xlab("Correlation")
     }
     else{
       p <- ggplot(dframe, aes(x = effect, y = -log10(p_fdr))) +
-        geom_point()
+        geom_point() +
+        xlab("Correlation")
     }
   }
   
@@ -126,7 +130,7 @@ make_volcanoplot <- function(dframe,effect_type,varnum,double_filter,
 
 # Source: https://gist.github.com/rentrop/d39a8406ad8af2a1066c
 
-gg_qq <- function(df,effect_type,varnum,conf = 0.95){
+gg_qq <- function(df,effect_type,varnum,ci = 0.95){
   
   x <- df$effect
   
@@ -153,22 +157,14 @@ gg_qq <- function(df,effect_type,varnum,conf = 0.95){
   coef <- c(Q.x[1] - b * Q.z[1], b)
   
   
-  zz <- qnorm(1 - (1 - conf)/2)
+  zz <- qnorm(1 - (1 - ci)/2)
   SE <- (coef[2]/dnorm(df$z)) * sqrt(P * (1 - P)/n)
   fit.value <- coef[1] + coef[2] * df$z
   df$upper <- fit.value + zz * SE
   df$lower <- fit.value - zz * SE
   
   
-  p <- ggplot(df, aes(x=z, y=ord.x))
-  if(varnum == 2){
-    p <- p + geom_point(aes(x=z, y=ord.x,label1 = var_label1, label2 = var_label2, label3 = effect, label4 = p_fdr, label5 = n))
-  }
-  else{
-    p <- p + geom_point(aes(x=z, y=ord.x,label1 = label, label3 = effect, label4 = p_fdr, label5 = n))
-  }
-  
-  p <- p +
+  p <- ggplot(df, aes(x=z, y=ord.x)) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
     xlab("Normal quantiles") + ylab(ylabel) +
@@ -176,35 +172,44 @@ gg_qq <- function(df,effect_type,varnum,conf = 0.95){
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha=0.2) +
     scale_fill_gradient(low = "grey40", high = "grey40")
   
-  if(varnum == 2){
-    p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
-  }
-  else{
+  if (varnum == 1){
+    p <- p + geom_point(aes(label1 = label, label3 = effect, label4 = p_fdr, label5 = n))
     p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
   }
+  if(varnum == 2){
+    p <- p + geom_point(aes(label1 = var_label1, label2 = var_label2, label3 = effect, label4 = p_fdr, label5 = n))
+    p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+  }
+  
   p
 }
 
-gg_qqplot <- function(ps, ci = 0.95){
+gg_qqplot <- function(df, varnum, ci = 0.95){
+  ps <- df$p_fdr
   n <- length(ps)
-  df <- data.frame(observed = -log10(sort(ps)),
-                   expected = -log10(1:n/n),
-                   cupper = -log10(qbeta(ci,     1:n, n - 1:n + 1)),
-                   clower = -log10(qbeta(1- ci,  1:n, n - 1:n + 1)))
-  ggplot(df) +
-    geom_point(aes(expected,observed)) +
+  df$observed <- -log10(sort(ps))
+  df$expected = -log10(1:n/n)
+  df$cupper = -log10(qbeta(ci,     1:n, n - 1:n + 1))
+  df$clower = -log10(qbeta(1- ci,  1:n, n - 1:n + 1))
+  p <- ggplot(df) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+          panel.background = element_blank(), axis.line = element_line(colour = "black")) +
     geom_abline(intercept = 0, slope = 1, alpha = 0.5) +
     geom_ribbon(aes(x = expected, ymin = clower, ymax = cupper), alpha = 0.2) +
     xlab(expression(paste("Expected -log"[10], plain(P)))) +
     ylab(expression(paste("Observed -log"[10], plain(P))))
+  
+  if(varnum == 2){
+    p <- p + geom_point(aes(x=expected, y=observed,label1 = var_label1, label2 = var_label2, label3 = effect, label4 = p_fdr, label5 = n))
+    p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+  }
+  if (varnum == 1){
+    p <- p + geom_point(aes(x=expected, y=observed,label1 = label, label3 = effect, label4 = p_fdr, label5 = n))
+    p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+  }
+  
+  p
 }
-
-
-
-
-
-
-
 
 
 

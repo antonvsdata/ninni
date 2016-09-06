@@ -31,7 +31,7 @@ shinyServer(function(input,output){
     }
     
     if (input$var_labels != ""){
-      associations_list$associations_tbl <- filter_by_var(db_conn,assocs_tbl,input$var_labels)
+      associations_list$associations_tbl <- filter_by_var(db_conn,associations_list$associations_tbl,input$var_labels,associations_list()$varnum)
     }
     else{
       associations_list$associations_tbl <- join_variables(db_conn,associations_list$associations_tbl,associations_list$varnum)
@@ -80,6 +80,10 @@ shinyServer(function(input,output){
   
   output$qqplot <- renderPlotly({
     gg_qq(associations_list()$associations_tbl, associations_list()$effect_type, associations_list()$varnum)
+  })
+  
+  output$qq_ps <- renderPlotly({
+    gg_qqplot(associations_list()$associations_tbl,associations_list()$varnum)
   })
   
 })

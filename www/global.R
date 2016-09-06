@@ -18,6 +18,3 @@ pool <- dbPool(
   user = "antom",
   password = "d0189244be"
 )
-
-
-
