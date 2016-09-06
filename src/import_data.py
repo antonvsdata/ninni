@@ -92,15 +92,22 @@ def parse_variables(file):
 
 # inserts variable into the table in the database,                  
 # sets decription identical to label, returns variable id
+
+
 def create_varid(var_label, depth=0):
-    cursor.execute(add_var, (var_label,var_label,))
-    dbconn.commit()
     cursor.execute(varquery, (var_label,))
     var_row = cursor.fetchone()
     if(var_row is not None):
         return var_row[0]
     else:
-        return None
+    	cursor.execute(add_var, (var_label,var_label,))
+    	dbconn.commit()
+    	cursor.execute(varquery, (var_label,))
+    	var_row = cursor.fetchone()
+    	if(var_row is not None):
+            return var_row[0]
+    	else:
+            return None
 
 def parse_assoctovar(assoc_id, varstr):
     vars = varstr.split(';')
