@@ -16,25 +16,24 @@ shinyServer(function(input,output){
     }
     
     if (input$n_limit != ""){
-      associations_list$associations_tbl <- associations_list$associations_tb %>%
+      associations_list$associations_tbl <- associations_list$associations_tbl %>%
         filter(n > as.numeric(input$n_limit))
     }
     
     if(input$p_limit != ""){
-      associations_list$associations_tbl <- associations_list$associations_tb %>%
+      associations_list$associations_tbl <- associations_list$associations_tbl %>%
         filter(p < as.numeric(input$p_limit))
     }
     
     if (input$p_fdr_limit != ""){
-      associations_list$associations_tbl <- associations_list$associations_tb %>%
+      associations_list$associations_tbl <- associations_list$associations_tbl %>%
         filter(p_fdr < as.numeric(input$p_fdr_limit))
     }
     
+    associations_list$associations_tbl <- join_variables(db_conn,associations_list$associations_tbl,associations_list$varnum)
+    
     if (input$var_labels != ""){
-      associations_list$associations_tbl <- filter_by_var(db_conn,associations_list$associations_tbl,input$var_labels,associations_list()$varnum)
-    }
-    else{
-      associations_list$associations_tbl <- join_variables(db_conn,associations_list$associations_tbl,associations_list$varnum)
+      associations_list$associations_tbl <- filter_vars(associations_list$associations_tbl,input$var_labels,associations_list$varnum)
     }
     
     return (associations_list)

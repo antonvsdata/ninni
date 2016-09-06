@@ -56,7 +56,7 @@ join_variables <- function(conn,assocs_tbl,varnum){
       collect()
   }
   
-  # Removes unnecessary columns and combines the rows of certain association
+  # Removes unnecessary columns and combines the rows of same association
   # (Before this the table had two rows with the same association information, but only one variable each)
   if (varnum == 2){
     assocs_tbl <- assocs_tbl %>%
@@ -73,18 +73,52 @@ join_variables <- function(conn,assocs_tbl,varnum){
   
   return (assocs_tbl)
 }
-# Filters the associations table, shows only the chosen variables
-# Returns COLLECTED local data frames
-filter_by_var <- function(conn,assocs_tbl,var_labels){
+
+filter_vars <- function(assocs_tbl,var_labels,varnum){
   var_labels <- var_labels  %>% strsplit(split=",") %>% unlist
   if (length(var_labels) == 1){
-    var_tbl <- conn %>% tbl("variables") %>% filter(label == var_labels | description == var_labels)
+    if (varnum == 1){
+      assocs_tbl <- assocs_tbl %>% filter(label == var_labels)
+    }
+    if (varnum == 2){
+      assocs_tbl <- assocs_tbl %>% filter(var_label1 == var_labels | var_label2 == var_labels)
+    }
   }
   else{
-    var_tbl <- conn %>% tbl("variables") %>% filter(label %in% var_labels | description %in% var_labels)
+    if (varnum == 1){
+      assocs_tbl <- assocs_tbl %>% filter(label %in% var_labels)
+    }
+    if (varnum == 2){
+      assocs_tbl <- assocs_tbl %>% filter(var_label1 %in% var_labels | var_label2 %in% var_labels)
+    }
   }
-  assoc_to_var_tbl <- conn %>% tbl("associationtovariable") %>% semi_join(var_tbl,by = c("variable_id" = "id"))
-  assocs_tbl <- semi_join(assocs_tbl,assoc_to_var_tbl,by = c("id" = "association_id")) %>% collect()
-  
-  return(assocs_tbl)
+  assocs_tbl
 }
+
+
+# Filters the pre-collected associations table, shows only the chosen variables
+# Returns COLLECTED local data frames
+
+# NOTE: does not have variable labels!! FIX!
+
+# filter_by_var <- function(conn,assocs_tbl,var_labels,varnum){
+#   var_labels <- var_labels  %>% strsplit(split=",") %>% unlist
+#   if (length(var_labels) == 1){
+#     var_tbl <- conn %>% tbl("variables") %>% filter(label == var_labels | description == var_labels)
+#   }
+#   else{
+#     var_tbl <- conn %>% tbl("variables") %>% filter(label %in% var_labels | description %in% var_labels)
+#   }
+#   
+#   if (varnum == 1){
+#     assoc_to_var_tbl <- conn %>% tbl("associationtovariable") %>% inner_join(var_tbl,by = c("variable_id" = "id"))
+#     assocs_tbl <- inner_join(assocs_tbl,assoc_to_var_tbl,by = c("id" = "association_id"))
+#   }
+#   if (varnum == 2){
+#     assoc_to_var_tbl <- conn %>% tbl("associationtovariable") %>% semi_join(var_tbl,by = c("variable_id" = "id"))
+#     assocs_tbl <- semi_join(assocs_tbl,assoc_to_var_tbl,by = c("id" = "association_id")) %>%
+#       join_variables(conn,assocs_tbl,varnum)
+#   }
+#   
+#   return(assocs_tbl)
+# }
