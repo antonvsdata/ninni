@@ -13,22 +13,18 @@ shinyUI( fluidPage(
       
       uiOutput("ds_choice"),
       
-      h4("Filter the search results by variable (separated by comma) or p-value"),
+      h4("Filter the search results"),
       textInput("var_labels",
-                label = "Enter the variable you're interested in"),
+                label = "Keywords, comma separated"),
       
-      textInput("p_limit",
-                   label = "Show only p-values below"),
-                   #value = 1,
-                   #min = 0,
-                   #max = 1,
-                   #step = 0.05),
+      textInput("p_limit",label = "P-value <"),
       
       textInput("p_fdr_limit",
-                   label = "Show only p_fdr below"),
+                   label = "P-value (FDR) <"),
+      
       
       textInput("n_limit",
-                label = "Show only associations with n greater than"),
+                label = "Minimum n"),
       
       
       actionButton("submit_main",
@@ -38,17 +34,17 @@ shinyUI( fluidPage(
       tabsetPanel(
         
         tabPanel("Main",
-                 p("Welcome to use Ninni, the web-based visualization app"),
-                 p("You can browse Ninni's database using the search fields on the left"),
-                 p("The tabular representation tab shows the datasets found by your search as well
-                   as the associations in the datasets"),
-                 p("If the datasets have differing amounts of variables or different effect types,
-                   only the dataset information will be shown"),
-                 p("The other tabs include the visualization tools provided by Ninni")
+                 h3("Welcome to use Ninni the visualization app!"),
+                 p("You can browse Ninni's database using the search fields on the left."),
+                 p("You can view the associations of the chosen dataset is the Data Table tab,
+                   and visualize the data with the tools provided in other tabs."),
+                 p("Ninni will try to provide you with interactive visualization. Unfortunately,
+                   for very large datasets this is not possible. If the chosen dataset seems too large,
+                   you must either settle for a static figure or filter the dataset."),
+                 br(),
+                 h3("Datasets"),
+                 DT::dataTableOutput("dstable")
         ),
-        
-        tabPanel("Datasets",
-                 DT::dataTableOutput("dstable")),
         
         tabPanel("Tabular representation",
                  h3("Associations"),
@@ -56,17 +52,18 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Heat Map",
-                 plotlyOutput("heatmap",height = "1000")
+                 uiOutput("heatmap")
         ),
         
         tabPanel("Volcano plot",
-                 plotlyOutput("volcano",height = "700"),
+                 uiOutput("volcano"),
+                 radioButtons("double_filter",
+                               label = "Visual filters",
+                              choices = c("Yes" = TRUE, "No" = FALSE),
+                              selected = FALSE,
+                              inline = TRUE),
                  
-                 checkboxInput("double_filter",
-                               label = "Enable double filtering",
-                               value = FALSE),
-                 
-                 conditionalPanel(condition = ("input.double_filter == true"),
+                 conditionalPanel(condition = ("input.double_filter == TRUE"),
                                   textInput("df_p_lim",
                                             label = "Limit of p-value (FDR)",
                                             value = 0.01),
@@ -76,8 +73,15 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Q-Q plot",
-                 plotlyOutput("qqplot", height = "700"),
-                 plotlyOutput("qq_ps", height = "700")
+                 uiOutput("qq")
+                 
+#                  radioButtons("qq_choice",
+#                              label = "Choose the type of Q-Q plot",
+#                              choices = c("p-values",
+#                                          "norm"),
+#                              inline = TRUE),
+#                  uiOutput("qq_plot"),
+#                  textOutput("woop")
         )
                  
         

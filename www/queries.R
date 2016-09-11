@@ -4,20 +4,6 @@
 get_associations_by_ds <- function(conn,ds_label){
   ds_tbl <- conn %>% tbl("datasets") %>% filter(label == ds_label)
   
-#   if (ds_tags!= ""){
-#     ds_tags <- ds_tags %>% strsplit(split=",") %>% unlist
-#     if (length(ds_tags) == 1){
-#       meta_tbl <- conn %>% tbl("datasetmetadata") %>% filter(label == ds_tags | description == ds_tags)
-#       ds_to_meta_tbl <- conn %>% tbl("datasettometadata") %>% semi_join(meta_tbl,by = c("datasetmetadata_id" = "id"))
-#       ds_tbl <- semi_join(ds_tbl,ds_to_meta_tbl,by = c("id" = "dataset_id"))
-#     }
-#     else{
-#       meta_tbl <- conn %>% tbl("datasetmetadata") %>% filter(label %in% ds_tags | description %in% ds_tags)
-#       ds_to_meta_tbl <- conn %>% tbl("datasettometadata") %>% semi_join(meta_tbl,by = c("datasetmetadata_id" = "id"))
-#       ds_tbl <- semi_join(ds_tbl,ds_to_meta_tbl,by = c("id" = "dataset_id"))
-#     }
-#   }
-  
   ds_tbl_df <- collect(ds_tbl)
   
   if (dim(ds_tbl_df)[1] == 0 ){
@@ -95,6 +81,20 @@ filter_vars <- function(assocs_tbl,var_labels,varnum){
   assocs_tbl
 }
 
+make_pretty <- function(df,varnum){
+  if (varnum == 1){
+    df <- df %>% select(label,effect_l95,effect_u95,effect,n,p,p_fdr,description) %>%
+      rename(Variable = label, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95, Effect = effect,
+             N = n, P = p, P_FDR = p_fdr,Description = description)
+  }
+  if (varnum == 2){
+    df <- df %>% select(var_label1,var_label2,effect_l95,effect_u95,effect,n,
+                        p,p_fdr,var_description1,var_description2) %>%
+      rename(Variable1 = var_label1, Variable2 = var_label2, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
+             Effect = effect, N = n, P = p, P_FDR = p_fdr,Description1 = var_description1, Description2 = var_description2)
+  }
+  df
+}
 
 # Filters the pre-collected associations table, shows only the chosen variables
 # Returns COLLECTED local data frames

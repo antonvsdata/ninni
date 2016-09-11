@@ -1,27 +1,49 @@
 # Plots a heatmap: Variable labels on axes and colouring by effect. If effect type is "OR" or "FC", uses log2-transformation
-# Input:  dataframe with variable_label1, variable_label2 and effect
+# Input:  dataframe
 #         string containing the effect type
 make_heatmap <- function(dframe,effect_type){
   
   p <- ggplot(dframe, aes(var_label1,var_label2, label1 = effect, label2 = p_fdr, label3 = n))
   
   if (effect_type %in% c("OR","FC")){
-    p <- p + geom_tile(aes(fill = log2(effect)) , colour = "white")
+    p <- p + geom_tile(aes(fill = log2(effect)) , colour = "white") +
+      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
+                           name = paste("log2(",effect_type,")",sep = ""))
   }
   else{
-    p <- p + geom_tile(aes(fill = effect) , colour = "white")
+    p <- p + geom_tile(aes(fill = effect) , colour = "white") +
+      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
+                           name = effect_type)
   }
-  
-  
-  
   p <- p +
-    scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab") +
     theme( axis.text.x = element_text(angle = 90)) +
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    xlab("") + ylab("")
   
   ggplotly(p, tooltip = c("x", "y","label1","label2","label3"))
 }
 
+static_heatmap <- function(dframe,effect_type){
+  p <- ggplot(dframe, aes(Variable1,Variable2))
+  
+  if (effect_type %in% c("OR","FC")){
+    p <- p + geom_tile(aes(fill = log2(Effect)) , colour = "white") +
+      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
+                           name = paste("log2(",effect_type,")",sep = ""))
+  }
+  else{
+    p <- p + geom_tile(aes(fill = Effect) , colour = "white") +
+      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
+                           name = effect_type)
+  }
+  p <- p +
+    theme( axis.text.x = element_text(angle = 90)) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    xlab("") + ylab("")
+  p
+}
+
+#Alternative distance calculator for get_heatmap
 dist2 <- function(x) {
   d <- dist(x)
   d <- as.matrix(d)
@@ -33,24 +55,24 @@ dist2 <- function(x) {
   d <- as.dist(d)
 }
 
-get_heatmap <- function(df){
-  df <- df %>% select(var_label1,var_label2,effect) %>% filter(!is.na(var_label1))
-  df$row <- 1:nrow(df)
-  df$effect <- log2(df$effect)
+#This is only functioning for the oder dataset???
+get_heatmaply <- function(df){
+  df <- df %>% select(Variable1, Variable2, Effect)
+  df$Effect <- log2(df$Effect)
   
-  new_tbl <- spread(df, var_label2, effect) %>% select(-row) %>% group_by(var_label1) %>% summarise_each(funs(.[!is.na(.)][1]))
-  row.names(new_tbl) <- new_tbl$var_label1
-  new_tbl <- new_tbl %>% select(-var_label1)
+  new_tbl <- spread(df, Variable2, Effect)
+  rownames(new_tbl) <- new_tbl$Variable1
+  new_tbl <- new_tbl %>% select(-Variable1)
   
-  lampok <- heatmapr(new_tbl, distfun = dist2, dendrogram = "none")
+  for (i in 1:nrow(new_tbl)){
+    for (j in 1:ncol(new_tbl)){
+      if (!is.na(new_tbl[i,j]))
+        new_tbl[j,i] <- new_tbl[i,j]
+    }
+  }
   
-  eaxis <- list(showticklabels = FALSE,
-                showgrid = FALSE,
-                zeroline = FALSE)
+  heatmaply(new_tbl, scale_fill_gradient_fun = scale_fill_gradient2(low = "blue", high = "red"))
   
-  heatmaply(lampok,
-            scale_fill_gradient_fun = scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab"),
-            column_text_angle = 90)
 }
 
 # Volcano plot with double filtering
@@ -60,16 +82,19 @@ get_heatmap <- function(df){
 #         logical value telling if double filtering is enabled (TRUE or FALSE)
 #         limits for double filtering, p-value first
 
-make_volcanoplot <- function(dframe,effect_type,varnum,double_filter,
+make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
                              df_p_lim = NULL, df_effect_lim = NULL){
+  # The points with p_fdr = 0 would not be plotted,
+  # so they are replaced with 1e-300
+  dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   
   # The variable label(s) are added to tooltip info
-  # The tooltip info is included in dummy aesthetics label1-5
+  # Other tooltip info is included in dummy aesthetics label*
   if (varnum == 1){
-    p <- ggplot(dframe, aes(label1 = label))
+    p <- ggplot(dframe, aes(label1 = Description))
   }
   if(varnum == 2){
-    p <- ggplot(dframe, aes(label1 = var_label1, label2 = var_label2))
+    p <- ggplot(dframe, aes(label1 = Description1, label2 = Description2))
   }
 
   # OR and FC require log2 transformation before plotting
@@ -77,25 +102,25 @@ make_volcanoplot <- function(dframe,effect_type,varnum,double_filter,
   # Hover tooltip includes: Variable label(s), effect, p_fdr and n
   if (effect_type %in% c("OR","FC")){
     if (double_filter){
-      dframe <- dframe %>% mutate(df = as.factor(p_fdr < df_p_lim & abs(log2(effect)) > df_effect_lim))
+      dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim))
       
       # The ggplot object needs to be redone since dframe has been altered
       if (varnum == 1){
-        p <- ggplot(dframe, aes(label1 = label))
+        p <- ggplot(dframe, aes(label1 = Description))
       }
       if(varnum == 2){
-        p <- ggplot(dframe, aes(label1 = var_label1, label2 = var_label2))
+        p <- ggplot(dframe, aes(label1 = Description1, label2 = Description2))
       }
       p <- p +
-        geom_point(aes(x = log2(effect), y = -log10(p_fdr),color = df,
-                       label3 = effect, label4 = p_fdr, label5 = n)) +
+        geom_point(aes(x = log2(Effect), y = -log10(P_FDR),color = df,
+                       label3 = Effect, label4 = P_FDR, label5 = N)) +
         scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
                             guide = guide_legend(title = NULL)) +
         xlab(paste("log2(",effect_type,")",sep = ""))
     }
     else{
       p <- p +
-        geom_point(aes(x = log2(effect), y = -log10(p_fdr), label3 = effect, label4 = p_fdr, label5 = n)) +
+        geom_point(aes(x = log2(Effect), y = -log10(P_FDR), label3 = Effect, label4 = P_FDR, label5 = N)) +
         xlab(paste("log2(",effect_type,")",sep = ""))
     }
   }
@@ -103,21 +128,23 @@ make_volcanoplot <- function(dframe,effect_type,varnum,double_filter,
   # This could be simplified
   else{
     if (double_filter){
-      dframe <- dframe %>% mutate(doubfilt = as.factor(p_fdr < df_p_lim & abs(effect) > df_effect_lim))
-      p <- ggplot(dframe, aes(x = effect, y = -log10(p_fdr))) +
-        geom_point(aes(color = doubfilt)) +
+      dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(Effect) > df_effect_lim))
+      p <- ggplot(dframe, aes(x = Effect, y = -log10(P_FDR))) +
+        geom_point(aes(color = df)) +
         scale_color_manual(breaks = c("TRUE", "FALSE"), values = c("grey", "red")) +
         xlab("Correlation")
     }
     else{
-      p <- ggplot(dframe, aes(x = effect, y = -log10(p_fdr))) +
+      p <- ggplot(dframe, aes(x = Effect, y = -log10(P_FDR))) +
         geom_point() +
         xlab("Correlation")
     }
   }
   
+  # Supresses excess background, speeds up the function
   p <- p + theme_minimal()
   
+  # Plotly makes the figure interactive
   if (varnum == 1){
     p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
   }
@@ -128,13 +155,43 @@ make_volcanoplot <- function(dframe,effect_type,varnum,double_filter,
   p
 }
 
+volcano_static <- function(dframe,effect_type,varnum,double_filter,
+                           df_p_lim = NULL, df_effect_lim = NULL){
+  dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
+  
+  
+  # OR and FC require log2 transformation before plotting
+  # If double filtering is enabled, the points that pass the filtering will be colored red
+  # Hover tooltip includes: Variable label(s), effect, p_fdr and n
+  if (effect_type %in% c("OR","FC")){
+    if (double_filter){
+      dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim))
+      
+      p <- ggplot(dframe) +
+        geom_point(aes(x = log2(Effect), y = -log10(P_FDR),color = df)) +
+        scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
+                            guide = guide_legend(title = NULL)) +
+        xlab(paste("log2(",effect_type,")",sep = ""))
+    }
+    else{
+      p <- ggplot(dframe) +
+        geom_point(aes(x = log2(Effect), y = -log10(P_FDR))) +
+        xlab(paste("log2(",effect_type,")",sep = ""))
+    }
+  }
+  
+  # Supresses excess background, speeds up the function
+  p <- p + theme_minimal()
+  p
+}
+
 # Source: https://gist.github.com/rentrop/d39a8406ad8af2a1066c
 
-gg_qq <- function(df,effect_type,varnum,ci = 0.95){
+qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
   
-  x <- df$effect
+  x <- dframe$Effect
   
-  df$test <- 1
+  dframe$test <- 1
   
   if (effect_type %in% c("OR","FC")){
     x <- log2(x)
@@ -148,23 +205,23 @@ gg_qq <- function(df,effect_type,varnum,ci = 0.95){
   ord <- order(x)
   n <- length(x)
   P <- ppoints(length(x))
-  df$ord.x <- x[ord]
-  df$z <- qnorm(P)
+  dframe$ord.x <- x[ord]
+  dframe$z <- qnorm(P)
   
-  Q.x <- quantile(df$ord.x, c(0.25, 0.75))
+  Q.x <- quantile(dframe$ord.x, c(0.25, 0.75))
   Q.z <- qnorm(c(0.25, 0.75))
   b <- diff(Q.x)/diff(Q.z)
   coef <- c(Q.x[1] - b * Q.z[1], b)
   
   
   zz <- qnorm(1 - (1 - ci)/2)
-  SE <- (coef[2]/dnorm(df$z)) * sqrt(P * (1 - P)/n)
-  fit.value <- coef[1] + coef[2] * df$z
-  df$upper <- fit.value + zz * SE
-  df$lower <- fit.value - zz * SE
+  SE <- (coef[2]/dnorm(dframe$z)) * sqrt(P * (1 - P)/n)
+  fit.value <- coef[1] + coef[2] * dframe$z
+  dframe$upper <- fit.value + zz * SE
+  dframe$lower <- fit.value - zz * SE
   
   
-  p <- ggplot(df, aes(x=z, y=ord.x)) +
+  p <- ggplot(dframe, aes(x=z, y=ord.x)) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
     xlab("Normal quantiles") + ylab(ylabel) +
@@ -172,26 +229,36 @@ gg_qq <- function(df,effect_type,varnum,ci = 0.95){
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha=0.2) +
     scale_fill_gradient(low = "grey40", high = "grey40")
   
-  if (varnum == 1){
-    p <- p + geom_point(aes(label1 = label, label3 = effect, label4 = p_fdr, label5 = n))
-    p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+  if (interactive){
+    if (varnum == 1){
+      p <- p + geom_point(aes(label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+    }
+    if(varnum == 2){
+      p <- p + geom_point(aes(label1 = Description1, label2 = Description2, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+    } 
   }
-  if(varnum == 2){
-    p <- p + geom_point(aes(label1 = var_label1, label2 = var_label2, label3 = effect, label4 = p_fdr, label5 = n))
-    p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+  else{
+    p <- p + geom_point()
   }
   
   p
 }
 
-gg_qqplot <- function(df, varnum, ci = 0.95){
-  ps <- df$p_fdr
+qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
+  
+  # The points with p_fdr = 0 would not be plotted,
+  # so they are replaced with 1e-300
+  # df$p_fdr <- lapply(df$p_fdr, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
+  
+  ps <- dframe$P_FDR
   n <- length(ps)
-  df$observed <- -log10(sort(ps))
-  df$expected = -log10(1:n/n)
-  df$cupper = -log10(qbeta(ci,     1:n, n - 1:n + 1))
-  df$clower = -log10(qbeta(1- ci,  1:n, n - 1:n + 1))
-  p <- ggplot(df) +
+  dframe$observed <- -log10(sort(ps))
+  dframe$expected = -log10(1:n/n)
+  dframe$cupper = -log10(qbeta(ci,     1:n, n - 1:n + 1))
+  dframe$clower = -log10(qbeta(1- ci,  1:n, n - 1:n + 1))
+  p <- ggplot(dframe) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
     geom_abline(intercept = 0, slope = 1, alpha = 0.5) +
@@ -199,15 +266,19 @@ gg_qqplot <- function(df, varnum, ci = 0.95){
     xlab(expression(paste("Expected -log"[10], plain(P)))) +
     ylab(expression(paste("Observed -log"[10], plain(P))))
   
-  if(varnum == 2){
-    p <- p + geom_point(aes(x=expected, y=observed,label1 = var_label1, label2 = var_label2, label3 = effect, label4 = p_fdr, label5 = n))
-    p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+  if (interactive){
+    if(varnum == 2){
+      p <- p + geom_point(aes(x=expected, y=observed,label1 = Description1, label2 = Decription2, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+    }
+    if (varnum == 1){
+      p <- p + geom_point(aes(x=expected, y=observed,label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+    }
   }
-  if (varnum == 1){
-    p <- p + geom_point(aes(x=expected, y=observed,label1 = label, label3 = effect, label4 = p_fdr, label5 = n))
-    p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+  else{
+    p <- p + geom_point(aes(x=expected, y=observed))
   }
-  
   p
 }
 
