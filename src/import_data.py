@@ -78,7 +78,7 @@ def parse_metatodata(dsid, tagstr):
 def parse_variables(file):
     print ("Parsing variable descriptions...")
     with open(file,'r') as varfile:
-        rdr = csv.DictReader(varfile, delimiter = "\t")
+        rdr = csv.DictReader(varfile, delimiter = ",")
         print("Inserting variables...")
         count = 0
         for row in rdr:
@@ -109,12 +109,10 @@ def create_varid(var_label, depth=0):
     	else:
             return None
 
-def parse_assoctovar(assoc_id, varstr):
-    vars = varstr.split(';')
-    for var in vars:
-        varid = create_varid(var)
-        if (varid is not None):
-            cursor.execute(add_assoctovar, (assoc_id, varid))
+def parse_assoctovar(assoc_id, var_label):
+    varid = create_varid(var_label)
+    if (varid is not None):
+        cursor.execute(add_assoctovar, (assoc_id, varid))
 
 def get_associd(dsid,effect,effect_l,effect_u,n,p,p_fdr):
     cursor.execute(assocquery, (dsid,effect,effect_l,effect_u,n,p,p_fdr))
@@ -126,7 +124,7 @@ def get_associd(dsid,effect,effect_l,effect_u,n,p,p_fdr):
 
 # Adds associations to the database, checks if the dataset has one or two variables and acts accordingly
 # maxlines parameter is only for testing
-def parse_assoc(file, dsid, maxlines=-1):
+def parse_assoc(file, dsid, varnum, maxlines=-1):
     with open(file, 'rt') as csvfile:
         print("Parsing associations...")
         rdr = csv.DictReader(csvfile,delimiter=',')
@@ -135,7 +133,9 @@ def parse_assoc(file, dsid, maxlines=-1):
             data_assoc = (dsid, row["EFFECT"],row["EFFECT_L95"], row["EFFECT_U95"],row["N"],row["P"],row["P_FDR"])
             cursor.execute(add_assoc, data_assoc)
             assoc_id = get_associd(dsid, row["EFFECT"],row["EFFECT_L95"], row["EFFECT_U95"],row["N"],row["P"],row["P_FDR"])
-            parse_assoctovar(assoc_id,row["VARIABLE_LABELS"])
+            parse_assoctovar(assoc_id,row["VARIABLE1_LABEL"])
+            if (int(varnum) == 2):
+                parse_assoctovar(assoc_id,row["VARIABLE2_LABEL"])
             rowcount += 1
             if(maxlines > 0 and rdr.line_num >= maxlines):
                 break
@@ -159,7 +159,7 @@ def parse_datasets(file):
             datasetid = get_datasetid(row["LABEL"])
             if (datasetid is not None):
                 print("Dataset information inserted")
-                parse_assoc(row["DATASET_FILENAME"], datasetid)
+                parse_assoc(row["DATASET_FILENAME"], datasetid,row["VARNUM"])
                 parse_metatodata(datasetid, row["METADATA_LABELS"])
             if (row["VARIABLES_FILENAME"] != 'None'):
                 parse_variables(row["VARIABLES_FILENAME"])
