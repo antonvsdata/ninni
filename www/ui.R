@@ -75,7 +75,7 @@ shinyUI( fluidPage(
 #         tabPanel("Q-Q plot 1",
 #                  uiOutput("qq_ps"),
 #                  h5("testing")
-        ),
+#        ),
         
         tabPanel("Q-Q plot",
                  uiOutput("qq")
