@@ -62,22 +62,22 @@ join_variables <- function(conn,assocs_tbl,varnum){
 
 filter_vars <- function(assocs_tbl,var_labels,varnum){
   var_labels <- var_labels  %>% strsplit(split=",") %>% unlist
-  if (length(var_labels) == 1){
+#   if (length(var_labels) == 1){
+#     if (varnum == 1){
+#       assocs_tbl <- assocs_tbl %>% filter(Variable == var_labels)
+#     }
+#     if (varnum == 2){
+#       assocs_tbl <- assocs_tbl %>% filter(Variable1 == var_labels | Variable2 == var_labels)
+#     }
+#   }
+#   else{
     if (varnum == 1){
-      assocs_tbl <- assocs_tbl %>% filter(label == var_labels)
+      assocs_tbl <- assocs_tbl %>% filter(Variable %in% var_labels | Description %in% var_labels)
     }
     if (varnum == 2){
-      assocs_tbl <- assocs_tbl %>% filter(var_label1 == var_labels | var_label2 == var_labels)
+      assocs_tbl <- assocs_tbl %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels | Description1 %in% var_labels | Description2 %in% var_labels)
     }
-  }
-  else{
-    if (varnum == 1){
-      assocs_tbl <- assocs_tbl %>% filter(label %in% var_labels)
-    }
-    if (varnum == 2){
-      assocs_tbl <- assocs_tbl %>% filter(var_label1 %in% var_labels | var_label2 %in% var_labels)
-    }
-  }
+  #}
   assocs_tbl
 }
 

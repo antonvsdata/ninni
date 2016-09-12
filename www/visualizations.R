@@ -87,7 +87,6 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
   dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
-  
   # The variable label(s) are added to tooltip info
   # Other tooltip info is included in dummy aesthetics label*
   if (varnum == 1){
@@ -96,7 +95,6 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
   if(varnum == 2){
     p <- ggplot(dframe, aes(label1 = Description1, label2 = Description2))
   }
-
   # OR and FC require log2 transformation before plotting
   # If double filtering is enabled, the points that pass the filtering will be colored red
   # Hover tooltip includes: Variable label(s), effect, p_fdr and n
@@ -112,38 +110,38 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
         p <- ggplot(dframe, aes(label1 = Description1, label2 = Description2))
       }
       p <- p +
-        geom_point(aes(x = log2(Effect), y = -log10(P_FDR),color = df,
+        geom_point(aes(x = log2(Effect), y = -log10(P),color = df,
                        label3 = Effect, label4 = P_FDR, label5 = N)) +
         scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
-                            guide = guide_legend(title = NULL)) +
-        xlab(paste("log2(",effect_type,")",sep = ""))
+                            guide = guide_legend(title = NULL))
     }
     else{
       p <- p +
-        geom_point(aes(x = log2(Effect), y = -log10(P_FDR), label3 = Effect, label4 = P_FDR, label5 = N)) +
-        xlab(paste("log2(",effect_type,")",sep = ""))
+        geom_point(aes(x = log2(Effect), y = -log10(P), label3 = Effect, label4 = P_FDR, label5 = N))
     }
+    p <- p +
+      xlab(paste("log2(",effect_type,")",sep = "")) +
+      xlim(-max(abs(log2(dframe$Effect))),max(abs(log2(dframe$Effect))))
   }
   # Identical to above, except x = effect instead of x = log2(effect)
   # This could be simplified
   else{
+    p <- ggplot(dframe, aes(x = Effect, y = -log10(P))) +
+      xlab("Correlation") +
+      xlim(-max(dframe$Effect),max(dframe$Effect))
     if (double_filter){
       dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(Effect) > df_effect_lim))
-      p <- ggplot(dframe, aes(x = Effect, y = -log10(P_FDR))) +
+      p <- p +
         geom_point(aes(color = df)) +
-        scale_color_manual(breaks = c("TRUE", "FALSE"), values = c("grey", "red")) +
-        xlab("Correlation")
+        scale_color_manual(breaks = c("TRUE", "FALSE"), values = c("grey", "red"))
     }
     else{
-      p <- ggplot(dframe, aes(x = Effect, y = -log10(P_FDR))) +
-        geom_point() +
-        xlab("Correlation")
+      p <- p +
+        geom_point()
     }
   }
-  
   # Supresses excess background, speeds up the function
   p <- p + theme_minimal()
-  
   # Plotly makes the figure interactive
   if (varnum == 1){
     p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
@@ -151,7 +149,6 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
   if(varnum == 2){
     p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
   }
-  
   p
 }
 
@@ -225,7 +222,7 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
     xlab("Normal quantiles") + ylab(ylabel) +
-    geom_abline(intercept = coef[1], slope = coef[2]) +
+    geom_abline(intercept = coef[1], slope = coef[2], color = "red") +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha=0.2) +
     scale_fill_gradient(low = "grey40", high = "grey40")
   
@@ -250,25 +247,25 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
-  # df$p_fdr <- lapply(df$p_fdr, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
+  dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   
   ps <- dframe$P_FDR
   n <- length(ps)
-  dframe$observed <- -log10(sort(ps))
-  dframe$expected = -log10(1:n/n)
-  dframe$cupper = -log10(qbeta(ci,     1:n, n - 1:n + 1))
-  dframe$clower = -log10(qbeta(1- ci,  1:n, n - 1:n + 1))
+  dframe$observed <- -log10(sort(ps, decreasing = FALSE))
+  dframe$expected <- -log10(1:n/n)
+  dframe$cupper <- -log10(qbeta(ci,     1:n, n - 1:n + 1))
+  dframe$clower <- -log10(qbeta(1- ci,  1:n, n - 1:n + 1))
   p <- ggplot(dframe) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
-    geom_abline(intercept = 0, slope = 1, alpha = 0.5) +
-    geom_ribbon(aes(x = expected, ymin = clower, ymax = cupper), alpha = 0.2) +
-    xlab(expression(paste("Expected -log"[10], plain(P)))) +
-    ylab(expression(paste("Observed -log"[10], plain(P))))
+    geom_abline(intercept = 0, slope = 1, color = "red") +
+    geom_ribbon(aes(x = expected, ymin = clower, ymax = cupper)) +
+    xlab("Expected - log10(P)") +
+    ylab("Observed - log10(P)")
   
   if (interactive){
     if(varnum == 2){
-      p <- p + geom_point(aes(x=expected, y=observed,label1 = Description1, label2 = Decription2, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- p + geom_point(aes(x=expected, y=observed,label1 = Description1, label2 = Description2, label3 = Effect, label4 = P_FDR, label5 = N))
       p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
     }
     if (varnum == 1){

@@ -46,7 +46,7 @@ shinyUI( fluidPage(
                  DT::dataTableOutput("dstable")
         ),
         
-        tabPanel("Tabular representation",
+        tabPanel("Data Table",
                  h3("Associations"),
                  DT::dataTableOutput("tabular")
         ),
@@ -70,6 +70,11 @@ shinyUI( fluidPage(
                                   textInput("df_effect_lim",
                                             label = "Limit of effect (absolute value, use log2-value for OR or FC)",
                                             value = 3))
+        ),
+        
+#         tabPanel("Q-Q plot 1",
+#                  uiOutput("qq_ps"),
+#                  h5("testing")
         ),
         
         tabPanel("Q-Q plot",

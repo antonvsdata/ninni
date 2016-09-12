@@ -11,7 +11,9 @@ shinyServer(function(input,output){
   
   output$ds_choice <- renderUI({
     selectizeInput("ds_label",label = "Dataset", width = "100%",
-                   choices = ds_labels(), options = list(maxItems = 1, placeholder = 'Choose a dataset'))
+                   choices = ds_labels(), options = list(maxItems = 1,
+                                                         placeholder = 'Choose a dataset',
+                                                         onInitialize = I('function() { this.setValue(""); }')))
   })
   
   
@@ -53,9 +55,12 @@ shinyServer(function(input,output){
   })
   
   output$dstable <- DT::renderDataTable({
-    
-    datatable(ds_df, selection = "single")
+    datatable(ds_df, selection = "none")
   })
+  
+  pretty_num <- function(x){
+    prettyNum(x, format = f)
+  }
   
   output$tabular <- DT::renderDataTable({
     datatable(associations_list()$associations_tbl, selection = "none")
@@ -147,13 +152,22 @@ shinyServer(function(input,output){
               associations_list()$varnum, interactive = FALSE)
   })
   
-  output$qqplot_ps <- renderPlotly({
+  output$qq_ps <- renderUI({
     if (dim(associations_list()$associations_tbl)[1] > 10000){
-      qq_pvalues(associations_list()$associations_tbl,associations_list()$varnum, interactive = FALSE)
+      tagList(h5("Interactivity is disabled for large datasets. Please filter the search results."),
+              plotOutput("qq_plot_ps", height = "700"))
     }
     else{
-      qq_pvalues(associations_list()$associations_tbl,associations_list()$varnum)
+      plotlyOutput("qq_plotly_ps", height = "700")
     }
+  })
+  
+  output$qq_plotly_ps <- renderPlotly({
+    qq_pvalues(associations_list()$associations_tbl,associations_list()$varnum)
+  })
+  
+  output$qq_plot_ps <- renderPlot({
+    qq_pvalues(associations_list()$associations_tbl,associations_list()$varnum, interactive = FALSE)
   })
   
 })
