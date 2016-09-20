@@ -78,10 +78,10 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
   # The variable label(s) are added to tooltip info
   # Other tooltip info is included in dummy aesthetics label*
   if (varnum == 1){
-    p <- ggplot(dframe, aes(label1 = Description))
+    p <- ggplot(dframe, aes(label0 = Variable, label1 = Description))
   }
   if(varnum == 2){
-    p <- ggplot(dframe, aes(label1 = Description1, label2 = Description2))
+    p <- ggplot(dframe, aes(label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2))
   }
   # OR and FC require log2 transformation before plotting
   # If double filtering is enabled, the points that pass the filtering will be colored red
@@ -132,10 +132,10 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
   p <- p + theme_minimal()
   # Plotly makes the figure interactive
   if (varnum == 1){
-    p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+    p <- ggplotly(p, tooltip = c("label0","label1","label3","label4","label5"))
   }
   if(varnum == 2){
-    p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+    p <- ggplotly(p, tooltip = c("label00","label0","label1","label2","label3","label4","label5"))
   }
   p
 }
@@ -213,12 +213,12 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
   # Interactivity can be disabled
   if (interactive){
     if (varnum == 1){
-      p <- p + geom_point(aes(label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
-      p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+      p <- p + geom_point(aes(label0 = Variable, label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label0","label1","label3","label4","label5"))
     }
     if(varnum == 2){
-      p <- p + geom_point(aes(label1 = Description1, label2 = Description2, label3 = Effect, label4 = P_FDR, label5 = N))
-      p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+      p <- p + geom_point(aes(label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label00","label0","label1","label2","label3","label4","label5"))
     } 
   }
   else{
@@ -249,12 +249,12 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   
   if (interactive){
     if(varnum == 2){
-      p <- p + geom_point(aes(x=expected, y=observed,label1 = Description1, label2 = Description2, label3 = Effect, label4 = P_FDR, label5 = N))
-      p <- ggplotly(p, tooltip = c("label1","label2","label3","label4","label5"))
+      p <- p + geom_point(aes(x=expected, y=observed,label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label00","label0","label1","label2","label3","label4","label5"))
     }
     if (varnum == 1){
-      p <- p + geom_point(aes(x=expected, y=observed,label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
-      p <- ggplotly(p, tooltip = c("label1","label3","label4","label5"))
+      p <- p + geom_point(aes(x=expected, y=observed,label0 = Variable, label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label0","label1","label3","label4","label5"))
     }
   }
   else{
@@ -262,6 +262,3 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   }
   p
 }
-
-
-

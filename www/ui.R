@@ -4,6 +4,7 @@ shinyUI( fluidPage(
   
   sidebarLayout(
     sidebarPanel(
+      h4("Dataset"),
       uiOutput("ds_choice"),
       
       h4("Filter the search results"),
@@ -19,7 +20,9 @@ shinyUI( fluidPage(
                 label = "Minimum n"),
       
       actionButton("submit_main",
-                   label = "Submit")
+                   label = "Submit"),
+      
+      htmlOutput("ds_info")
     ),
     mainPanel(
       tabsetPanel(
@@ -47,37 +50,28 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Volcano plot",
-                 uiOutput("volcano"),
                  radioButtons("double_filter",
-                               label = "Visual filters",
+                              label = "Visual filters",
                               choices = c("Yes" = TRUE, "No" = FALSE),
                               selected = FALSE,
                               inline = TRUE),
                  
-                 conditionalPanel(condition = ("input.double_filter == TRUE"),
-                                  textInput("df_p_lim",
-                                            label = "Limit of p-value (FDR)",
-                                            value = 0.01),
-                                  textInput("df_effect_lim",
-                                            label = "Limit of effect (absolute value, use log2-value for OR or FC)",
-                                            value = 3))
+                 textInput("df_p_lim",
+                           label = "Limit of p-value (FDR)",
+                           value = 0.01),
+                 textInput("df_effect_lim",
+                           label = "Limit of effect (absolute value, use log2-value for OR or FC)",
+                           value = 3),
+                 uiOutput("volcano")
         ),
         
-        tabPanel("Q-Q plot 1",
-                 uiOutput("qq_ps"),
-                 h5("testing")
-       ),
-        
         tabPanel("Q-Q plot",
-                 uiOutput("qq")
-                 
-#                  radioButtons("qq_choice",
-#                              label = "Choose the type of Q-Q plot",
-#                              choices = c("p-values",
-#                                          "norm"),
-#                              inline = TRUE),
-#                  uiOutput("qq_plot"),
-#                  textOutput("woop")
+                 radioButtons("qq_choice",
+                                         label = "Choose the type of Q-Q plot",
+                                         choices = c("p-values",
+                                                     "norm"),
+                                         inline = TRUE),
+                 uiOutput("qq_plot")
         )
                  
         
