@@ -7,7 +7,7 @@ get_associations_by_ds <- function(conn,ds_label){
   ds_tbl_df <- collect(ds_tbl)
   
   if (dim(ds_tbl_df)[1] == 0 ){
-    return (list(associations_tbl = data.frame(),varnum = -1, effect_type = "None"))
+    return (list(dframe = data.frame(),varnum = -1, effect_type = "None"))
   }
   
   varnum <- ds_tbl_df$varnum %>% unique()
@@ -17,7 +17,7 @@ get_associations_by_ds <- function(conn,ds_label){
   
   assocs_tbl <- conn %>% tbl("associations") %>% semi_join(ds_tbl, by = c("dataset_id" = "id"))
   
-  return (list(associations_tbl =assocs_tbl,varnum = varnum,effect_type = effect_type))
+  return (list(dframe =assocs_tbl,varnum = varnum,effect_type = effect_type))
   
 }
 
