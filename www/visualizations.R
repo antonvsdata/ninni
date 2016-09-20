@@ -24,7 +24,10 @@ make_heatmap <- function(dframe,effect_type){
 }
 
 static_heatmap <- function(dframe,effect_type){
-  p <- ggplot(dframe, aes(Variable1,Variable2))
+  p <- ggplot(dframe, aes(Variable1,Variable2)) +
+    theme( axis.text.x = element_text(angle = 90)) +
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+    xlab("") + ylab("")
   
   if (effect_type %in% c("OR","FC")){
     p <- p + geom_tile(aes(fill = log2(Effect)) , colour = "white") +
@@ -36,31 +39,16 @@ static_heatmap <- function(dframe,effect_type){
       scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
                            name = effect_type)
   }
-  p <- p +
-    theme( axis.text.x = element_text(angle = 90)) +
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-    xlab("") + ylab("")
   p
 }
 
-#Alternative distance calculator for get_heatmap
-dist2 <- function(x) {
-  d <- dist(x)
-  d <- as.matrix(d)
-  g <- which(rowSums(!is.na(d)) > 2)
-  f <- which(colSums(!is.na(d)) > 2)
-  d <- d[g,f]
-  c <- complete.cases(d)
-  d <- d[c,c]
-  d <- as.dist(d)
-}
-
 #This is only functioning for the oder dataset???
-get_heatmaply <- function(df){
-  df <- df %>% select(Variable1, Variable2, Effect)
-  df$Effect <- log2(df$Effect)
+# Draws an interactive heatmap of the associations
+get_heatmaply <- function(dframe){
+  dframe <- dframe %>% select(Variable1, Variable2, Effect)
+  dframe$Effect <- log2(dframe$Effect)
   
-  new_tbl <- spread(df, Variable2, Effect)
+  new_tbl <- spread(dframe, Variable2, Effect)
   rownames(new_tbl) <- new_tbl$Variable1
   new_tbl <- new_tbl %>% select(-Variable1)
   
@@ -182,13 +170,12 @@ volcano_static <- function(dframe,effect_type,varnum,double_filter,
   p
 }
 
-# Source: https://gist.github.com/rentrop/d39a8406ad8af2a1066c
-
+# This function is a modified version of the one presented in
+# https://gist.github.com/rentrop/d39a8406ad8af2a1066c
 qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
   
   x <- dframe$Effect
-  
-  dframe$test <- 1
+  dframe <- dframe %>% arrange(Effect)
   
   if (effect_type %in% c("OR","FC")){
     x <- log2(x)
@@ -197,27 +184,25 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
   else{
     ylabel <- "Correlation"
   }
-  
+  #Missing values are removed and the effect vector is ordered
   x <- na.omit(x)
-  ord <- order(x)
   n <- length(x)
   P <- ppoints(length(x))
-  dframe$ord.x <- x[ord]
+  dframe$ord.x <- sort(x, decreasing = FALSE)
   dframe$z <- qnorm(P)
-  
+  # The coefficients for the line
   Q.x <- quantile(dframe$ord.x, c(0.25, 0.75))
   Q.z <- qnorm(c(0.25, 0.75))
   b <- diff(Q.x)/diff(Q.z)
   coef <- c(Q.x[1] - b * Q.z[1], b)
-  
-  
+  # The values for the confidence band
   zz <- qnorm(1 - (1 - ci)/2)
   SE <- (coef[2]/dnorm(dframe$z)) * sqrt(P * (1 - P)/n)
   fit.value <- coef[1] + coef[2] * dframe$z
   dframe$upper <- fit.value + zz * SE
   dframe$lower <- fit.value - zz * SE
-  
-  
+  # Grid and background color is omited to boost performance,
+  # the line and the confidence band is added
   p <- ggplot(dframe, aes(x=z, y=ord.x)) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
@@ -225,7 +210,7 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
     geom_abline(intercept = coef[1], slope = coef[2], color = "red") +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha=0.2) +
     scale_fill_gradient(low = "grey40", high = "grey40")
-  
+  # Interactivity can be disabled
   if (interactive){
     if (varnum == 1){
       p <- p + geom_point(aes(label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
@@ -239,17 +224,16 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
   else{
     p <- p + geom_point()
   }
-  
   p
 }
 
 qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
-  
+  dframe <- dframe %>% arrange(P)
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
-  dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
+  dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   
-  ps <- dframe$P_FDR
+  ps <- dframe$P
   n <- length(ps)
   dframe$observed <- -log10(sort(ps, decreasing = FALSE))
   dframe$expected <- -log10(1:n/n)

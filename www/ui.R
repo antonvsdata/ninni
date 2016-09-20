@@ -4,13 +4,6 @@ shinyUI( fluidPage(
   
   sidebarLayout(
     sidebarPanel(
-#      h4("Search for datasets, by dataset label or by keywords. All separated by comma (required)"),
-#       textInput("ds_labels",
-#                 label = "Labels"),
-#       textInput("ds_tags", #value = "BIVARIATE",
-#                 label = "Keyword, eg. \"T2D\" or \"type 2 diabetes\"",
-#                 value = ""),
-      
       uiOutput("ds_choice"),
       
       h4("Filter the search results"),
@@ -22,10 +15,8 @@ shinyUI( fluidPage(
       textInput("p_fdr_limit",
                    label = "P-value (FDR) <"),
       
-      
       textInput("n_limit",
                 label = "Minimum n"),
-      
       
       actionButton("submit_main",
                    label = "Submit")
@@ -72,10 +63,10 @@ shinyUI( fluidPage(
                                             value = 3))
         ),
         
-#         tabPanel("Q-Q plot 1",
-#                  uiOutput("qq_ps"),
-#                  h5("testing")
-#        ),
+        tabPanel("Q-Q plot 1",
+                 uiOutput("qq_ps"),
+                 h5("testing")
+       ),
         
         tabPanel("Q-Q plot",
                  uiOutput("qq")
