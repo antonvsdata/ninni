@@ -21,6 +21,8 @@ shinyUI( fluidPage(
       
       actionButton("submit_main",
                    label = "Submit"),
+      br(),
+      br(),
       
       htmlOutput("ds_info")
     ),
@@ -60,7 +62,7 @@ shinyUI( fluidPage(
                            label = "Limit of p-value (FDR)",
                            value = 0.01),
                  textInput("df_effect_lim",
-                           label = "Limit of effect (absolute value, use log2-value for OR or FC)",
+                           label = "Effect:",
                            value = 3),
                  uiOutput("volcano")
         ),

@@ -17,20 +17,27 @@ shinyServer(function(input,output){
   })
   
   output$ds_info <- renderUI({
-    str1 <- paste("Number of associations:",nrow(associations_list()$dframe))
-    if (associations_list()$varnum == 1)
-      str2 <- paste("Number of unique variables:", associations_list()$dframe$Variable %>%
-                      unique() %>% length() )
-    if (associations_list()$varnum ==2)
-      str2 <- paste("Number of unique variables:", c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
-                      unique() %>% length() )
-    str3 <- paste("P-value < 0.05", associations_list()$dframe %>% filter(P < 0.05) %>% nrow(),sep = "&nbsp;")
-    str4 <- paste("P-value (FDR) < 0.05", associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow())
-    str5 <- paste("P-value range:", min(associations_list()$dframe$P), "...",max(associations_list()$dframe$P))
-    str5 <- paste("Effect range:", min(associations_list()$dframe$Effect), "...",max(associations_list()$dframe$Effect))
-    HTML(paste(str1, str2, str3, str4, str5, sep = '<br/>'))
+    tableOutput("ds_info_table")
   })
   
+  output$ds_info_table <- renderTable({
+    str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
+                 "P-value range:","Effect range:")
+    values <- nrow(associations_list()$dframe) %>% as.character()
+    if (associations_list()$varnum == 1)
+      values <- c(values, associations_list()$dframe$Variable %>%
+                      unique() %>% length() %>% as.character() )
+    if (associations_list()$varnum ==2)
+      values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
+                      unique() %>% length() %>% as.character() )
+    values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
+                associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
+                paste((associations_list()$dframe$P)%>%min()%>%signif(digits=3), "...",
+                      (associations_list()$dframe$P)%>%max()%>%signif(digits=3)),
+                paste((associations_list()$dframe$Effect)%>%min()%>%signif(digits=3), "...",
+                      (associations_list()$dframe$Effect)%>%max()%>%signif(digits=3)))
+    data.frame(str,values)
+},include.rownames=FALSE, include.colnames = FALSE)
   
   associations_list <- eventReactive(input$submit_main,{
     
