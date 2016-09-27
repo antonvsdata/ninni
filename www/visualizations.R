@@ -59,7 +59,7 @@ get_heatmaply <- function(dframe){
     }
   }
   
-  heatmaply(new_tbl, scale_fill_gradient_fun = scale_fill_gradient2(low = "blue", high = "red"))
+  heatmaply(new_tbl, scale_fill_gradient_fun = scale_fill_gradient2(low = "steelblue", high = "red"))
   
 }
 
