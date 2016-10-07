@@ -1,0 +1,17 @@
+.shiny-input-container input{
+ display: inline-block;
+ width: 50%;
+
+  
+}
+
+.shiny-input-container >label{
+  padding-top: 4px;
+  display: inline-block;
+  text-align: right;
+  margin-right: 10px;
+}
+
+.well .shiny-input-container >label{
+  width: 10%;
+}

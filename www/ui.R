@@ -1,4 +1,7 @@
 shinyUI( fluidPage(
+  
+  includeCSS("styles.css"),
+  
   titlePanel("Ninni"),
   
   
@@ -8,8 +11,9 @@ shinyUI( fluidPage(
       uiOutput("ds_choice"),
       
       h4("Filter the search results"),
+      strong("Keywords, comma separated"),
       textInput("var_labels",
-                label = "Keywords, comma separated"),
+                label = NULL),
       
       textInput("p_limit",label = "P-value <"),
       
