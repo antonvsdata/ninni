@@ -32,12 +32,12 @@ shinyServer(function(input,output){
                       unique() %>% length() %>% as.character() )
     values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
                 associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
-                paste((associations_list()$dframe$P)%>%min()%>%signif(digits=3), "...",
-                      (associations_list()$dframe$P)%>%max()%>%signif(digits=3)),
-                paste((associations_list()$dframe$Effect)%>%min()%>%signif(digits=3), "...",
-                      (associations_list()$dframe$Effect)%>%max()%>%signif(digits=3)))
+                paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
+                      (associations_list()$dframe$P) %>% max() %>% signif(digits=3)),
+                paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits=3), "...",
+                      (associations_list()$dframe$Effect) %>% max() %>% signif(digits=3)))
     data.frame(str,values)
-},include.rownames=FALSE, include.colnames = FALSE)
+  },include.rownames=FALSE, include.colnames = FALSE)
   
   associations_list <- eventReactive(input$submit_main,{
     
@@ -65,11 +65,43 @@ shinyServer(function(input,output){
         filter(p_fdr < as.numeric(input$p_fdr_limit))
     }
     
+    if (input$eff_min != "" | input$eff_max != ""){
+      if (input$eff_min == ""){
+        associations_list$dframe <- associations_list$dframe %>%
+          filter(effect < input$eff_max)
+      }
+      else if (input$eff_max == ""){
+        associations_list$dframe <- associations_list$dframe %>%
+          filter(effect > input$eff_min)
+      }
+      else{
+        associations_list$dframe <- associations_list$dframe %>%
+          filter(effect > input$eff_min & effect < input$eff_max)
+      }
+    }
+    
     associations_list$dframe <- join_variables(db_conn,associations_list$dframe,associations_list$varnum)
     associations_list$dframe <- make_pretty(associations_list$dframe,associations_list$varnum)
     
+    if (input$var_p_limit != ""){
+      associations_list$dframe <- associations_list$dframe %>%
+        varfilter_p(input$var_p_limit,associations_list$varnum)
+    }
+    
     if (input$var_labels != ""){
       associations_list$dframe <- filter_vars(associations_list$dframe,input$var_labels,associations_list$varnum)
+    }
+    
+    if (input$var_eff_min != "" | input$var_eff_max != ""){
+      if (input$var_eff_min == ""){
+        associations_list$dframe <- varfilter_eff(associations_list$dframe, eff_max = input$eff_max, varnum = associations_list$varnum)
+      }
+      else if (input$eff_max == ""){
+        associations_list$dframe <- varfilter_eff(associations_list$dframe, eff_min = input$eff_min, varnum = associations_list$varnum)
+      }
+      else{
+        associations_list$dframe <- varfilter_eff(associations_list$dframe, input$eff_min, input$eff_max, associations_list$varnum)
+      }
     }
     
     return (associations_list)

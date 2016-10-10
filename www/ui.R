@@ -10,10 +10,24 @@ shinyUI( fluidPage(
       h4("Dataset"),
       uiOutput("ds_choice"),
       
-      h4("Filter the search results"),
+      h4("Variable filters"),
+      h5("At least one association with"),
+      
+      textInput("var_p_limit",label = "P-value <"),
+      fluidRow(
+        column(4,
+               textInput("var_eff_min",label="Effect size: min")
+               ),
+        column(2,
+               textInput("var_eff_max", label = "max")
+               )
+      ),
+      
       strong("Keywords, comma separated"),
       textInput("var_labels",
                 label = NULL),
+      
+      h4("Association filters"),
       
       textInput("p_limit",label = "P-value <"),
       
@@ -22,6 +36,14 @@ shinyUI( fluidPage(
       
       textInput("n_limit",
                 label = "Minimum n"),
+      fluidRow(
+        column(4,
+               textInput("eff_min",label="Effect size: min")
+        ),
+        column(2,
+               textInput("eff_max", label = "max")
+        )
+      ),
       
       actionButton("submit_main",
                    label = "Submit"),

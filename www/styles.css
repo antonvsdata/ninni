@@ -13,5 +13,18 @@
 }
 
 .well .shiny-input-container >label{
-  width: 10%;
+  width: 15%;
+}
+
+.well .col-sm-4 .shiny-input-container label {
+  width: 49%;
+}
+
+.well .col-sm-4 .shiny-input-container input{
+  width: 30%;
+}
+
+.well .col-sm-2 .shiny-input-container label{
+  margin-left:-40%;
+  padding-right: 25%;
 }

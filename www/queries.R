@@ -81,19 +81,83 @@ filter_vars <- function(assocs_tbl,var_labels,varnum){
   assocs_tbl
 }
 
-make_pretty <- function(df,varnum){
+make_pretty <- function(dframe,varnum){
   if (varnum == 1){
-    df <- df %>% select(label,effect_l95,effect_u95,effect,n,p,p_fdr,description) %>%
+    dframe <- dframe %>% select(label,effect_l95,effect_u95,effect,n,p,p_fdr,description) %>%
       rename(Variable = label, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95, Effect = effect,
              N = n, P = p, P_FDR = p_fdr,Description = description)
   }
   if (varnum == 2){
-    df <- df %>% select(var_label1,var_label2,effect_l95,effect_u95,effect,n,
+    dframe <- dframe %>% select(var_label1,var_label2,effect_l95,effect_u95,effect,n,
                         p,p_fdr,var_description1,var_description2) %>%
       rename(Variable1 = var_label1, Variable2 = var_label2, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
              Effect = effect, N = n, P = p, P_FDR = p_fdr,Description1 = var_description1, Description2 = var_description2)
   }
-  df
+  dframe
+}
+
+varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
+  if (fdr){
+    vars_accepted <- apply(dframe,1,check_plim_fdr, p_limit = p_limit, varnum = varnum)
+  }
+  else{
+    vars_accepted <- apply(dframe,1,check_plim, p_limit = p_limit, varnum = varnum)
+  }
+  if (varnum == 1){
+    dframe <- dframe %>% filter(Variable %in% vars_accepted)
+  }
+  if (varnum == 2){
+    dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
+  }
+  dframe
+}
+
+check_plim_fdr <- function(x,p_limit,varnum){
+  if (varnum == 1 & x[8] < p_limit){
+    return(x[1])
+  }
+  else if (varnum == 1){
+    return(NA)
+  }
+  else if (varnum == 2 & x[8] < p_limit){
+    return(c(x[1], x[2]))
+  }
+  else{
+    return(c(NA,NA))
+  }
+}
+
+check_plim <- function(x,p_limit,varnum){
+  if (varnum == 1 & x[7] < p_limit)
+    return(x[1])
+  else if (varnum == 1)
+    return(NA)
+  else if (varnum == 2 & x[7] < p_limit)
+    return(c(x[1], x[2]))
+  else
+    return(c(NA,NA))
+}
+
+varfilter_eff <- function(dframe,eff_min = -Inf,eff_max = Inf,varnum){
+  vars_accepted <- apply(dframe,1,check_eff, eff_min = eff_min, eff_max = eff_max, varnum = varnum)
+  if (varnum == 1){
+    dframe <- dframe %>% filter(Variable %in% vars_accepted)
+  }
+  if (varnum == 2){
+    dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
+  }
+  dframe
+}
+
+check_eff <- function(x,eff_min,eff_max,varnum){
+  if (varnum == 1 & x[5] > eff_min & x[5] < eff_max)
+    return(x[1])
+  else if (varnum == 1)
+    return(NA)
+  else if (varnum == 2 & x[5] > eff_min & x[5] < eff_max)
+    return(c(x[1], x[2]))
+  else
+    return(c(NA,NA))
 }
 
 # Filters the pre-collected associations table, shows only the chosen variables
