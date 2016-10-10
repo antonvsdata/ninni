@@ -1,0 +1,35 @@
+Data import flow
+
+- User provides a list of datasets in a tab-delimited text file: e.g. datasets.txt
+
+DATASET_FILENAME	VARIABLES_FILENAME	LABEL	DESCRIPTION	VARNUM	EFFECT_TYPE	METADATA_LABELS
+study1.csv	study1_variables.txt	DRUG_STUDY1	Drug interaction study, using mortality as outcome	2	OR	DRUG_INTERACTION;MALES;T2D
+
+- User provides a file describing meta-data: metadata.txt
+
+LABEL	DESCRIPTION
+DRUG_INTERACTION	Drug interaction study
+MALE	Only males
+T2D	Type 2 Diabetes
+
+- User can provide files with the variable descriptions, filenames are the same as in datasets.txt VARIABLES_FILENAME, e.g. study1_variables.txt
+- If this file is not specified for the dataset, variable description is set to be the same as the variable label.
+
+LABEL	DESCRIPTION
+ABCD	Best known gene to man-kind
+TP53	Cancer gene
+
+- User provides CSV files with the associations, filenames are the same as in datasets.txt DATASET_FILENAME column, e.g. study1.csv
+
+VARIABLE1_LABEL	VARIABLE2_LABEL	EFFECT	EFFECT_L95	EFFECT_U95	N	P	P_FDR
+ABCD	TP53	8	5	10	100	0.01	1
+
+All the data is imported in the database as a single bulk.
+
+
+Importing is done using import_data.py script.
+
+-df gives the dataset file
+-mdf is for the metadata file (optional)
+
+Example: python src/import_data.py -df data/datasets.txt -mdf data/metadata.txt
