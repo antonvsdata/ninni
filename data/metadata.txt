@@ -1,0 +1,4 @@
+LABEL	DESCRIPTION
+DRUG_INTERACTION	Interaction of drugs
+MORTALITY	The risk of death
+HIP_FRACTURE	The risk of hip fracture
