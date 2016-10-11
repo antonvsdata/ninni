@@ -91,9 +91,3 @@ ABCD	TP53	8	5	10	100	0.01	1
 All the data is imported in the database as a single bulk.
 
 
-
-
-
-
-
-

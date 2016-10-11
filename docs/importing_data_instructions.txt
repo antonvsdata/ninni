@@ -21,15 +21,23 @@ TP53	Cancer gene
 
 - User provides CSV files with the associations, filenames are the same as in datasets.txt DATASET_FILENAME column, e.g. study1.csv
 
-VARIABLE1_LABEL	VARIABLE2_LABEL	EFFECT	EFFECT_L95	EFFECT_U95	N	P	P_FDR
-ABCD	TP53	8	5	10	100	0.01	1
-
-All the data is imported in the database as a single bulk.
+VARIABLE1_LABEL,VARIABLE2_LABEL,EFFECT,EFFECT_L95,EFFECT_U95,N,P,P_FDR
+ABCD,TP53,8,5,10,100,0.01,1
 
 
 Importing is done using import_data.py script.
 
--df gives the dataset file
+-dsf gives the dataset file
 -mdf is for the metadata file (optional)
 
-Example: python src/import_data.py -df data/datasets.txt -mdf data/metadata.txt
+All the data is imported in the database as a single bulk.
+
+Example:
+
+- The data is stored in /data repository as .csv files
+- The .csv files are listed in datasets.txt file
+- The repository also contains the metadata.txt file
+
+- To import data into the database, run (in ninni folder):
+
+$ python src/import_data.py -dsf data/datasets.txt -mdf data/metadata.txt
