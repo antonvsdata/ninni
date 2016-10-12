@@ -13,14 +13,22 @@ shinyUI( fluidPage(
       h4("Variable filters"),
       h5("At least one association with"),
       
-      textInput("var_p_limit",label = "P-value <"),
+      fluidRow(
+        column(6,
+               textInput("var_p_limit",label = "P-value <")),
+        column(4,
+               radioButtons("var_p_limit_fdr",label = NULL,
+                            choices = c("Unadjusted" = FALSE,
+                                        "FDR" = TRUE),
+                            selected = FALSE,
+                            inline = TRUE))
+        
+      ),
       fluidRow(
         column(4,
-               textInput("var_eff_min",label="Effect size: min")
-               ),
+               textInput("var_eff_min",label="Effect size: min")),
         column(2,
-               textInput("var_eff_max", label = "max")
-               )
+               textInput("var_eff_max", label = "max"))
       ),
       
       strong("Keywords, comma separated"),
@@ -29,10 +37,17 @@ shinyUI( fluidPage(
       
       h4("Association filters"),
       
-      textInput("p_limit",label = "P-value <"),
-      
-      textInput("p_fdr_limit",
-                   label = "P-value (FDR) <"),
+      fluidRow(
+        column(6,
+               textInput("p_limit",label = "P-value <")),
+        column(4,
+               radioButtons("p_limit_fdr",label = NULL,
+                            choices = c("Unadjusted" = FALSE,
+                                        "FDR" = TRUE),
+                            selected = FALSE,
+                            inline = TRUE))
+        
+      ),
       
       textInput("n_limit",
                 label = "Minimum n"),
@@ -45,7 +60,7 @@ shinyUI( fluidPage(
         )
       ),
       
-      actionButton("submit_main",
+      actionButton("submit",
                    label = "Submit"),
       br(),
       br(),
@@ -70,7 +85,8 @@ shinyUI( fluidPage(
         
         tabPanel("Data Table",
                  h3("Associations"),
-                 DT::dataTableOutput("tabular")
+                 DT::dataTableOutput("tabular"),
+                 downloadButton("download", "Download")
         ),
         
         tabPanel("Heat Map",

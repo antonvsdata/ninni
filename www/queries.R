@@ -1,24 +1,14 @@
-# Returns the assocsiations table with variables matching the datasets defined by dataset labels and tags
-# Returns NULL if no datasets were found
-# Returns -1 if there are multiple different numbers of variables or effect types
+# Returns the assocsiations table with variables matching the dataset defined by ds_label
+
 get_associations_by_ds <- function(conn,ds_label){
   ds_tbl <- conn %>% tbl("datasets") %>% filter(label == ds_label)
-  
-  ds_tbl_df <- collect(ds_tbl)
-  
-  if (dim(ds_tbl_df)[1] == 0 ){
-    return (list(dframe = data.frame(),varnum = -1, effect_type = "None"))
-  }
-  
-  varnum <- ds_tbl_df$varnum %>% unique()
-  effect_type <-ds_tbl_df$effect_type %>% unique()
-  
-  
-  
   assocs_tbl <- conn %>% tbl("associations") %>% semi_join(ds_tbl, by = c("dataset_id" = "id"))
   
-  return (list(dframe =assocs_tbl,varnum = varnum,effect_type = effect_type))
+  ds_tbl_df <- collect(ds_tbl)
+  varnum <- ds_tbl_df$varnum
+  effect_type <-ds_tbl_df$effect_type
   
+  return (list(dframe =assocs_tbl,varnum = varnum,effect_type = effect_type))
 }
 
 get_datasets <- function(conn){
