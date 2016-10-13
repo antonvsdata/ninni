@@ -1,8 +1,5 @@
 .shiny-input-container input{
  display: inline-block;
- width: 50%;
-
-  
 }
 
 .shiny-input-container >label{
@@ -16,12 +13,12 @@
   width: 15%;
 }
 
-.well .col-sm-4 .shiny-input-container label {
-  width: 49%;
+.well .col-sm-6 .shiny-input-container label {
+  width: 70px;
 }
 
-.well .col-sm-4 .shiny-input-container input{
-  width: 30%;
+.well .col-sm-6 .shiny-input-container input{
+  width: 50px;
 }
 
 .well .col-sm-2 .shiny-input-container label{
