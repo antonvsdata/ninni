@@ -233,9 +233,9 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   # so they are replaced with 1e-300
   dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   
-  ps <- dframe$P
-  n <- length(ps)
-  dframe$observed <- -log10(sort(ps, decreasing = FALSE))
+
+  n <- nrow(dframe)
+  dframe$observed <- -log10(dframe$P)
   dframe$expected <- -log10(1:n/n)
   dframe$cupper <- -log10(qbeta(ci,     1:n, n - 1:n + 1))
   dframe$clower <- -log10(qbeta(1- ci,  1:n, n - 1:n + 1))
@@ -243,7 +243,7 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
     geom_abline(intercept = 0, slope = 1, color = "red") +
-    geom_ribbon(aes(x = expected, ymin = clower, ymax = cupper)) +
+    geom_ribbon(aes(x = expected, ymin = clower, ymax = cupper), alpha = 0.2) +
     xlab("Expected - log10(P)") +
     ylab("Observed - log10(P)")
   
