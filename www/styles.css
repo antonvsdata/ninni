@@ -25,3 +25,16 @@
   margin-left:-40%;
   padding-right: 25%;
 }
+
+.tab-pane .col-sm-4 input{
+  width: 80px;
+}
+
+.tab-pane .col-sm-4 label{
+  width: 70px;
+}
+
+.tab-pane .col-sm-4{
+  margin-right: -20px;
+  width: 200px;
+}

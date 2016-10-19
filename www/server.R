@@ -141,7 +141,13 @@ shinyServer(function(input,output){
     datatable(associations_list()$dframe, selection = "none")
   })
   
-  output$download <- downloadHandler(
+  output$download <- renderUI({
+    if (nrow(associations_list()$dframe) > 0){
+      downloadButton("download_button")
+    }
+  })
+  
+  output$download_button <- downloadHandler(
     filename = function(){
       paste(input$ds_label,".csv", sep = "")
     },
@@ -174,7 +180,7 @@ shinyServer(function(input,output){
   })
   
   output$volcano <- renderUI({
-    if (dim(associations_list()$dframe)[1] > 10000){
+    if (nrow(associations_list()$dframe) > 10000){
       tagList(h5("Interactivity is disabled for large datasets. Please filter the search results."),
               plotOutput("volcano_stat", height = "700"))
     }
@@ -184,19 +190,31 @@ shinyServer(function(input,output){
   })
   
   output$volcano_stat <- renderPlot({
-    if (input$double_filter){
-      volcano_static(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                     as.numeric(input$df_p_lim),as.numeric(input$df_effect_lim))
+    if (input$df_eff_limit_log2){
+      eff_lim <- 2^(as.numeric(input$df_effect_limit))
     }
     else{
-      volcano_static(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter)
+      eff_lim <- as.numeric(input$df_effect_limit)
+    }
+    if (input$double_filter){
+      volcano_static(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
+                     as.numeric(input$df_p_limit), input$df_p_limit_fdr, eff_lim)
+    }
+    else{
+      volcano_static(associations_list()$dframe,associations_list()$effect_type, associations_list()$varnum,input$double_filter)
     }
   })
   
   output$volcanoly <- renderPlotly({
+    if (input$df_eff_limit_log2){
+      eff_lim <- 2^(as.numeric(input$df_effect_limit))
+    }
+    else{
+      eff_lim <- as.numeric(input$df_effect_limit)
+    }
     if (input$double_filter){
       make_volcanoplotly(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                         as.numeric(input$df_p_lim),as.numeric(input$df_effect_lim))
+                         as.numeric(input$df_p_limit),input$df_p_limit_fdr, eff_lim)
     }
     else{
       make_volcanoplotly(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter)

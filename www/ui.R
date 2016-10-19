@@ -1,9 +1,8 @@
-shinyUI( fixedPage(
+shinyUI( fluidPage(
   
   includeCSS("styles.css"),
   
   titlePanel("Ninni"),
-  
   
   sidebarLayout(
     sidebarPanel(
@@ -13,7 +12,7 @@ shinyUI( fixedPage(
       h4("Variable filters"),
       h5("At least one association with"),
       
-      fixedRow(
+      fluidRow(
         column(6,
                textInput("var_p_limit",label = "P-value <")),
         column(4,
@@ -23,7 +22,7 @@ shinyUI( fixedPage(
                             selected = FALSE))
         
       ),
-      fixedRow(
+      fluidRow(
         column(5,
                textInput("var_eff_min",label="Effect size: min")),
         column(3,
@@ -36,7 +35,7 @@ shinyUI( fixedPage(
       
       h4("Association filters"),
       
-      fixedRow(
+      fluidRow(
         column(6,
                textInput("p_limit",label = "P-value <")),
         column(4,
@@ -49,7 +48,7 @@ shinyUI( fixedPage(
       
       textInput("n_limit",
                 label = "Minimum n"),
-      fixedRow(
+      fluidRow(
         column(5,
                textInput("eff_min",label="Effect size: min")
         ),
@@ -84,7 +83,8 @@ shinyUI( fixedPage(
         tabPanel("Data Table",
                  h3("Associations"),
                  DT::dataTableOutput("tabular"),
-                 downloadButton("download", "Download")
+                 br(),
+                 uiOutput("download")
         ),
         
         tabPanel("Heat Map",
@@ -98,12 +98,29 @@ shinyUI( fixedPage(
                               selected = FALSE,
                               inline = TRUE),
                  
-                 textInput("df_p_lim",
-                           label = "Limit of p-value (FDR)",
-                           value = 0.01),
-                 textInput("df_effect_lim",
-                           label = "Effect:",
-                           value = 3),
+                 fluidRow(
+                   column(4,
+                          textInput("df_p_limit",label = "P-value <")),
+                   column(5,
+                          radioButtons("df_p_limit_fdr",label = NULL,
+                                       choices = c("Unadjusted" = FALSE,
+                                                   "FDR" = TRUE),
+                                       selected = FALSE,
+                                       inline = TRUE))
+                   
+                 ),
+                 fluidRow(
+                   column(4,
+                          textInput("df_effect_limit",
+                                    label = "Effect >",
+                                    value = 3)),
+                   column(5,
+                          radioButtons("df_eff_limit_log2",label = NULL,
+                                       choices = c("Original" = FALSE,
+                                                   "log2" = TRUE),
+                                       selected = FALSE,
+                                       inline = TRUE))
+                 ),
                  uiOutput("volcano")
         ),
         
@@ -115,10 +132,6 @@ shinyUI( fixedPage(
                                          inline = TRUE),
                  uiOutput("qq_plot")
         )
-                 
-        
-        
-        
       )
     )
     

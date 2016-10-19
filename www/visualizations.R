@@ -67,11 +67,12 @@ get_heatmaply <- function(dframe){
 # Input:  data frame with effect, p_fdr and point labels
 #         string containing the effect type
 #         varnum
-#         logical value telling if double filtering is enabled (TRUE or FALSE)
+#         boolean telling if double filtering is enabled (TRUE or FALSE)
 #         limits for double filtering, p-value first
+#         fdr: boolean, TRUE: p-limit is for P_FDR FALSE: p-limit is for P
 
 make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
-                             df_p_lim = NULL, df_effect_lim = NULL){
+                             df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL){
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
   dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
@@ -84,12 +85,17 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
     p <- ggplot(dframe, aes(label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2))
   }
   # OR and FC require log2 transformation before plotting
+  
   # If double filtering is enabled, the points that pass the filtering will be colored red
   # Hover tooltip includes: Variable label(s), effect, p_fdr and n
   if (effect_type %in% c("OR","FC")){
     if (double_filter){
-      dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim))
-      
+      if (fdr){
+        dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(Effect) > df_effect_lim))
+      }
+      else{
+        dframe <- dframe %>% mutate(df = as.factor(P < df_p_lim & abs(Effect) > df_effect_lim))
+      }
       # The ggplot object needs to be redone since dframe has been altered
       if (varnum == 1){
         p <- ggplot(dframe, aes(label1 = Description))
@@ -141,7 +147,7 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
 }
 
 volcano_static <- function(dframe,effect_type,varnum,double_filter,
-                           df_p_lim = NULL, df_effect_lim = NULL){
+                           df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL){
   dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   
   
@@ -150,7 +156,12 @@ volcano_static <- function(dframe,effect_type,varnum,double_filter,
   # Hover tooltip includes: Variable label(s), effect, p_fdr and n
   if (effect_type %in% c("OR","FC")){
     if (double_filter){
-      dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim))
+      if (fdr){
+        dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(Effect) > df_effect_lim))
+      }
+      else{
+        dframe <- dframe %>% mutate(df = as.factor(P < df_p_lim & abs(Effect) > df_effect_lim))
+      }
       
       p <- ggplot(dframe) +
         geom_point(aes(x = log2(Effect), y = -log10(P_FDR),color = df)) +
