@@ -22,10 +22,12 @@ shinyUI( fluidPage(
                             selected = FALSE))
         
       ),
+      strong("Effect size:"),
       fluidRow(
         column(5,
-               textInput("var_eff_min",label="Effect size: min")),
-        column(3,
+               textInput("var_eff_min",label="min")
+        ),
+        column(5,
                textInput("var_eff_max", label = "max"))
       ),
       
@@ -46,13 +48,17 @@ shinyUI( fluidPage(
         
       ),
       
-      textInput("n_limit",
-                label = "Minimum n"),
+      fluidRow(
+        column(7,
+               textInput("n_limit",
+                         label = "Minimum n"))
+      ),
+      strong("Effect size:"),
       fluidRow(
         column(5,
-               textInput("eff_min",label="Effect size: min")
+               textInput("eff_min",label="min")
         ),
-        column(3,
+        column(5,
                textInput("eff_max", label = "max")
         )
       ),
@@ -88,6 +94,10 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Heat Map",
+                 radioButtons("clustering",
+                              label = "Order",
+                              choices = c("Alphabetical" = FALSE,"Clustering" = TRUE),
+                              selected = FALSE),
                  uiOutput("heatmap")
         ),
         
@@ -100,7 +110,9 @@ shinyUI( fluidPage(
                  
                  fluidRow(
                    column(4,
-                          textInput("df_p_limit",label = "P-value <")),
+                          textInput("df_p_limit",
+                                    label = "P-value <",
+                                    value = "0.05")),
                    column(5,
                           radioButtons("df_p_limit_fdr",label = NULL,
                                        choices = c("Unadjusted" = FALSE,
