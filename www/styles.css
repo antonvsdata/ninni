@@ -2,6 +2,15 @@
  display: inline-block;
 }
 
+.col-sm-4 {
+  max-width: 350px;
+  min-width: 350px;
+}
+
+.well .col-sm-4{
+  min-width: 0px;
+}
+
 .shiny-input-container >label{
   padding-top: 4px;
   display: inline-block;
@@ -9,21 +18,33 @@
   margin-right: 10px;
 }
 
-.well .shiny-input-container >label{
-  width: 15%;
-}
-
 .well .col-sm-6 .shiny-input-container label {
   width: 70px;
 }
 
 .well .col-sm-6 .shiny-input-container input{
-  width: 50px;
+  width: 70px;
+  margin-right: -30px;
 }
 
-.well .col-sm-2 .shiny-input-container label{
-  margin-left:-40%;
-  padding-right: 25%;
+.well .col-sm-4 .shiny-input-radiogroup{
+  margin-left: 20px;
+  margin-top: -15px;
+}
+
+.well .col-sm-5 .shiny-input-container label{
+  width: 30px;
+  margin-right: 2px;
+}
+
+.well .col-sm-5 .shiny-input-container input{
+  width: 70px;
+  margin-right: -20px;
+}
+
+.well .col-sm-7 .shiny-input-container input{
+  width: 70px;
+  margin-right: -10px;
 }
 
 .tab-pane .col-sm-4 input{
@@ -35,6 +56,5 @@
 }
 
 .tab-pane .col-sm-4{
-  margin-right: -20px;
-  width: 200px;
+  margin-right: -150px;
 }
