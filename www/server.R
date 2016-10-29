@@ -159,11 +159,12 @@ shinyServer(function(input,output){
   
   output$heatmap <- renderUI({
     if (associations_list()$varnum == 2){
-      if (dim(associations_list()$dframe)[1] == 4942){
+      if (dim(associations_list()$dframe)[1] < 10000){
         plotlyOutput("heatmaply", height = "800")
       }
       else{
-        plotOutput("heatmap_stat", height = "800")
+        tagList(h5("Interactivity is disabled for large datasets. Please filter the search results."),
+                plotOutput("heatmap_stat", height = "800"))
       }
     }
     else{
@@ -172,11 +173,11 @@ shinyServer(function(input,output){
   })
   
   output$heatmaply <- renderPlotly({
-    get_heatmaply(associations_list()$dframe)
+    get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = TRUE)
   })
   
   output$heatmap_stat <- renderPlot({
-    static_heatmap(associations_list()$dframe,associations_list()$effect_type)
+    get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = FALSE)
   })
   
   output$volcano <- renderUI({

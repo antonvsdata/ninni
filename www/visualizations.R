@@ -1,67 +1,109 @@
-# Plots a heatmap: Variable labels on axes and colouring by effect. If effect type is "OR" or "FC", uses log2-transformation
-# Input:  dataframe
-#         string containing the effect type
-make_heatmap <- function(dframe,effect_type){
-  
-  p <- ggplot(dframe, aes(var_label1,var_label2, label1 = effect, label2 = p_fdr, label3 = n))
-  
-  if (effect_type %in% c("OR","FC")){
-    p <- p + geom_tile(aes(fill = log2(effect)) , colour = "white") +
-      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
-                           name = paste("log2(",effect_type,")",sep = ""))
-  }
-  else{
-    p <- p + geom_tile(aes(fill = effect) , colour = "white") +
-      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
-                           name = effect_type)
-  }
-  p <- p +
-    theme( axis.text.x = element_text(angle = 90)) +
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-    xlab("") + ylab("")
-  
-  ggplotly(p, tooltip = c("x", "y","label1","label2","label3"))
-}
 
-static_heatmap <- function(dframe,effect_type){
-  p <- ggplot(dframe, aes(Variable1,Variable2)) +
-    theme( axis.text.x = element_text(angle = 90)) +
-    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-    xlab("") + ylab("")
-  
-  if (effect_type %in% c("OR","FC")){
-    p <- p + geom_tile(aes(fill = log2(Effect)) , colour = "white") +
-      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
-                           name = paste("log2(",effect_type,")",sep = ""))
-  }
-  else{
-    p <- p + geom_tile(aes(fill = Effect) , colour = "white") +
-      scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0, space = "Lab",
-                           name = effect_type)
-  }
-  p
-}
-
-#This is only functioning for the oder dataset???
-# Draws an interactive heatmap of the associations
-get_heatmaply <- function(dframe){
-  dframe <- dframe %>% select(Variable1, Variable2, Effect)
-  dframe$Effect <- log2(dframe$Effect)
-  
-  new_tbl <- spread(dframe, Variable2, Effect)
-  rownames(new_tbl) <- new_tbl$Variable1
-  new_tbl <- new_tbl %>% select(-Variable1)
-  
-  for (i in 1:nrow(new_tbl)){
-    for (j in 1:ncol(new_tbl)){
-      if (!is.na(new_tbl[i,j]))
-        new_tbl[j,i] <- new_tbl[i,j]
+# Combines two matrices
+coalesce<-function(...) {
+  x<-lapply(list(...), function(z) {if (is.factor(z)) as.character(z) else z})
+  m<-is.na(x[[1]])
+  i<-2
+  while(any(m) & i<=length(x)) {
+    if ( length(x[[i]])==length(x[[1]])) {
+      x[[1]][m]<-x[[i]][m]
+    } else if (length(x[[i]])==1) {
+      x[[1]][m]<-x[[i]]
+    } else {
+      stop(paste("length mismatch in argument",i," - found:", length( x[[i]] ),"expected:",length( x[[1]] ) ))
     }
+    m<-is.na(x[[1]])
+    i<-i+1
+  }
+  return(x[[1]])
+}
+
+get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
+  
+  dat <- dframe %>% select(Variable1,Variable2,Effect)
+  dat$Variable1 <- as.character(dat$Variable1)
+  dat$Variable2 <- as.character(dat$Variable2)
+  
+  # This makes sure all the variables will be included in both axes
+  vars <- c(dat$Variable1,dat$Variable2) %>% unique()
+  x <- setdiff(vars,dat$Variable1)
+  y <- setdiff(vars,dat$Variable2)
+  append_len <- max(length(x),length(y))
+  append_df <- data.frame(Variable1 = c(x,rep(NA, append_len - length(x))),
+                          Variable2 = c(y,rep(NA, append_len - length(y))),
+                          Effect = NA)
+  dat <- rbind(dat,append_df)
+  
+  # Converting data into wide format and tidying data
+  dat_w <- dat %>% dcast(Variable1 ~ Variable2, value.var = "Effect") %>% filter(!is.na(Variable1))
+  rownames(dat_w) <- dat_w$Variable1
+  dat_w <- dat_w %>% select(-Variable1)
+  dat_w <- dat_w[rownames(dat_w)!="NA",colnames(dat_w)!="NA"] #one of the columns or rows is named NA
+  dat_w <- dat_w[rev(order(names(dat_w))),rev(order(names(dat_w)))] #this makes the image lie on the lower triangular
+  
+  # dat_w only has one-directional interactions
+  # for example, metformine vs morphine = 1.09, but morphine vs metformine = NA
+  # transpose values are added to make the matrix symmetrical
+  dat_w_t <- data.frame(t(dat_w))
+  dat_w_whole <- coalesce(dat_w,dat_w_t)
+  
+  if (clustering){
+    dat_w_whole_zeros <- dat_w_whole
+    if (effect_type %in% c("OR","FC")){
+      dat_w_whole_zeros[is.na(dat_w_whole_zeros)] <- 1
+    }
+    else{
+      dat_w_whole_zeros[is.na(dat_w_whole_zeros)] <- 0
+    }
+    hc <- hclust(dist(dat_w_whole_zeros))
+    dat_w_whole <- dat_w_whole[rev(hc$order),rev(hc$order)]
   }
   
-  heatmaply(new_tbl, scale_fill_gradient_fun = scale_fill_gradient2(low = "steelblue", high = "red"))
+  # Only half of the associations are needed for plotting
+  dat_w_whole[upper.tri(dat_w_whole)] <- NA
+  # Diagonal should be included in the plot
+  diag(dat_w_whole) <- 0
   
+  # Melt back to long format for ggplot2
+  dat_w_whole$Variable1 <- rownames(dat_w_whole)
+  dat_l <- na.omit(melt(dat_w_whole, "Variable1", variable.name = "Variable2")) %>% rename(Effect = value)
+  
+  # Setting the factor levels to correctly draw the heatmap
+  # This ensures the tiles are plotted in correct order to make a lower triangular heat map
+  if (clustering){
+    dat_l$Variable1 <- dat_l$Variable1 %>% as.character() %>% 
+      factor(levels = rev(unique(dat_l$Variable1)))
+    dat_l$Variable2 <- dat_l$Variable2 %>% as.character() %>% 
+      factor(levels = unique(dat_l$Variable2))
+  }
+  
+  # Creating the ggplot object
+  p <- ggplot(dat_l, aes(x = Variable1, y = Variable2)) +
+    scale_fill_gradient2(low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab") +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text.x = element_text(angle = 90)) +
+    xlab("") + ylab("")
+  
+  if (effect_type %in% c("OR","FC")){
+    p <- p + geom_tile(aes(fill = log2(Effect)))
+  }
+  else{
+    p <- p + geom_tile(aes(fill = Effect))
+  }
+  
+  if (interactive){
+    
+    #!!!!Add other information HERE !!!!#
+    
+    ggplotly(p)
+  }
+  else{
+    p
+  }
 }
+
 
 # Volcano plot with double filtering
 # Input:  data frame with effect, p_fdr and point labels
@@ -75,7 +117,7 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
                              df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL){
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
-  dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
+  dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   # The variable label(s) are added to tooltip info
   # Other tooltip info is included in dummy aesthetics label*
   if (varnum == 1){
@@ -91,10 +133,10 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
   if (effect_type %in% c("OR","FC")){
     if (double_filter){
       if (fdr){
-        dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(Effect) > df_effect_lim))
+        dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim))
       }
       else{
-        dframe <- dframe %>% mutate(df = as.factor(P < df_p_lim & abs(Effect) > df_effect_lim))
+        dframe <- dframe %>% mutate(df = as.factor(P < df_p_lim & abs(log2(Effect)) > df_effect_lim))
       }
       # The ggplot object needs to be redone since dframe has been altered
       if (varnum == 1){
@@ -148,7 +190,7 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
 
 volcano_static <- function(dframe,effect_type,varnum,double_filter,
                            df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL){
-  dframe$P_FDR <- lapply(dframe$P_FDR, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
+  dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   
   
   # OR and FC require log2 transformation before plotting
@@ -157,21 +199,21 @@ volcano_static <- function(dframe,effect_type,varnum,double_filter,
   if (effect_type %in% c("OR","FC")){
     if (double_filter){
       if (fdr){
-        dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(Effect) > df_effect_lim))
+        dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim))
       }
       else{
-        dframe <- dframe %>% mutate(df = as.factor(P < df_p_lim & abs(Effect) > df_effect_lim))
+        dframe <- dframe %>% mutate(df = as.factor(P < df_p_lim & abs(log2(Effect)) > df_effect_lim))
       }
       
       p <- ggplot(dframe) +
-        geom_point(aes(x = log2(Effect), y = -log10(P_FDR),color = df)) +
+        geom_point(aes(x = log2(Effect), y = -log10(P),color = df)) +
         scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
                             guide = guide_legend(title = NULL)) +
         xlab(paste("log2(",effect_type,")",sep = ""))
     }
     else{
       p <- ggplot(dframe) +
-        geom_point(aes(x = log2(Effect), y = -log10(P_FDR))) +
+        geom_point(aes(x = log2(Effect), y = -log10(P))) +
         xlab(paste("log2(",effect_type,")",sep = ""))
     }
   }

@@ -6,7 +6,7 @@ library(RPostgreSQL)
 library(pool)
 library(ggplot2)
 library(plotly)
-library(heatmaply)
+library(reshape2)
 
 source("visualizations.R")
 source("queries.R")
