@@ -138,9 +138,14 @@ shinyServer(function(input,output){
   })
   
   output$tabular <- DT::renderDataTable({
-   # dframe <- associations_list()$dframe %>%
-   #   transmute(Effect = signif(as.numeric(Effect), digits = 3), P = signif(as.numeric(p), digits = 3), N = signif(as.numeric(N), digits = 3))
-    datatable(associations_list()$dframe, selection = "none")
+    dframe <- associations_list()$dframe
+    if (associations_list()$varnum == 1){
+      dframe[,2:7] <- signif(dframe[,2:7],digits = 3)
+    }
+    if (associations_list()$varnum == 2){
+      dframe[,3:8] <- signif(dframe[,3:8],digits = 3)
+    }
+    datatable(dframe, selection = "none")
   })
   
   output$download <- renderUI({

@@ -107,7 +107,6 @@ varfilter_eff <- function(dframe,eff_min = -Inf,eff_max = Inf,varnum){
   dframe
 }
 
-
 # Filters the pre-collected associations table, shows only the chosen variables
 # Returns COLLECTED local data frames
 
