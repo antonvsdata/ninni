@@ -161,12 +161,12 @@ shinyServer(function(input,output){
   
   output$heatmap <- renderUI({
     if (associations_list()$varnum == 2){
-      if (dim(associations_list()$dframe)[1] < 10000){
-        plotlyOutput("heatmaply", height = "800")
+      if (nrow(associations_list()$dframe) > 10000){
+        tagList(h5("Wow, your data is BIG! Plotting static figure."),
+                plotOutput("heatmap_stat", height = "800"))
       }
       else{
-        tagList(h5("Interactivity is disabled for large datasets. Please filter the search results."),
-                plotOutput("heatmap_stat", height = "800"))
+        plotlyOutput("heatmaply", height = "800")
       }
     }
     else{
@@ -184,7 +184,7 @@ shinyServer(function(input,output){
   
   output$volcano <- renderUI({
     if (nrow(associations_list()$dframe) > 10000){
-      tagList(h5("Interactivity is disabled for large datasets. Please filter the search results."),
+      tagList(h5("Wow, your data is BIG! Plotting static figure."),
               plotOutput("volcano_stat", height = "700"))
     }
     else{
@@ -194,10 +194,10 @@ shinyServer(function(input,output){
   
   output$volcano_stat <- renderPlot({
     if (input$df_eff_limit_log2){
-      eff_lim <- 2^(as.numeric(input$df_effect_limit))
+      eff_lim <- as.numeric(input$df_effect_limit)
     }
     else{
-      eff_lim <- as.numeric(input$df_effect_limit)
+      eff_lim <- log2^(as.numeric(input$df_effect_limit))
     }
     if (input$double_filter){
       volcano_static(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
@@ -210,10 +210,10 @@ shinyServer(function(input,output){
   
   output$volcanoly <- renderPlotly({
     if (input$df_eff_limit_log2){
-      eff_lim <- 2^(as.numeric(input$df_effect_limit))
+      eff_lim <- as.numeric(input$df_effect_limit)
     }
     else{
-      eff_lim <- as.numeric(input$df_effect_limit)
+      eff_lim <- log2(as.numeric(input$df_effect_limit))
     }
     if (input$double_filter){
       make_volcanoplotly(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
@@ -236,7 +236,7 @@ shinyServer(function(input,output){
     }
     if (input$qq_choice == "norm"){
       if (dim(associations_list()$dframe)[1] > 10000){
-        t <- tagList(h5("Plotting static figure."),
+        t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
                 plotOutput("qq_plot_norm", height = "700"))
       }
       else{

@@ -56,7 +56,7 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
       dat_w_whole_zeros[is.na(dat_w_whole_zeros)] <- 0
     }
     hc <- hclust(dist(dat_w_whole_zeros))
-    dat_w_whole <- dat_w_whole[rev(hc$order),rev(hc$order)]
+    dat_w_whole <- dat_w_whole[hc$order,hc$order]
   }
   
   # Only half of the associations are needed for plotting
@@ -72,9 +72,9 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   # This ensures the tiles are plotted in correct order to make a lower triangular heat map
   if (clustering){
     dat_l$Variable1 <- dat_l$Variable1 %>% as.character() %>% 
-      factor(levels = rev(unique(dat_l$Variable1)))
+      factor(levels = rev(colnames(dat_w_whole)))
     dat_l$Variable2 <- dat_l$Variable2 %>% as.character() %>% 
-      factor(levels = unique(dat_l$Variable2))
+      factor(levels = rownames(dat_w_whole))
   }
   
   # Creating the ggplot object
@@ -82,8 +82,7 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
     scale_fill_gradient2(low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab") +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          axis.text.x = element_text(angle = 90)) +
+          panel.grid.minor = element_blank()) +
     xlab("") + ylab("")
   
   if (effect_type %in% c("OR","FC")){
@@ -96,10 +95,15 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   if (interactive){
     
     #!!!!Add other information HERE !!!!#
-    
+    p <- p +
+      theme(axis.text.x = element_text(angle = 90))
     ggplotly(p)
   }
   else{
+    p <- p +
+      theme(axis.text.x = element_blank(),
+            axis.text.y = element_blank(),
+            axis.ticks = element_blank())
     p
   }
 }
@@ -140,10 +144,10 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
       }
       # The ggplot object needs to be redone since dframe has been altered
       if (varnum == 1){
-        p <- ggplot(dframe, aes(label1 = Description))
+        p <- ggplot(dframe, aes(label0 = Variable,label1 = Description))
       }
       if(varnum == 2){
-        p <- ggplot(dframe, aes(label1 = Description1, label2 = Description2))
+        p <- ggplot(dframe, aes(label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2))
       }
       p <- p +
         geom_point(aes(x = log2(Effect), y = -log10(P),color = df,
