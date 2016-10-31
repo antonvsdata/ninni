@@ -77,21 +77,23 @@ shinyServer(function(input,output){
       associations_list$dframe <- associations_list$dframe %>%
         varfilter_p( as.numeric(input$var_p_limit),associations_list$varnum,input$var_p_limit_fdr)
     }
-    # Keywords, comma separated
-    if (input$var_labels != ""){
-      associations_list$dframe <- filter_vars(associations_list$dframe,input$var_labels,associations_list$varnum)
-    }
+    
     # Effect: min max
     if (input$var_eff_min != "" | input$var_eff_max != ""){
       if (input$var_eff_min == ""){
-        associations_list$dframe <- varfilter_eff(associations_list$dframe, eff_max = as.numeric(input$eff_max), varnum = associations_list$varnum)
+        associations_list$dframe <- varfilter_eff(associations_list$dframe, eff_max = as.numeric(input$var_eff_max), varnum = associations_list$varnum)
       }
-      else if (input$eff_max == ""){
-        associations_list$dframe <- varfilter_eff(associations_list$dframe, eff_min = as.numeric(input$eff_min), varnum = associations_list$varnum)
+      else if (input$var_eff_max == ""){
+        associations_list$dframe <- varfilter_eff(associations_list$dframe, eff_min = as.numeric(input$var_eff_min), varnum = associations_list$varnum)
       }
       else{
-        associations_list$dframe <- varfilter_eff(associations_list$dframe, as.numeric(input$eff_min), as.numeric(input$eff_max), associations_list$varnum)
+        associations_list$dframe <- varfilter_eff(associations_list$dframe, as.numeric(input$var_eff_min), as.numeric(input$var_eff_max), associations_list$varnum)
       }
+    }
+    
+    # Keywords, comma separated
+    if (input$var_labels != ""){
+      associations_list$dframe <- filter_vars(associations_list$dframe,input$var_labels,associations_list$varnum)
     }
     
     # Association filters:

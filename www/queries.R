@@ -52,22 +52,12 @@ join_variables <- function(conn,assocs_tbl,varnum){
 
 filter_vars <- function(assocs_tbl,var_labels,varnum){
   var_labels <- var_labels  %>% strsplit(split=",") %>% unlist
-#   if (length(var_labels) == 1){
-#     if (varnum == 1){
-#       assocs_tbl <- assocs_tbl %>% filter(Variable == var_labels)
-#     }
-#     if (varnum == 2){
-#       assocs_tbl <- assocs_tbl %>% filter(Variable1 == var_labels | Variable2 == var_labels)
-#     }
-#   }
-#   else{
     if (varnum == 1){
       assocs_tbl <- assocs_tbl %>% filter(Variable %in% var_labels | Description %in% var_labels)
     }
     if (varnum == 2){
       assocs_tbl <- assocs_tbl %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels | Description1 %in% var_labels | Description2 %in% var_labels)
     }
-  #}
   assocs_tbl
 }
 
@@ -88,67 +78,35 @@ make_pretty <- function(dframe,varnum){
 
 varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
   if (fdr){
-    vars_accepted <- apply(dframe,1,check_plim_fdr, p_limit = p_limit, varnum = varnum)
+    dframe_fltrd <- dframe %>% filter(P_FDR < p_limit)
   }
   else{
-    vars_accepted <- apply(dframe,1,check_plim, p_limit = p_limit, varnum = varnum)
+    dframe_fltrd <- dframe %>% filter(P < p_limit)
   }
   if (varnum == 1){
+    vars_accepted <- unique(dframe_fltrd$Variable)
     dframe <- dframe %>% filter(Variable %in% vars_accepted)
   }
   if (varnum == 2){
+    vars_accepted <- c(dframe_fltrd$Variable1,dframe_fltrd$Variable2) %>% unique()
     dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
   }
   dframe
-}
-
-check_plim_fdr <- function(x,p_limit,varnum){
-  if (varnum == 1 & x[8] < p_limit){
-    return(x[1])
-  }
-  else if (varnum == 1){
-    return(NA)
-  }
-  else if (varnum == 2 & x[8] < p_limit){
-    return(c(x[1], x[2]))
-  }
-  else{
-    return(c(NA,NA))
-  }
-}
-
-check_plim <- function(x,p_limit,varnum){
-  if (varnum == 1 & x[7] < p_limit)
-    return(x[1])
-  else if (varnum == 1)
-    return(NA)
-  else if (varnum == 2 & x[7] < p_limit)
-    return(c(x[1], x[2]))
-  else
-    return(c(NA,NA))
 }
 
 varfilter_eff <- function(dframe,eff_min = -Inf,eff_max = Inf,varnum){
-  vars_accepted <- apply(dframe,1,check_eff, eff_min = eff_min, eff_max = eff_max, varnum = varnum)
+  dframe_fltrd <- dframe %>% filter(Effect > eff_min & Effect < eff_max)
   if (varnum == 1){
+    vars_accepted <- unique(dframe_fltrd$Variable)
     dframe <- dframe %>% filter(Variable %in% vars_accepted)
   }
   if (varnum == 2){
+    vars_accepted <- c(dframe_fltrd$Variable1,dframe_fltrd$Variable2) %>% unique()
     dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
   }
   dframe
 }
 
-check_eff <- function(x,eff_min,eff_max,varnum){
-  if (varnum == 1 & x[5] > eff_min & x[5] < eff_max)
-    return(x[1])
-  else if (varnum == 1)
-    return(NA)
-  else if (varnum == 2 & x[5] > eff_min & x[5] < eff_max)
-    return(c(x[1], x[2]))
-  else
-    return(c(NA,NA))
-}
 
 # Filters the pre-collected associations table, shows only the chosen variables
 # Returns COLLECTED local data frames
