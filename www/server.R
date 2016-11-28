@@ -20,6 +20,7 @@ shinyServer(function(input,output){
     tableOutput("ds_info_table")
   })
   
+  
   output$ds_info_table <- renderTable({
     str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
                  "P-value range:","Effect range:")
@@ -198,13 +199,13 @@ shinyServer(function(input,output){
   })
   
   output$volcano_stat <- renderPlot({
-    if (input$df_eff_limit_log2){
-      eff_lim <- as.numeric(input$df_effect_limit)
-    }
-    else{
-      eff_lim <- log2^(as.numeric(input$df_effect_limit))
-    }
     if (input$double_filter){
+      if (input$df_eff_limit_log2){
+        eff_lim <- as.numeric(input$df_effect_limit)
+      }
+      else{
+        eff_lim <- log2(as.numeric(input$df_effect_limit))
+      }
       volcano_static(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
                      as.numeric(input$df_p_limit), input$df_p_limit_fdr, eff_lim)
     }
@@ -214,13 +215,13 @@ shinyServer(function(input,output){
   })
   
   output$volcanoly <- renderPlotly({
-    if (input$df_eff_limit_log2){
-      eff_lim <- as.numeric(input$df_effect_limit)
-    }
-    else{
-      eff_lim <- log2(as.numeric(input$df_effect_limit))
-    }
     if (input$double_filter){
+      if (input$df_eff_limit_log2){
+        eff_lim <- as.numeric(input$df_effect_limit)
+      }
+      else{
+        eff_lim <- log2(as.numeric(input$df_effect_limit))
+      }
       make_volcanoplotly(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
                          as.numeric(input$df_p_limit),input$df_p_limit_fdr, eff_lim)
     }

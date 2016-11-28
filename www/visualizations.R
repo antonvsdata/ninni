@@ -179,6 +179,8 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
       p <- p +
         geom_point()
     }
+    p <- p +
+      xlim(-max(abs(dframe$Effect)),max(abs(dframe$Effect)))
   }
   # Supresses excess background, speeds up the function
   p <- p + theme_minimal()
@@ -220,8 +222,32 @@ volcano_static <- function(dframe,effect_type,varnum,double_filter,
         geom_point(aes(x = log2(Effect), y = -log10(P))) +
         xlab(paste("log2(",effect_type,")",sep = ""))
     }
+    p <- p +
+      xlim(-max(abs(log2(dframe$Effect))),max(abs(log2(dframe$Effect))))
   }
-  
+  else{
+    if (double_filter){
+      if (fdr){
+        dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(Effect) > df_effect_lim))
+      }
+      else{
+        dframe <- dframe %>% mutate(df = as.factor(P < df_p_lim & abs(Effect) > df_effect_lim))
+      }
+      
+      p <- ggplot(dframe) +
+        geom_point(aes(x = Effect, y = -log10(P),color = df)) +
+        scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
+                            guide = guide_legend(title = NULL)) +
+        xlab(effect_type)
+    }
+    else{
+      p <- ggplot(dframe) +
+        geom_point(aes(x = Effect, y = -log10(P))) +
+        xlab(effect_type)
+    }
+    p <- p +
+      xlim(-max(abs(dframe$Effect)),max(abs(dframe$Effect)))
+  }
   # Supresses excess background, speeds up the function
   p <- p + theme_minimal()
   p

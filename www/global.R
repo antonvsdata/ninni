@@ -1,5 +1,6 @@
 library(shiny)
 library(DT)
+library(DBI)
 library(dplyr)
 library(tidyr)
 library(RPostgreSQL)
