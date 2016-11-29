@@ -34,6 +34,11 @@ add_dataset = ("INSERT INTO Datasets (label, description, varnum, effect_type) V
 add_rowcount = ("UPDATE Datasets SET rowcount = %s WHERE id = %s")
 datasetquery = ("SELECT * FROM datasets WHERE label=%s")
 
+add_metavar = ("INSERT INTO metavariable (label) VALUES (%s)")
+metavarquery = ("SELECT * FROM metavariable WHERE label= %s")
+add_numval = ("INSERT INTO numval (value, association_id, metavariable_id) VALUES (%s, %s, %s)")
+add_strval = ("INSERT INTO strval (value, association_id, metavariable_id) VALUES (%s, %s, %s)")
+
 
 def parse_metadata(file):
     print "\n"
@@ -94,7 +99,7 @@ def parse_variables(file):
 # sets decription identical to label, returns variable id
 
 
-def create_varid(var_label, depth=0):
+def create_varid(var_label):
     cursor.execute(varquery, (var_label,))
     var_row = cursor.fetchone()
     if(var_row is not None):
@@ -108,6 +113,16 @@ def create_varid(var_label, depth=0):
             return var_row[0]
     	else:
             return None
+        
+def create_metavarid(label):
+    cursor.execute(add_metavar, (label,))
+    dbconn.commit()
+    cursor.execute(metavarquery, (label,))
+    metavar_row = cursor.fetchone()
+    if(metavar_row is not None):
+        return metavar_row[0]
+    else:
+        return None
 
 def parse_assoctovar(assoc_id, var_label):
     varid = create_varid(var_label)
@@ -122,12 +137,38 @@ def get_associd(dsid,effect,effect_l,effect_u,n,p,p_fdr):
     else:
         return None
 
+def isfloat(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+    
 # Adds associations to the database, checks if the dataset has one or two variables and acts accordingly
 # maxlines parameter is only for testing
 def parse_assoc(file, dsid, varnum, maxlines=-1):
     with open(file, 'rt') as csvfile:
         print("Parsing associations...")
         rdr = csv.DictReader(csvfile,delimiter=',')
+        first_row = next(rdr)
+        csvfile.seek(0)
+        next(rdr) 
+        ncol = len(first_row)
+        if varnum == 1:
+            col_limit = 7
+        else:
+            col_limit = 8      
+        if ncol > col_limit:
+            metavarnum = ncol - col_limit
+            metavars = [None] * metavarnum
+            for i in range(0,metavarnum):
+                metavars[i] = [None] * 3
+                metavars[i][0] = rdr.fieldnames[i+col_limit]
+                metavars[i][1] = create_metavarid(rdr.fieldnames[i+col_limit])
+                if isfloat(first_row[metavars[i][0]]):
+                    metavars[i][2] = "num"
+                else:
+                    metavars[i][2] = "str"
         rowcount = 0
         for row in rdr:
             data_assoc = (dsid, row["EFFECT"],row["EFFECT_L95"], row["EFFECT_U95"],row["N"],row["P"],row["P_FDR"])
@@ -136,8 +177,14 @@ def parse_assoc(file, dsid, varnum, maxlines=-1):
             parse_assoctovar(assoc_id,row["VARIABLE1_LABEL"])
             if (int(varnum) == 2):
                 parse_assoctovar(assoc_id,row["VARIABLE2_LABEL"])
+            if ncol > col_limit:
+                for i in range(0,metavarnum):
+                    if metavars[i][2] == "num":
+                        cursor.execute(add_numval,(row[metavars[i][0]],assoc_id,metavars[i][1]))
+                    if metavars[i][2] == "str":
+                        cursor.execute(add_strval,(row[metavars[i][0]],assoc_id,metavars[i][1]))
             rowcount += 1
-            if(maxlines > 0 and rdr.line_num >= maxlines):
+            if(maxlines > 0 and rowcount >= maxlines):
                 break
             if(rdr.line_num % 1000 == 0):
                 dbconn.commit()

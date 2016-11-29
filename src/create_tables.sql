@@ -1,4 +1,15 @@
 
+CREATE SEQUENCE public.metavariables_id_seq;
+
+CREATE TABLE public.Metavariables (
+                ID INTEGER NOT NULL DEFAULT nextval('public.metavariables_id_seq'),
+                Label VARCHAR(1000) NOT NULL,
+                CONSTRAINT metavariable_id_idx PRIMARY KEY (ID)
+);
+
+
+ALTER SEQUENCE public.metavariables_id_seq OWNED BY public.Metavariables.ID;
+
 CREATE SEQUENCE public.variables_id_seq;
 
 CREATE TABLE public.Variables (
@@ -62,8 +73,8 @@ CREATE SEQUENCE public.datasettometadata_id_seq;
 
 CREATE TABLE public.DatasetToMetaData (
                 ID INTEGER NOT NULL DEFAULT nextval('public.datasettometadata_id_seq'),
-                Dataset_ID INTEGER NOT NULL,
                 DatasetMetaData_ID INTEGER NOT NULL,
+                Dataset_ID INTEGER NOT NULL,
                 CONSTRAINT datasettometadata_id_idx PRIMARY KEY (ID)
 );
 
@@ -73,10 +84,6 @@ ALTER SEQUENCE public.datasettometadata_id_seq OWNED BY public.DatasetToMetaData
 CREATE INDEX dataset_id_datasettometadata_idx
  ON public.DatasetToMetaData
  ( Dataset_ID ASC );
-
-CREATE INDEX datasettometadata_datasetmetadata_id_idx
- ON public.DatasetToMetaData
- ( DatasetMetaData_ID ASC );
 
 CREATE SEQUENCE public.associations_id_seq;
 
@@ -111,6 +118,32 @@ CREATE INDEX dataset_id_idx
  ON public.Associations
  ( Dataset_ID ASC );
 
+CREATE SEQUENCE public.strval_id_seq;
+
+CREATE TABLE public.StrVal (
+                ID INTEGER NOT NULL DEFAULT nextval('public.strval_id_seq'),
+                Value VARCHAR(1000) NOT NULL,
+                Association_id INTEGER NOT NULL,
+                Metavariable_id INTEGER NOT NULL,
+                CONSTRAINT strval_id_idx PRIMARY KEY (ID)
+);
+
+
+ALTER SEQUENCE public.strval_id_seq OWNED BY public.StrVal.ID;
+
+CREATE SEQUENCE public.numval_id_seq;
+
+CREATE TABLE public.NumVal (
+                ID INTEGER NOT NULL DEFAULT nextval('public.numval_id_seq'),
+                Value DOUBLE PRECISION NOT NULL,
+                Association_id INTEGER NOT NULL,
+                Metavariable_id INTEGER NOT NULL,
+                CONSTRAINT numval_id_idx PRIMARY KEY (ID)
+);
+
+
+ALTER SEQUENCE public.numval_id_seq OWNED BY public.NumVal.ID;
+
 CREATE SEQUENCE public.associationtovariable_id_seq;
 
 CREATE TABLE public.AssociationToVariable (
@@ -130,6 +163,20 @@ CREATE INDEX associationtovariable_idx
 CREATE INDEX associationtovariable_idx1
  ON public.AssociationToVariable
  ( Association_id ASC );
+
+ALTER TABLE public.NumVal ADD CONSTRAINT metavariable_numval_fk
+FOREIGN KEY (Metavariable_id)
+REFERENCES public.Metavariables (ID)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
+
+ALTER TABLE public.StrVal ADD CONSTRAINT metavariable_strval_fk
+FOREIGN KEY (Metavariable_id)
+REFERENCES public.Metavariables (ID)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
 
 ALTER TABLE public.AssociationToVariable ADD CONSTRAINT variables_associationtovariable_fk
 FOREIGN KEY (Variable_id)
@@ -160,6 +207,20 @@ ON UPDATE NO ACTION
 NOT DEFERRABLE;
 
 ALTER TABLE public.AssociationToVariable ADD CONSTRAINT associations_associationtovariable_fk
+FOREIGN KEY (Association_id)
+REFERENCES public.Associations (ID)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
+
+ALTER TABLE public.NumVal ADD CONSTRAINT associations_numval_fk
+FOREIGN KEY (Association_id)
+REFERENCES public.Associations (ID)
+ON DELETE NO ACTION
+ON UPDATE NO ACTION
+NOT DEFERRABLE;
+
+ALTER TABLE public.StrVal ADD CONSTRAINT associations_strval_fk
 FOREIGN KEY (Association_id)
 REFERENCES public.Associations (ID)
 ON DELETE NO ACTION
