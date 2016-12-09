@@ -34,8 +34,8 @@ add_dataset = ("INSERT INTO Datasets (label, description, varnum, effect_type) V
 add_rowcount = ("UPDATE Datasets SET rowcount = %s WHERE id = %s")
 datasetquery = ("SELECT * FROM datasets WHERE label=%s")
 
-add_metavar = ("INSERT INTO metavariable (label) VALUES (%s)")
-metavarquery = ("SELECT * FROM metavariable WHERE label= %s")
+add_metavar = ("INSERT INTO metavariables (label) VALUES (%s)")
+metavarquery = ("SELECT * FROM metavariables WHERE label= %s")
 add_numval = ("INSERT INTO numval (value, association_id, metavariable_id) VALUES (%s, %s, %s)")
 add_strval = ("INSERT INTO strval (value, association_id, metavariable_id) VALUES (%s, %s, %s)")
 
@@ -84,7 +84,7 @@ def parse_variables(file):
     print ("Parsing variable descriptions...")
     with open(file,'r') as varfile:
         rdr = csv.DictReader(varfile, delimiter = ",")
-        print("Inserting variables...")
+        print("Updating variables...")
         count = 0
         for row in rdr:
             cursor.execute(update_var, (row["DESCRIPTION"], row["LABEL"]))
@@ -208,7 +208,7 @@ def parse_datasets(file):
                 print("Dataset information inserted")
                 parse_assoc(row["DATASET_FILENAME"], datasetid,row["VARNUM"])
                 parse_metatodata(datasetid, row["METADATA_LABELS"])
-            if (row["VARIABLES_FILENAME"] != 'None'):
+            if (row["VARIABLES_FILENAME"] is not None and row["VARIABLES_FILENAME"] != ""):
                 parse_variables(row["VARIABLES_FILENAME"])
             
 def main():

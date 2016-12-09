@@ -13,9 +13,16 @@ source("visualizations.R")
 source("queries.R")
 
 pool <- dbPool(
-  drv = PostgreSQL(),
+  drv = RPostgreSQL::PostgreSQL(),
   dbname = "antom",
   host = "biodb.uef.fi",
   user = "antom",
-  password = "d0189244be"
+  password = "d0189244be",
+  maxSize = 10,
+  idleTimeout = 40000
 )
+
+ds_dframe <- get_datasets(pool) %>%
+  select(label,description,varnum,effect_type,rowcount) %>%
+  rename(Label = label, Description = description, Number_of_variables = varnum,
+         Effect_type = effect_type, Number_of_associations = rowcount)

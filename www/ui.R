@@ -63,6 +63,9 @@ shinyUI( fluidPage(
         )
       ),
       
+     
+      uiOutput("extra_filters"),
+      
       actionButton("submit",
                    label = "Submit"),
       br(),

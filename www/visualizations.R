@@ -18,8 +18,7 @@ coalesce<-function(...) {
   return(x[[1]])
 }
 
-get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
-  
+transform_to_lowertri <- function(dframe,effect_type,clustering){
   dat <- dframe %>% select(Variable1,Variable2,Effect)
   dat$Variable1 <- as.character(dat$Variable1)
   dat$Variable2 <- as.character(dat$Variable2)
@@ -62,28 +61,41 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   # Only half of the associations are needed for plotting
   dat_w_whole[upper.tri(dat_w_whole)] <- NA
   # Diagonal should be included in the plot
-  diag(dat_w_whole) <- 0
+  diag(dat_w_whole) <- 1
   
   # Melt back to long format for ggplot2
   dat_w_whole$Variable1 <- rownames(dat_w_whole)
   dat_l <- na.omit(melt(dat_w_whole, "Variable1", variable.name = "Variable2")) %>% rename(Effect = value)
   
+  # Joining other columns from original dframe
+  dat_l$Variable2 <- as.character(dat_l$Variable2)
+  dat_l_orig <- dat_l
+  combined1 <- inner_join(dat_l, dframe, by = c("Variable1","Variable2","Effect"))
+  combined2 <- inner_join(dat_l,dframe,by = c("Variable1" = "Variable2","Variable2" = "Variable1","Effect"))
+  dat_l <- rbind(combined1,combined2)
+  
   # Setting the factor levels to correctly draw the heatmap
   # This ensures the tiles are plotted in correct order to make a lower triangular heat map
-  if (clustering){
-    dat_l$Variable1 <- dat_l$Variable1 %>% as.character() %>% 
-      factor(levels = rev(colnames(dat_w_whole)))
-    dat_l$Variable2 <- dat_l$Variable2 %>% as.character() %>% 
-      factor(levels = rownames(dat_w_whole))
-  }
+  dat_l$Variable1 <- dat_l$Variable1 %>% 
+    factor(levels = rev(colnames(dat_w_whole)))
+  dat_l$Variable2 <- dat_l$Variable2 %>%
+    factor(levels = rownames(dat_w_whole))
+  
+  dat_l
+}
+
+get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
+  
+  dat_l <- transform_to_lowertri(dframe,effect_type,clustering)
   
   # Creating the ggplot object
-  p <- ggplot(dat_l, aes(x = Variable1, y = Variable2)) +
-    scale_fill_gradient2(low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab") +
-    theme_minimal() +
-    theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank()) +
-    xlab("") + ylab("")
+  if(interactive){
+    p <- ggplot(dat_l,aes(x = Variable1, y = Variable2, label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2,
+                          label3 = Effect, label4 = P_FDR, label5 = N))
+  }
+  else{
+    p <- ggplot(dat_l, aes(x = Variable1, y = Variable2))
+  }
   
   if (effect_type %in% c("OR","FC")){
     p <- p + geom_tile(aes(fill = log2(Effect)))
@@ -92,22 +104,27 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
     p <- p + geom_tile(aes(fill = Effect))
   }
   
+  p <- p +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text.x = element_text(angle = 90)) +
+    scale_fill_gradient2(low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab", na.value = "green") +
+    xlab("") + ylab("")
+  
   if (interactive){
     
     #!!!!Add other information HERE !!!!#
-    p <- p +
-      theme(axis.text.x = element_text(angle = 90))
-    ggplotly(p)
+    ggplotly(p,tooltip = c("label00","label0","label1","label2","label3","label4","label5"))
   }
   else{
+    vars <- dat_l$Variable1 %>% unique() %>% sort()
     p <- p +
-      theme(axis.text.x = element_blank(),
-            axis.text.y = element_blank(),
-            axis.ticks = element_blank())
+      scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 20)]) +
+      scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 20)])
     p
   }
 }
-
 
 # Volcano plot with double filtering
 # Input:  data frame with effect, p_fdr and point labels
