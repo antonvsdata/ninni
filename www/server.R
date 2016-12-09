@@ -15,20 +15,20 @@ shinyServer(function(input,output){
     tableOutput("ds_info_table")
   })
   
-  
+  # Table showing information of the chosen dataset
   output$ds_info_table <- renderTable({
     if(is.null(associations_list())){
       return(NULL)
     }
     str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
-                 "P-value range:","Effect range:")
+             "P-value range:","Effect range:")
     values <- nrow(associations_list()$dframe) %>% as.character()
     if (associations_list()$varnum == 1)
       values <- c(values, associations_list()$dframe$Variable %>%
-                      unique() %>% length() %>% as.character() )
+                    unique() %>% length() %>% as.character() )
     if (associations_list()$varnum ==2)
       values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
-                      unique() %>% length() %>% as.character() )
+                    unique() %>% length() %>% as.character() )
     values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
                 associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
                 paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
@@ -48,7 +48,6 @@ shinyServer(function(input,output){
   # - varnum: the number of variables in the dataset
   # - effect_type
   associations_list_query <- reactive({
-    print("Query")
     db_conn <- src_pool(pool)
     
     if(is.null(input$ds_label)){
@@ -66,16 +65,15 @@ shinyServer(function(input,output){
   })
   
   associations_list_db <- eventReactive(input$submit,{
-    print("DB eventreact")
     associations_list_query()
   })
   
   output$extra_filters <- renderUI({
     extra_filters()
   })
-
+  
+  # Generate filters for metavariables
   extra_filters <- reactive({
-    print("Extra filters react")
     if(is.null(associations_list_query())){
       return(NULL)
     }
@@ -91,9 +89,7 @@ shinyServer(function(input,output){
     }
     out <- tagList()
     for(i in (col_limit+1):ncol(dframe)){
-      #print(length(class(dframe[,i]) == "numeric"))
       if(class(dframe[,i]) == "numeric"){
-        print("creating numeric filter")
         out <- tagList(out,
                        strong(colnames(dframe)[i]),
                        fluidRow(
@@ -104,10 +100,9 @@ shinyServer(function(input,output){
                                 textInput(paste(colnames(dframe)[i],"max",sep="_"), label = "max")
                          )
                        ))
-
+        
       }
       if(class(dframe[,i]) == "character"){
-        print("creating character filter")
         out <- tagList(out,
                        strong(colnames(dframe)[i]),
                        textInput(paste(colnames(dframe)[i],"label",sep="_"),label = "Keywords, comma separated"))
@@ -116,7 +111,7 @@ shinyServer(function(input,output){
     out
   })
   
-  #This filters the dataframe with the associations
+  # Filter the associations dataframe
   associations_list <- eventReactive(input$submit,{
     
     associations_list <- associations_list_db()
@@ -213,7 +208,6 @@ shinyServer(function(input,output){
           expr <- paste("input",inputid,sep="$")
           keywords <- eval(parse(text = expr)) %>% split(",")
           if(keywords != ""){
-            print(paste("keywords:",keywords))
             dframe <- dframe[dframe[,i] %in% keywords,]
           }
         }
@@ -223,10 +217,12 @@ shinyServer(function(input,output){
     return(associations_list)
   })
   
+  # Shows all the datasets in database
   output$dstable <- DT::renderDataTable({
     datatable(ds_dframe, selection = "none")
   })
   
+  # Associations data table
   output$tabular <- DT::renderDataTable({
     dframe <- associations_list()$dframe
     if (associations_list()$varnum == 1){
@@ -254,11 +250,14 @@ shinyServer(function(input,output){
     }
   )
   
+  # All the visualizations can be interactive plotly figures,
+  # or static figures, if dataset has more than 10 000 associations
+  
   output$heatmap <- renderUI({
     if (associations_list()$varnum == 2){
       if (nrow(associations_list()$dframe) > 10000){
         tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                plotOutput("heatmap_stat", height = "800"))
+                plotOutput("heatmap_static", height = "800"))
       }
       else{
         plotlyOutput("heatmaply", height = "800")
@@ -273,21 +272,21 @@ shinyServer(function(input,output){
     get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = TRUE)
   })
   
-  output$heatmap_stat <- renderPlot({
+  output$heatmap_static <- renderPlot({
     get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = FALSE)
   })
   
   output$volcano <- renderUI({
     if (nrow(associations_list()$dframe) > 10000){
       tagList(h5("Wow, your data is BIG! Plotting static figure."),
-              plotOutput("volcano_stat", height = "700"))
+              plotOutput("volcano_static", height = "700"))
     }
     else{
       plotlyOutput("volcanoly", height = "700")
     }
   })
   
-  output$volcano_stat <- renderPlot({
+  output$volcano_static <- renderPlot({
     if (input$double_filter){
       if (input$df_eff_limit_log2){
         eff_lim <- as.numeric(input$df_effect_limit)
@@ -323,7 +322,7 @@ shinyServer(function(input,output){
     if (input$qq_choice == "p-values"){
       if (nrow(associations_list()$dframe) > 10000){
         t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                plotOutput("qq_plot_ps", height = "700"))
+                     plotOutput("qq_plot_static_ps", height = "700"))
       }
       else{
         t <- plotlyOutput("qq_plotly_ps", height = "700")
@@ -332,7 +331,7 @@ shinyServer(function(input,output){
     if (input$qq_choice == "norm"){
       if (nrow(associations_list()$dframe) > 10000){
         t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                plotOutput("qq_plot_norm", height = "700"))
+                     plotOutput("qq_plot_static_norm", height = "700"))
       }
       else{
         t <- plotlyOutput("qq_plotly_norm", height = "700")
@@ -341,22 +340,22 @@ shinyServer(function(input,output){
     t
   })
   
-  output$qq_plotly_norm <- renderPlotly({
-    qq_normal(associations_list()$dframe, associations_list()$effect_type,
-                associations_list()$varnum)
-  })
-  
-  output$qq_plot_norm <- renderPlot({
-    qq_normal(associations_list()$dframe, associations_list()$effect_type,
-              associations_list()$varnum, interactive = FALSE)
+  output$qq_plot_static_ps <- renderPlot({
+    qq_pvalues(associations_list()$dframe,associations_list()$varnum, interactive = FALSE)
   })
   
   output$qq_plotly_ps <- renderPlotly({
     qq_pvalues(associations_list()$dframe,associations_list()$varnum)
   })
   
-  output$qq_plot_ps <- renderPlot({
-    qq_pvalues(associations_list()$dframe,associations_list()$varnum, interactive = FALSE)
+  output$qq_plot_static_norm <- renderPlot({
+    qq_normal(associations_list()$dframe, associations_list()$effect_type,
+              associations_list()$varnum, interactive = FALSE)
+  })
+  
+  output$qq_plotly_norm <- renderPlotly({
+    qq_normal(associations_list()$dframe, associations_list()$effect_type,
+              associations_list()$varnum)
   })
   
 })
