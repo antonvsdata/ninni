@@ -48,7 +48,7 @@ get_metavariables <- function(conn,assocs_tbl){
     semi_join(strval_tbl, by = c("id" = "metavariable_id")) %>% collect()
   
   # Add metavar as column name and values as column elements to data frame
-  if(nrow(collect(numval_tbl))){
+  if(nrow(collect(strval_tbl))){
     for (i in 1:nrow(metavar_tbl)){
       strval_tmp <- collect(strval_tbl) %>% filter(metavariable_id == metavar_tbl$id[i]) %>% select(association_id,value)
       if(nrow(final_tbl) == 0){
@@ -76,21 +76,21 @@ join_variables <- function(conn,assocs_tbl,varnum){
   var_tbl <- conn %>% tbl("variables") %>% 
     inner_join(assoc_to_var_tbl, by = c("id" = "variable_id"))
   assocs_tbl <- left_join(assocs_tbl,var_tbl,by = c("id" = "association_id"))
-  
+ 
+  incProgress(0.2,message = "Processing dataset")
   # Removes unnecessary columns
   if (varnum == 1){
     assocs_tbl <- assocs_tbl %>%
       select(-id,-id.x,-id.y,-dataset_id,-variable_id) %>%
       collect()
   }
-  
   # Removes unnecessary columns and combines the rows of same association
   # (Before this the table had two rows with the same association information, but only one variable each)
   if (varnum == 2){
     assocs_tbl <- assocs_tbl %>%
       select(-id,-id.x,-id.y,-dataset_id,-variable_id) %>%
-      group_by(association_id) %>%
       collect() %>%
+      group_by(association_id) %>%
       mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
       ungroup() %>%
       select(-description,-label) %>%
@@ -98,7 +98,6 @@ join_variables <- function(conn,assocs_tbl,varnum){
       separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
       separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
   }
-  
   #Join metavariables
   metavar_tbl <- get_metavariables(conn,assocs_tbl_orig)
   if(!is.null(metavar_tbl)){
@@ -109,14 +108,25 @@ join_variables <- function(conn,assocs_tbl,varnum){
   return (assocs_tbl)
 }
 
-filter_vars <- function(assocs_tbl,var_labels,varnum){
-  var_labels <- var_labels  %>% strsplit(split=",") %>% unlist
+filter_variable <- function(assocs_tbl,var_labels,varnum){
+  var_labels <- var_labels  %>% strsplit(split=",") %>% unlist()
     if (varnum == 1){
-      assocs_tbl <- assocs_tbl %>% filter(Variable %in% var_labels | Description %in% var_labels)
+      assocs_tbl <- assocs_tbl %>% filter(Variable %in% var_labels)
     }
     if (varnum == 2){
-      assocs_tbl <- assocs_tbl %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels | Description1 %in% var_labels | Description2 %in% var_labels)
+      assocs_tbl <- assocs_tbl %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels)
     }
+  assocs_tbl
+}
+
+filter_description <- function(assocs_tbl,desc_labels,varnum){
+  desc_labels <- desc_labels  %>% strsplit(split=",") %>% unlist()
+  if (varnum == 1){
+    assocs_tbl <- assocs_tbl %>% filter(Description %in% desc_labels)
+  }
+  if (varnum == 2){
+    assocs_tbl <- assocs_tbl %>% filter(Description1 %in% desc_labels | Description2 %in% desc_labels)
+  }
   assocs_tbl
 }
 

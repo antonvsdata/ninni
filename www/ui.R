@@ -9,65 +9,8 @@ shinyUI( fluidPage(
       h4("Dataset"),
       uiOutput("ds_choice"),
       
-      h4("Variable filters"),
-      h5("At least one association with"),
+      uiOutput("filters"),
       
-      fluidRow(
-        column(6,
-               textInput("var_p_limit",label = "P-value <")),
-        column(4,
-               radioButtons("var_p_limit_fdr",label = NULL,
-                            choices = c("Unadjusted" = FALSE,
-                                        "FDR" = TRUE),
-                            selected = FALSE))
-        
-      ),
-      strong("Effect size:"),
-      fluidRow(
-        column(5,
-               textInput("var_eff_min",label="min")
-        ),
-        column(5,
-               textInput("var_eff_max", label = "max"))
-      ),
-      
-      strong("Keywords, comma separated"),
-      textInput("var_labels",
-                label = NULL),
-      
-      h4("Association filters"),
-      
-      fluidRow(
-        column(6,
-               textInput("p_limit",label = "P-value <")),
-        column(4,
-               radioButtons("p_limit_fdr",label = NULL,
-                            choices = c("Unadjusted" = FALSE,
-                                        "FDR" = TRUE),
-                            selected = FALSE))
-        
-      ),
-      
-      fluidRow(
-        column(7,
-               textInput("n_limit",
-                         label = "Minimum n"))
-      ),
-      strong("Effect size:"),
-      fluidRow(
-        column(5,
-               textInput("eff_min",label="min")
-        ),
-        column(5,
-               textInput("eff_max", label = "max")
-        )
-      ),
-      
-     
-      uiOutput("extra_filters"),
-      
-      actionButton("submit",
-                   label = "Submit"),
       br(),
       br(),
       

@@ -15,61 +15,50 @@ shinyServer(function(input,output){
     tableOutput("ds_info_table")
   })
   
-  # Table showing information of the chosen dataset
-  output$ds_info_table <- renderTable({
-    if(is.null(associations_list())){
+  output$filters <- renderUI({
+    if(is.null(standard_filters())){
       return(NULL)
     }
-    str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
-             "P-value range:","Effect range:")
-    values <- nrow(associations_list()$dframe) %>% as.character()
-    if (associations_list()$varnum == 1)
-      values <- c(values, associations_list()$dframe$Variable %>%
-                    unique() %>% length() %>% as.character() )
-    if (associations_list()$varnum ==2)
-      values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
-                    unique() %>% length() %>% as.character() )
-    values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
-                associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
-                paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
-                      (associations_list()$dframe$P) %>% max() %>% signif(digits=3)),
-                paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits=3), "...",
-                      (associations_list()$dframe$Effect) %>% max() %>% signif(digits=3)))
-    data.frame(str,values)
-  },include.rownames=FALSE, include.colnames = FALSE)
+    tagList(
+      standard_filters(),
+      extra_filters(),
+      variable_filters(),
+      actionButton("submit",
+                   label = "Filter")
+    )
+  })
   
-  
-  # Handles the query to the database
-  # Reactive expressions cache their value, so filtering the same dataset multiple times
-  # does not provoke a new database query
-  
-  # Returns a list with following objects:
-  # - dframe: a data frame with the associations
-  # - varnum: the number of variables in the dataset
-  # - effect_type
-  associations_list_query <- reactive({
-    db_conn <- src_pool(pool)
-    
-    if(is.null(input$ds_label)){
+  standard_filters <- reactive({
+    if(is.null(associations_list_query())){
       return(NULL)
     }
-    if (input$ds_label == ""){
-      return (NULL)
-    }
-    
-    associations_list <- get_associations_by_ds(db_conn,input$ds_label)
-    associations_list$dframe <- join_variables(db_conn,associations_list$dframe,associations_list$varnum)
-    associations_list$dframe <- make_pretty(associations_list$dframe,associations_list$varnum)
-    
-    return (associations_list)
-  })
-  
-  associations_list_db <- eventReactive(input$submit,{
-    associations_list_query()
-  })
-  
-  output$extra_filters <- renderUI({
-    extra_filters()
+    tagList(
+      strong("Variable"),
+      textInput("var_labels","Keywords, comma separated"),
+      
+      fluidRow(
+        column(6,
+               textInput("p_limit",label = "P-value <")),
+        column(4,
+               radioButtons("p_limit_fdr",label = NULL,
+                            choices = c("Unadjusted" = FALSE,
+                                        "FDR" = TRUE),
+                            selected = FALSE))),
+      fluidRow(
+        column(7,
+               textInput("n_limit",
+                         label = "Minimum n"))
+      ),
+      strong("Effect:"),
+      fluidRow(
+        column(5,
+               textInput("eff_min",label="min")
+        ),
+        column(5,
+               textInput("eff_max", label = "max"))),
+      strong("Description"),
+      textInput("description_labels","Keywords, comma separated")
+    )
   })
   
   # Generate filters for metavariables
@@ -111,6 +100,93 @@ shinyServer(function(input,output){
     out
   })
   
+  variable_filters <- reactive({
+    if(is.null(associations_list_query())){
+      return(NULL)
+    }
+    tagList(
+      checkboxInput("var_filters","Variable filters"),
+      conditionalPanel("input.var_filters == true",
+                       h4("Variable filters"),
+                       h5("At least one association with"),
+                       
+                       fluidRow(
+                         column(6,
+                                textInput("var_p_limit",label = "P-value <")),
+                         column(4,
+                                radioButtons("var_p_limit_fdr",label = NULL,
+                                             choices = c("Unadjusted" = FALSE,
+                                                         "FDR" = TRUE),
+                                             selected = FALSE))
+                         
+                       ),
+                       strong("Effect size:"),
+                       fluidRow(
+                         column(5,
+                                textInput("var_eff_min",label="min")
+                         ),
+                         column(5,
+                                textInput("var_eff_max", label = "max"))
+                       )
+      )
+    )
+  })
+  
+  # Table showing information of the chosen dataset
+  output$ds_info_table <- renderTable({
+    if(is.null(associations_list())){
+      return(NULL)
+    }
+    str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
+             "P-value range:","Effect range:")
+    values <- nrow(associations_list()$dframe) %>% as.character()
+    if (associations_list()$varnum == 1)
+      values <- c(values, associations_list()$dframe$Variable %>%
+                    unique() %>% length() %>% as.character() )
+    if (associations_list()$varnum ==2)
+      values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
+                    unique() %>% length() %>% as.character() )
+    values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
+                associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
+                paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
+                      (associations_list()$dframe$P) %>% max() %>% signif(digits=3)),
+                paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits=3), "...",
+                      (associations_list()$dframe$Effect) %>% max() %>% signif(digits=3)))
+    data.frame(str,values)
+  },include.rownames=FALSE, include.colnames = FALSE)
+  
+  
+  # Handles the query to the database
+  # Reactive expressions cache their value, so filtering the same dataset multiple times
+  # does not provoke a new database query
+  
+  # Returns a list with following objects:
+  # - dframe: a data frame with the associations
+  # - varnum: the number of variables in the dataset
+  # - effect_type
+  associations_list_query <- reactive({
+    if(is.null(input$ds_label)){
+      return(NULL)
+    }
+    if (input$ds_label == ""){
+      return (NULL)
+    }
+    withProgress(message = "Retrieving dataset from database",{
+      db_conn <- src_pool(pool)
+      associations_list <- get_associations_by_ds(db_conn,input$ds_label)
+      incProgress(0.3)
+      associations_list$dframe <- join_variables(db_conn,associations_list$dframe,associations_list$varnum)
+      associations_list$dframe <- make_pretty(associations_list$dframe,associations_list$varnum)
+    })
+    
+    
+    return (associations_list)
+  })
+  
+  associations_list_db <- eventReactive(input$submit,{
+    associations_list_query()
+  })
+  
   # Filter the associations dataframe
   associations_list <- eventReactive(input$submit,{
     
@@ -119,13 +195,13 @@ shinyServer(function(input,output){
     #Variable filters:
     
     # P-value <
-    if (input$var_p_limit != ""){
+    if (input$var_filters & input$var_p_limit != ""){
       dframe <- dframe %>%
         varfilter_p( as.numeric(input$var_p_limit),associations_list$varnum,input$var_p_limit_fdr)
     }
-    
+
     # Effect: min max
-    if (input$var_eff_min != "" | input$var_eff_max != ""){
+    if (input$var_filters & (input$var_eff_min != "" | input$var_eff_max != "")){
       if (input$var_eff_min == ""){
         dframe <- varfilter_eff(dframe, eff_max = as.numeric(input$var_eff_max), varnum = associations_list$varnum)
       }
@@ -136,13 +212,21 @@ shinyServer(function(input,output){
         dframe <- varfilter_eff(dframe, as.numeric(input$var_eff_min), as.numeric(input$var_eff_max), associations_list$varnum)
       }
     }
-    
-    # Keywords, comma separated
-    if (input$var_labels != ""){
-      dframe <- filter_vars(dframe,input$var_labels,associations_list$varnum)
-    }
+
     
     # Association filters:
+    
+    # Variable
+    # Keywords, comma separated
+    if (input$var_labels != ""){
+      dframe <- filter_variable(dframe,input$var_labels,associations_list$varnum)
+    }
+    
+    # Description
+    # Keywords, comma separated
+    if (input$description_labels != ""){
+      dframe <- filter_description(dframe,input$description_labels,associations_list$varnum)
+    }
     
     # P-value <
     if(input$p_limit != ""){

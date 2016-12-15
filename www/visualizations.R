@@ -120,8 +120,8 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   else{
     vars <- dat_l$Variable1 %>% unique() %>% sort()
     p <- p +
-      scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 20)]) +
-      scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 20)])
+      scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 30)]) +
+      scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 30)])
     p
   }
 }
