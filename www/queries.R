@@ -109,24 +109,48 @@ join_variables <- function(conn,assocs_tbl,varnum){
 }
 
 filter_variable <- function(assocs_tbl,var_labels,varnum){
-  var_labels <- var_labels  %>% strsplit(split=",") %>% unlist()
+  if(grepl("\\*$",var_labels)){
+    var_labels <- paste("^",gsub("\\*",".\\*",var_labels),sep="")
+    if (varnum == 1){
+      assocs_tbl <- assocs_tbl %>% filter(grepl(var_labels,Variable))
+    }
+    if (varnum == 2){
+      assocs_tbl <- assocs_tbl %>% filter(grepl(var_labels,Variable1) | grepl(var_labels,Variable2))
+    }
+  }
+  else{
+    var_labels <- var_labels  %>% strsplit(split=",") %>% unlist()
     if (varnum == 1){
       assocs_tbl <- assocs_tbl %>% filter(Variable %in% var_labels)
     }
     if (varnum == 2){
       assocs_tbl <- assocs_tbl %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels)
     }
+  }
+  
   assocs_tbl
 }
 
 filter_description <- function(assocs_tbl,desc_labels,varnum){
-  desc_labels <- desc_labels  %>% strsplit(split=",") %>% unlist()
-  if (varnum == 1){
-    assocs_tbl <- assocs_tbl %>% filter(Description %in% desc_labels)
+  if(grepl("\\*$",desc_labels)){
+    desc_labels <- paste("^",gsub("\\*",".\\*",desc_labels),sep="")
+    if (varnum == 1){
+      assocs_tbl <- assocs_tbl %>% filter(grepl(desc_labels,Description))
+    }
+    if (varnum == 2){
+      assocs_tbl <- assocs_tbl %>% filter(grepl(desc_labels,Description1) | grepl(desc_labels,Description2))
+    }
   }
-  if (varnum == 2){
-    assocs_tbl <- assocs_tbl %>% filter(Description1 %in% desc_labels | Description2 %in% desc_labels)
+  else{
+    desc_labels <- desc_labels  %>% strsplit(split=",") %>% unlist()
+    if (varnum == 1){
+      assocs_tbl <- assocs_tbl %>% filter(Description %in% desc_labels)
+    }
+    if (varnum == 2){
+      assocs_tbl <- assocs_tbl %>% filter(Description1 %in% desc_labels | Description2 %in% desc_labels)
+    }
   }
+  
   assocs_tbl
 }
 
