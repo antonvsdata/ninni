@@ -65,7 +65,7 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   
   # Melt back to long format for ggplot2
   dat_w_whole$Variable1 <- rownames(dat_w_whole)
-  dat_l <- na.omit(melt(dat_w_whole, "Variable1", variable.name = "Variable2")) %>% rename(Effect = value)
+  dat_l <- melt(dat_w_whole, "Variable1", variable.name = "Variable2") %>% rename(Effect = value)
   
   # Joining other columns from original dframe
   dat_l$Variable2 <- as.character(dat_l$Variable2)
@@ -74,6 +74,26 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   combined2 <- inner_join(dat_l,dframe,by = c("Variable1" = "Variable2","Variable2" = "Variable1","Effect"))
   dat_l <- rbind(combined1,combined2)
   
+  vars <- c(dat_l$Variable1,dat_l$Variable2) %>% unique()
+  x <- setdiff(vars,dat_l$Variable1)
+  y <- setdiff(vars,dat_l$Variable2)
+  if(length(x) | length(y)){
+    append_len <- max(length(x),length(y))
+    append_df <- data.frame(Variable1 = c(x,rep(NA, append_len - length(x))),
+                            Variable2 = c(y,rep(NA, append_len - length(y))),
+                            Effect = NA)
+    append_df$Variable1 <- as.character(append_df$Variable1)
+    append_df$Variable2 <- as.character(append_df$Variable2)
+    index <- which(is.na(append_df$Variable1))
+    append_df$Variable1[index] <- append_df$Variable2[index]
+    index <- which(is.na(append_df$Variable2))
+    append_df$Variable2[index] <- append_df$Variable1[index]
+    
+    fill_df <- as.data.frame(matrix(nrow=nrow(append_df),ncol = ncol(dat_l)-3))
+    colnames(fill_df) <- colnames(dat_l)[-(1:3)]
+    append_df <- cbind(append_df,fill_df)
+    dat_l <- rbind(dat_l,append_df)
+  }
   # Setting the factor levels to correctly draw the heatmap
   # This ensures the tiles are plotted in correct order to make a lower triangular heat map
   dat_l$Variable1 <- dat_l$Variable1 %>% 
@@ -359,6 +379,59 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   }
   else{
     p <- p + geom_point(aes(x=expected, y=observed))
+  }
+  p
+}
+
+lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE){
+  
+  if(varnum == 1){
+    if(effect_type %in% c("OR","FC")){
+      p <- ggplot(dframe, aes(x = Variable,y = -log10(P) * sign(log2(Effect))))
+    }
+    else{
+      p <- ggplot(dframe, aes(x = Variable,y = -log10(P) * sign(Effect)))
+    }
+  }
+  if(varnum == 2){
+    dframe <- dframe %>% mutate(X = paste(Variable1,Variable2,sep="_x_"))
+    if(effect_type %in% c("OR","FC")){
+      p <- ggplot(dframe, aes(x = X,y = -log10(P) * sign(log2(Effect)), label = Variable1))
+    }
+    else{
+      p <- ggplot(dframe, aes(x = X,y = -log10(P) * sign(Effect)), label = Variable1)
+    }
+    p <- p +
+      xlab("Variables")
+  }
+  
+  p <- p +
+    theme_minimal() +
+    theme(panel.grid.major = element_blank(),
+          panel.grid.minor = element_blank(),
+          axis.text.x = element_text(angle = 90))
+  
+  if (interactive){
+    if (varnum == 1){
+      p <- p + geom_point(aes(label0 = Variable, label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label0","label1","label3","label4","label5"))
+    }
+    if(varnum == 2){
+      p <- p + geom_point(aes(label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- ggplotly(p, tooltip = c("label00","label0","label1","label2","label3","label4","label5"))
+    }
+  }
+  else{
+    p <- p + geom_point()
+    if(varnum == 1){
+      p <- p +
+        scale_x_discrete(breaks = dframe$Variable[seq(1,nrow(dframe),length.out = 30)])
+    }
+    if(varnum == 2){
+      p <- p +
+        scale_x_discrete(breaks = dframe$X[seq(1,nrow(dframe),length.out = 30)])
+      print(seq(1,nrow(dframe),length.out = 30))
+    }
   }
   p
 }

@@ -309,11 +309,10 @@ shinyServer(function(input,output){
   # Associations data table
   output$tabular <- DT::renderDataTable({
     dframe <- associations_list()$dframe
-    if (associations_list()$varnum == 1){
-      dframe[,2:7] <- signif(dframe[,2:7],digits = 3)
-    }
-    if (associations_list()$varnum == 2){
-      dframe[,3:8] <- signif(dframe[,3:8],digits = 3)
+    for(i in 1:ncol(dframe)){
+      if(class(dframe[,i]) == "numeric"){
+        dframe[,i] <- signif(dframe[,i],digits = 3)
+      }
     }
     datatable(dframe, selection = "none")
   })
@@ -440,6 +439,27 @@ shinyServer(function(input,output){
   output$qq_plotly_norm <- renderPlotly({
     qq_normal(associations_list()$dframe, associations_list()$effect_type,
               associations_list()$varnum)
+  })
+  
+  output$lady_manhattan_plot <-renderUI({
+    
+    if (nrow(associations_list()$dframe) > 10000){
+      t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
+                   plotOutput("lady_manhattan_plot_static", height = "700"))
+    }
+    else{
+      t <- plotlyOutput("lady_manhattan_plotly", height = "700")
+    }
+    
+    t
+  })
+  
+  output$lady_manhattan_plot_static <- renderPlot({
+    lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE)
+  })
+  
+  output$lady_manhattan_plotly <- renderPlotly({
+    lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum)
   })
   
 })

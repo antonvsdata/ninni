@@ -89,7 +89,10 @@ shinyUI( fluidPage(
                                                      "norm"),
                                          inline = TRUE),
                  uiOutput("qq_plot")
-        )
+        ),
+        
+        tabPanel("Lady Manhattan plot",
+                 uiOutput("lady_manhattan_plot"))
       )
     )
     
