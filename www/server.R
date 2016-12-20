@@ -441,6 +441,20 @@ shinyServer(function(input,output){
               associations_list()$varnum)
   })
   
+  output$lady_manhattan_plot_choices <- renderUI({
+    tagList(
+      checkboxInput("lady_coloring","Coloring according to column"),
+      conditionalPanel("input.lady_coloring == true",
+                       selectizeInput("lady_coloring_column","Column",
+                                      choices = colnames(associations_list()$dframe),
+                                      options = list(maxItems = 1,
+                                                     placeholder = 'Choose a column',
+                                                     onInitialize = I('function() { this.setValue(""); }'))),
+                       radioButtons("lady_coloring_type",NULL,
+                                    choices = c("Continuous", "Discrete")))
+    )
+  })
+  
   output$lady_manhattan_plot <-renderUI({
     
     if (nrow(associations_list()$dframe) > 10000){
@@ -455,11 +469,21 @@ shinyServer(function(input,output){
   })
   
   output$lady_manhattan_plot_static <- renderPlot({
-    lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE)
+    if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring-column != ""){
+      lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE, input$lady_coloring_column,input$lady_coloring_type)
+    }
+    else{
+      lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE)
+    }
   })
   
   output$lady_manhattan_plotly <- renderPlotly({
-    lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum)
+    if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring_column != ""){
+      lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = TRUE, input$lady_coloring_column,input$lady_coloring_type)
+    }
+    else{
+      lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = TRUE)
+    }
   })
   
 })

@@ -383,26 +383,45 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   p
 }
 
-lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE){
+lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,color_col = NULL, color_type = NULL){
   
-  if(varnum == 1){
-    if(effect_type %in% c("OR","FC")){
-      p <- ggplot(dframe, aes(x = Variable,y = -log10(P) * sign(log2(Effect))))
+  if(effect_type %in% c("OR","FC")){
+    Y <- "-log10(P) * sign(log2(Effect))"
+  }
+  else{
+    Y <- "-log10(P) * sign(Effect)"
+  }
+  
+  if(!is.null(color_col)){
+    if(color_type == "Continuous"){
+      coloring <- color_col
     }
     else{
-      p <- ggplot(dframe, aes(x = Variable,y = -log10(P) * sign(Effect)))
+      coloring <- paste("as.factor(",color_col,")",sep="")
     }
+  }
+  
+  if(varnum == 1){
+    if(!is.null(color_col)){
+      p <- ggplot(dframe, aes(x = Variable,y = eval(parse(text = Y)), color = eval(parse(text =coloring)) ))
+    }
+    else{
+      p <- ggplot(dframe, aes(x = Variable,y = eval(parse(text = Y))))
+    }
+    p <- p +
+      scale_x_discrete(breaks = dframe$Variable[seq(1,nrow(dframe),length.out = 30)])
   }
   if(varnum == 2){
     dframe <- dframe %>% mutate(X = paste(Variable1,Variable2,sep="_x_"))
-    if(effect_type %in% c("OR","FC")){
-      p <- ggplot(dframe, aes(x = X,y = -log10(P) * sign(log2(Effect)), label = Variable1))
+    if(!is.null(color_col)){
+      p <- ggplot(dframe, aes(x = X,y = eval(parse(text = Y)), color = eval(parse(text =coloring)) ))
     }
     else{
-      p <- ggplot(dframe, aes(x = X,y = -log10(P) * sign(Effect)), label = Variable1)
+      p <- ggplot(dframe, aes(x = X,y = eval(parse(text = Y))))
     }
     p <- p +
-      xlab("Variables")
+      xlab("Variables") +
+      scale_x_discrete(breaks = dframe$X[seq(1,nrow(dframe),length.out = 30)])
   }
   
   p <- p +
@@ -423,15 +442,6 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE){
   }
   else{
     p <- p + geom_point()
-    if(varnum == 1){
-      p <- p +
-        scale_x_discrete(breaks = dframe$Variable[seq(1,nrow(dframe),length.out = 30)])
-    }
-    if(varnum == 2){
-      p <- p +
-        scale_x_discrete(breaks = dframe$X[seq(1,nrow(dframe),length.out = 30)])
-      print(seq(1,nrow(dframe),length.out = 30))
-    }
   }
   p
 }

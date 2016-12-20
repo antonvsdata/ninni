@@ -92,6 +92,7 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Lady Manhattan plot",
+                 uiOutput("lady_manhattan_plot_choices"),
                  uiOutput("lady_manhattan_plot"))
       )
     )
