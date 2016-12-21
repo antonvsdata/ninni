@@ -15,6 +15,33 @@ shinyServer(function(input,output){
     tableOutput("ds_info_table")
   })
   
+  # Handles the query to the database
+  # Reactive expressions cache their value, so filtering the same dataset multiple times
+  # does not provoke a new database query
+  
+  associations_list_query <- reactive({
+    if(is.null(input$ds_label)){
+      return(NULL)
+    }
+    if (input$ds_label == ""){
+      return (NULL)
+    }
+    withProgress(message = "Retrieving dataset from database",{
+      db_conn <- src_pool(pool)
+      associations_list <- get_associations_by_ds(db_conn,input$ds_label)
+      incProgress(0.3)
+      associations_list$dframe <- join_variables(db_conn,associations_list$dframe,associations_list$varnum)
+      associations_list$dframe <- make_pretty(associations_list$dframe,associations_list$varnum)
+    })
+    
+    
+    return (associations_list)
+  })
+  
+  associations_list_db <- eventReactive(input$submit,{
+    associations_list_query()
+  })
+  
   output$filters <- renderUI({
     if(is.null(standard_filters())){
       return(NULL)
@@ -132,60 +159,10 @@ shinyServer(function(input,output){
     )
   })
   
-  # Table showing information of the chosen dataset
-  output$ds_info_table <- renderTable({
-    if(is.null(associations_list())){
-      return(NULL)
-    }
-    str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
-             "P-value range:","Effect range:")
-    values <- nrow(associations_list()$dframe) %>% as.character()
-    if (associations_list()$varnum == 1)
-      values <- c(values, associations_list()$dframe$Variable %>%
-                    unique() %>% length() %>% as.character() )
-    if (associations_list()$varnum ==2)
-      values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
-                    unique() %>% length() %>% as.character() )
-    values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
-                associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
-                paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
-                      (associations_list()$dframe$P) %>% max() %>% signif(digits=3)),
-                paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits=3), "...",
-                      (associations_list()$dframe$Effect) %>% max() %>% signif(digits=3)))
-    data.frame(str,values)
-  },include.rownames=FALSE, include.colnames = FALSE)
-  
-  
-  # Handles the query to the database
-  # Reactive expressions cache their value, so filtering the same dataset multiple times
-  # does not provoke a new database query
-  
-  # Returns a list with following objects:
+    # Returns a list with following objects:
   # - dframe: a data frame with the associations
   # - varnum: the number of variables in the dataset
   # - effect_type
-  associations_list_query <- reactive({
-    if(is.null(input$ds_label)){
-      return(NULL)
-    }
-    if (input$ds_label == ""){
-      return (NULL)
-    }
-    withProgress(message = "Retrieving dataset from database",{
-      db_conn <- src_pool(pool)
-      associations_list <- get_associations_by_ds(db_conn,input$ds_label)
-      incProgress(0.3)
-      associations_list$dframe <- join_variables(db_conn,associations_list$dframe,associations_list$varnum)
-      associations_list$dframe <- make_pretty(associations_list$dframe,associations_list$varnum)
-    })
-    
-    
-    return (associations_list)
-  })
-  
-  associations_list_db <- eventReactive(input$submit,{
-    associations_list_query()
-  })
   
   # Filter the associations dataframe
   associations_list <- eventReactive(input$submit,{
@@ -300,6 +277,29 @@ shinyServer(function(input,output){
     associations_list$dframe <- dframe
     return(associations_list)
   })
+  
+  # Table showing information of the chosen dataset
+  output$ds_info_table <- renderTable({
+    if(is.null(associations_list())){
+      return(NULL)
+    }
+    str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
+             "P-value range:","Effect range:")
+    values <- nrow(associations_list()$dframe) %>% as.character()
+    if (associations_list()$varnum == 1)
+      values <- c(values, associations_list()$dframe$Variable %>%
+                    unique() %>% length() %>% as.character() )
+    if (associations_list()$varnum ==2)
+      values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
+                    unique() %>% length() %>% as.character() )
+    values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
+                associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
+                paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
+                      (associations_list()$dframe$P) %>% max() %>% signif(digits=3)),
+                paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits=3), "...",
+                      (associations_list()$dframe$Effect) %>% max() %>% signif(digits=3)))
+    data.frame(str,values)
+  },include.rownames=FALSE, include.colnames = FALSE)
   
   # Shows all the datasets in database
   output$dstable <- DT::renderDataTable({

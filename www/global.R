@@ -12,15 +12,18 @@ library(reshape2)
 source("visualizations.R")
 source("queries.R")
 
-pool <- dbPool(
-  drv = RPostgreSQL::PostgreSQL(),
-  dbname = "antom",
-  host = "biodb.uef.fi",
-  user = "antom",
-  password = "d0189244be",
-  maxSize = 10,
-  idleTimeout = 40000
-)
+if(!exists("pool")){
+  pool <- dbPool(
+    drv = RPostgreSQL::PostgreSQL(),
+    dbname = "antom",
+    host = "biodb.uef.fi",
+    user = "antom",
+    password = "d0189244be",
+    maxSize = 10,
+    idleTimeout = 40000
+  )
+}
+
 
 ds_dframe <- get_datasets(pool) %>%
   select(label,description,varnum,effect_type,rowcount) %>%

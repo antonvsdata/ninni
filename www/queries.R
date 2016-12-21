@@ -77,7 +77,7 @@ join_variables <- function(conn,assocs_tbl,varnum){
     inner_join(assoc_to_var_tbl, by = c("id" = "variable_id"))
   assocs_tbl <- left_join(assocs_tbl,var_tbl,by = c("id" = "association_id"))
  
-  incProgress(0.2,message = "Processing dataset")
+  
   # Removes unnecessary columns
   if (varnum == 1){
     assocs_tbl <- assocs_tbl %>%
@@ -89,7 +89,9 @@ join_variables <- function(conn,assocs_tbl,varnum){
   if (varnum == 2){
     assocs_tbl <- assocs_tbl %>%
       select(-id,-id.x,-id.y,-dataset_id,-variable_id) %>%
-      collect() %>%
+      collect()
+    incProgress(0.2,message = "Processing dataset")
+    assocs_tbl <- assocs_tbl %>%
       group_by(association_id) %>%
       mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
       ungroup() %>%
@@ -98,6 +100,7 @@ join_variables <- function(conn,assocs_tbl,varnum){
       separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
       separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
   }
+  incProgress(0.2)
   #Join metavariables
   metavar_tbl <- get_metavariables(conn,assocs_tbl_orig)
   if(!is.null(metavar_tbl)){
