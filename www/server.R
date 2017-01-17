@@ -445,13 +445,13 @@ shinyServer(function(input,output){
     tagList(
       checkboxInput("lady_coloring","Coloring according to column"),
       conditionalPanel("input.lady_coloring == true",
+                       radioButtons("lady_coloring_type",NULL,
+                                    choices = c("Continuous", "Discrete")),
                        selectizeInput("lady_coloring_column","Column",
                                       choices = colnames(associations_list()$dframe),
                                       options = list(maxItems = 1,
                                                      placeholder = 'Choose a column',
-                                                     onInitialize = I('function() { this.setValue(""); }'))),
-                       radioButtons("lady_coloring_type",NULL,
-                                    choices = c("Continuous", "Discrete")))
+                                                     onInitialize = I('function() { this.setValue(""); }'))))
     )
   })
   
