@@ -11,14 +11,15 @@ library(reshape2)
 
 source("visualizations.R")
 source("queries.R")
+source("db_info.R")
 
 if(!exists("pool")){
   pool <- dbPool(
     drv = RPostgreSQL::PostgreSQL(),
-    dbname = "antom",
-    host = "biodb.uef.fi",
-    user = "antom",
-    password = "d0189244be",
+    dbname = db_name,
+    host = db_host,
+    user = db_user,
+    password = db_password,
     maxSize = 10,
     idleTimeout = 40000
   )

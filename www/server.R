@@ -469,7 +469,7 @@ shinyServer(function(input,output){
   })
   
   output$lady_manhattan_plot_static <- renderPlot({
-    if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring-column != ""){
+    if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring_column != ""){
       lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE, input$lady_coloring_column,input$lady_coloring_type)
     }
     else{

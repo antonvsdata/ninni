@@ -140,8 +140,8 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   else{
     vars <- dat_l$Variable1 %>% unique() %>% sort()
     p <- p +
-      scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 30)]) +
-      scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 30)])
+      scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 40)]) +
+      scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 40)])
     p
   }
 }
@@ -409,7 +409,7 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,col
       p <- ggplot(dframe, aes(x = Variable,y = eval(parse(text = Y))))
     }
     p <- p +
-      scale_x_discrete(breaks = dframe$Variable[seq(1,nrow(dframe),length.out = 30)])
+      scale_x_discrete(breaks = sort(dframe$Variable)[seq(1,nrow(dframe),length.out = 40)])
   }
   if(varnum == 2){
     dframe <- dframe %>% mutate(X = paste(Variable1,Variable2,sep="_x_"))
@@ -421,14 +421,15 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,col
     }
     p <- p +
       xlab("Variables") +
-      scale_x_discrete(breaks = dframe$X[seq(1,nrow(dframe),length.out = 30)])
+      scale_x_discrete(breaks = sort(dframe$X)[seq(1,nrow(dframe),length.out = 40)])
   }
   
   p <- p +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          axis.text.x = element_text(angle = 90))
+          axis.text.x = element_text(angle = 90)) +
+    ylab(Y)
   
   if (interactive){
     if (varnum == 1){
