@@ -13,11 +13,12 @@ EFFECT_U95
 N
 P
 P_FDR
+**Other columns**
 
 Example: study1.csv
 
-VARIABLE1_LABEL,VARIABLE2_LABEL,EFFECT,EFFECT_L95,EFFECT_U95,N,P,P_FDR
-ABCD,TP53,8,5,10,100,0.01,1
+VARIABLE1_LABEL,VARIABLE2_LABEL,EFFECT,EFFECT_L95,EFFECT_U95,N,P,P_FDR,CLASS
+ABCD,TP53,8,5,10,100,0.01,1,A
 
 
 
@@ -43,7 +44,7 @@ TP53,Cancer gene
 The datasets should be listed in a tab-delimited .txt file with the following columns:
 
 - DATASET_FILENAME: the name of the .csv file containing the dataset
-- VARIABLES FILENAME: optional file describing the variables
+- VARIABLES_FILENAME: optional file describing the variables
 - LABEL: short label for the dataset
 - DESCRIPTION: longer description of the dataset
 - VARNUM: number of variables in the dataset
@@ -53,16 +54,17 @@ The datasets should be listed in a tab-delimited .txt file with the following co
 Example: datasets.txt:
 
 DATASET_FILENAME	VARIABLES_FILENAME	LABEL	DESCRIPTION	VARNUM	EFFECT_TYPE	METADATA_LABELS
-study1.csv	study1_variables.txt	DRUG_STUDY1	Drug interaction study, using mortality as outcome	2	OR	DRUG_INTERACTION;MALES;T2D
+study1_results.csv	study1_variables.csv	DRUG_STUDY1	Drug interaction study, using mortality as outcome	2	OR	DRUG_INTERACTION;MALES;T2D
 
+##NOTE: Remember to give the relative path to the files from the repository you plan to run the import script from.
 
 
 
 4:
-Metadata of dataasets should be described in a separate tab-delimited .txt file with the following columns:
+Metadata labels of datasets should be described in a separate tab-delimited .txt file with the following columns:
 
 LABEL: The metadata label, same as in the previous .txt file
-DESCRIPTION: Description of the metadata tag
+DESCRIPTION: Description of the metadata label
 
 
 Example: metadata.txt
@@ -79,11 +81,8 @@ T2D	Type 2 Diabetes
 When all the files are in the right format, you can import the datasets using import_data.py script located in the /src repository.
 The script requires two command line parameters:
 
--dsf 	gives the file listing the datasets (see section 3)
--mdf 	gives the metadata file (see section 4)
-
-All the data is imported in the database as a single bulk.
-
+-dsf 	dataset file (see section 3)
+-mdf 	metadata file (see section 4)
 
 
 Example:
