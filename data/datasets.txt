@@ -1,8 +1,7 @@
 DATASET_FILENAME	VARIABLES_FILENAME	LABEL	DESCRIPTION	VARNUM	EFFECT_TYPE	METADATA_LABELS
-data/ninni_results_test.csv		TEST	test	2	OR	TEST
-data/ninni_results_event_deathpv_interactions.csv	data/ninni_variables_event_deathpv_interactions.csv	EVENT_DEATH_INTERACTION	Effect of interaction of drugs to mortality	2	OR	DRUG_INTERACTION;MORTALITY
-data/ninni_results_event_hipfracpv_interactions.csv	data/ninni_variables_event_hipfracpv_interactions.csv	EVENT_HIPFRACTURE_INTERACTION	Effect of interaction of drugs to risk of hip fracture	2	OR	DRUG_INTERACTION;HIP_FRACTURE
-data/ninni_results_event_hipfracpv_single.csv	data/ninni_variables_event_hipfracpv_single.csv	EVENT_HIPFRACTURE_SINGLE	Effect of individual drugs to risk of hip fracture	1	OR	HIP_FRACTURE
-data/ninni_results_event_deathpv_single.csv	data/ninni_variables_event_deathpv_single.csv	EVENT_DEATH_SINGLE	Effect of individual drugs to mortality	1	OR	MORTALITY
-data/ninni_results_event_ryhapv_interactions.csv	data/ninni_variables_event_ryhapv_interactions.csv	EVENT_RYHA_INTERACTION	Effect of interaction of drugs to risk of arrhytmia	2	OR	DRUG_INTERACTION;ARRHYTMIA
-data/ninni_results_event_ryhapv_single.csv	data/ninni_variables_event_ryhapv_single.csv	EVENT_RYHA_SINGLE	Effect of individual drugs to risk of arrhytmia	1	OR	ARRHYTMIA
+../data/ninni_results_event_kuolpv_interactions.csv	../data/ninni_variables_event_kuolpv_interactions.csv	EVENT_DEATH_INTERACTION	Effect of interaction of drugs to all cause mortality	2	OR	DRUG_INTERACTION
+../data/ninni_results_event_hipfracpv_interactions.csv	../data/ninni_variables_event_hipfracpv_interactions.csv	EVENT_HIPFRACTURE_INTERACTION	Effect of interaction of drugs to risk of hip fracture	2	OR	DRUG_INTERACTION
+../data/ninni_results_event_hipfracpv_single.csv	../data/ninni_variables_event_hipfracpv_single.csv	EVENT_HIPFRACTURE	Effect of individual drugs to risk of hip fracture	1	OR	HIP_FRACTURE
+../data/ninni_results_event_kuolpv_single.csv	../data/ninni_variables_event_kuolpv_single.csv	EVENT_DEATH	Effect of individual drugs to all cause mortality	1	OR	MORTALITY
+../data/ninni_results_event_ryhapv_interactions.csv	../data/ninni_variables_event_ryhapv_interactions.csv	EVENT_RYHA_INTERACTION	Effect of interaction of drugs to risk of arrhytmia	2	OR	DRUG_INTERACTION
+../data/ninni_results_event_ryhapv_single.csv	../data/ninni_variables_event_ryhapv_single.csv	EVENT_RYHA	Effect of individual drugs to risk of arrhytmia	1	OR	ARRHYTMIA

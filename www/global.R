@@ -19,9 +19,9 @@ if(!exists("pool")){
     dbname = db_name,
     host = db_host,
     user = db_user,
-    password = db_password,
-    maxSize = 10,
-    idleTimeout = 40000
+    password = db_password
+    #maxSize = 10,
+    #idleTimeout = 40000
   )
 }
 

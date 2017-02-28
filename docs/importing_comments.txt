@@ -1,0 +1,39 @@
+
+Changes done:
+- Added a src/import.sh script for running python importer
+- Changed paths to relative paths (e.g. ../data/)
+
+
+TODO:
+
+- Possibility to empty the whole database before importing? How is it checked that the previous data does not mix up with the imported data
+- In relation to previous point, possibility to create the database schema automatically using the script (enables also easy way to clear the database when needed, drop the schema, create a new schema)
+- When starting importing, check if all required files exist (nicer to get a heads up, than wait for couple of hours to see an error message saying that a file does not exist)
+- Change datasets.txt and metadata.txt to .csv
+- datasets.txt: "CORR" should be "COR"
+- Add a file called "install_packages.R" that contains installing commands for all required packages (allows easy installation/update)
+
+Security
+- Database login information still in Python script, move to following pattern:
+- Add following files (I guess these could be tab-delimited files, easier to handle with plain text editors):
+
+src/database_import.config 
+src/database_import.config-TEMPLATE
+
+www/database_www.config
+www/database_www.config-TEMPLATE
+
+File contents (db config info):
+db_host	example.host.com
+db_port	database host port
+db_name	ninni_v1
+db_user	username
+db_password	testpassword
+
+The .config-TEMPLATE files should contain previously listed dummy information, and the .config files should include the actual db login information, THIS INFORMATION SHOULD NOT BE INCLUDED IN GIT (.config files are now included in .gitignore file). There should be two users, one with only read access (e.g. "ninni_r") that the web application uses, and one with read/write access (e.g. "ninni_rw") that the importer uses. 
+
+
+
+
+
+
