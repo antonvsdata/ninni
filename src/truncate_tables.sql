@@ -1,0 +1,9 @@
+﻿TRUNCATE associations CASCADE
+TRUNCATE associationtovariable CASCADE
+TRUNCATE datasetmetadata CASCADE
+TRUNCATE datasets CASCADE
+TRUNCATE datasettometadata CASCADE
+TRUNCATE metavariables CASCADE
+TRUNCATE numval CASCADE
+TRUNCATE strval CASCADE
+TRUNCATE variables CASCADE;
