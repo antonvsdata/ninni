@@ -48,7 +48,7 @@ The datasets should be listed in a tab-delimited .txt file with the following co
 - LABEL: short label for the dataset
 - DESCRIPTION: longer description of the dataset
 - VARNUM: number of variables in the dataset
-- EFFECT_TYPE: The effect type in the dataset: "OR" for odds-ratio, "FC" for fold-change or "CORR" for correlation
+- EFFECT_TYPE: The effect type in the dataset: "OR" for odds-ratio, "FC" for fold-change or "COR" for correlation
 - METADATA_LABELS: possible metadata labels for the dataset
 
 Example: datasets.txt:
@@ -78,7 +78,9 @@ T2D	Type 2 Diabetes
 
 
 5:
-When all the files are in the right format, you can import the datasets using import_data.py script located in the /src repository.
+When all the files are in the right format, you can import the datasets using import.sh script found in the /src directory.
+
+import.sh calls import_data.py script located in the /src repository.
 The script requires two command line parameters:
 
 -dsf 	dataset file (see section 3)

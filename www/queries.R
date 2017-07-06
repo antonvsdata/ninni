@@ -77,7 +77,7 @@ join_variables <- function(conn,assocs_tbl,varnum){
     inner_join(assoc_to_var_tbl, by = c("id" = "variable_id"))
   assocs_tbl <- left_join(assocs_tbl,var_tbl,by = c("id" = "association_id"))
  
-  
+  print(colnames(assocs_tbl))
   # Removes unnecessary columns
   if (varnum == 1){
     assocs_tbl <- assocs_tbl %>%
@@ -101,6 +101,7 @@ join_variables <- function(conn,assocs_tbl,varnum){
       separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
   }
   incProgress(0.2)
+  print(colnames(assocs_tbl))
   #Join metavariables
   metavar_tbl <- get_metavariables(conn,assocs_tbl_orig)
   if(!is.null(metavar_tbl)){
