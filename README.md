@@ -13,4 +13,4 @@ Ninni currently has following interactive plots available:
 + Q-Q plots
 + Lady Manhattan plots
 
-
+Ninni is licensed under the terms of the MIT license
