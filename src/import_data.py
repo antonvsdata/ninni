@@ -237,7 +237,42 @@ def check_files_exist(dsfile):
             if (row["VARIABLES_FILENAME"] is not None and row["VARIABLES_FILENAME"] != ""):
                 if not os.path.isfile(vf):
                     raise FileNotFoundError(vf)
+
+def set_table_ids():
+    global datasetID, associationID, datasetToMetaDataID, datasetMetaDataID, associationToVariableID, variableID, numvalID, strvalID, metavariableID
+    datasetID = get_last_id("datasets")
+    associationID =  get_last_id("associations")
+    datasetToMetaDataID = get_last_id("datasettometadata")
+    datasetMetaDataID = get_last_id("datasetmetadata")
+    associationToVariableID = get_last_id( "associationtovariable")
+    variableID = get_last_id("variables")
+    numvalID = get_last_id("numval")
+    strvalID = get_last_id("strval")
+    metavariableID = get_last_id("metavariables")
+        
+
+def get_last_id(table):
+    query = "SELECT id FROM " + table + " ORDER BY id DESC LIMIT 1;"
+    cursor.execute(query)
+    last_row = cursor.fetchone()
+    if last_row is not None:
+        last_id = last_row[0]
+    else:
+        last_id = 1
+    return last_id
     
+def datasets_exist(datasetfile):
+    exist = []
+    with open(datasetfile,'r') as dataset_file:
+        rdr = csv.DictReader(dataset_file, delimiter = ",")
+        for row in rdr:
+            label = row["LABEL"]
+            cursor.execute(datasetquery, (label,))
+            dataset_row = cursor.fetchone()
+            if dataset_row is not None:
+                exist.append(label)
+    return exist
+            
             
 def main():
     file = None
@@ -255,6 +290,20 @@ def main():
         print("Database schema dropped")
         executeSQLFromFile("create_schema.sql")
         print("Database schema recreated")
+        
+    if args.append:
+        # If any of the datasets to be appended already exist in the database, stop the script
+        existing_datasets = datasets_exist(args.dataset_file)
+        if len(existing_datasets) > 0:
+            print("Error: Following datasets already exist in the database:")
+            for e in existing_datasets:
+                print(e)
+            print("Please only apend datasets that are not found in the database or remove --append to clear database before import")
+            dbconn.commit()
+            cursor.close()
+            dbconn.close()
+            sys.exit()
+        set_table_ids()
         
     #If args.append: Set all IDs to last IDs in database
         
