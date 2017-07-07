@@ -240,26 +240,26 @@ def check_files_exist(dsfile):
 
 def set_table_ids():
     global datasetID, associationID, datasetToMetaDataID, datasetMetaDataID, associationToVariableID, variableID, numvalID, strvalID, metavariableID
-    datasetID = get_last_id("datasets")
-    associationID =  get_last_id("associations")
-    datasetToMetaDataID = get_last_id("datasettometadata")
-    datasetMetaDataID = get_last_id("datasetmetadata")
-    associationToVariableID = get_last_id( "associationtovariable")
-    variableID = get_last_id("variables")
-    numvalID = get_last_id("numval")
-    strvalID = get_last_id("strval")
-    metavariableID = get_last_id("metavariables")
+    datasetID = get_next_id("datasets")
+    associationID =  get_next_id("associations")
+    datasetToMetaDataID = get_next_id("datasettometadata")
+    datasetMetaDataID = get_next_id("datasetmetadata")
+    associationToVariableID = get_next_id( "associationtovariable")
+    variableID = get_next_id("variables")
+    numvalID = get_next_id("numval")
+    strvalID = get_next_id("strval")
+    metavariableID = get_next_id("metavariables")
         
 
-def get_last_id(table):
+def get_next_id(table):
     query = "SELECT id FROM " + table + " ORDER BY id DESC LIMIT 1;"
     cursor.execute(query)
     last_row = cursor.fetchone()
     if last_row is not None:
         last_id = last_row[0]
     else:
-        last_id = 1
-    return last_id
+        last_id = 0
+    return last_id + 1
     
 def datasets_exist(datasetfile):
     exist = []
