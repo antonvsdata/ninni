@@ -8,7 +8,7 @@ import string
 import os.path
 
 # Retrieving database configuration
-config_file = 'database_import.config-TEST'
+config_file = 'database_import.config'
 infos = []
 with open(config_file) as tsv:
     for line in csv.reader(tsv, delimiter = '\t'):
