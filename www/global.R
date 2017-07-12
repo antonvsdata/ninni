@@ -11,15 +11,18 @@ library(reshape2)
 
 source("visualizations.R")
 source("queries.R")
-source("db_info.R")
+
+db_info <- read_db_info("database_www.config")
+print(db_info)
 
 if(!exists("pool")){
   pool <- dbPool(
     drv = RPostgreSQL::PostgreSQL(),
-    dbname = db_name,
-    host = db_host,
-    user = db_user,
-    password = db_password
+    dbname = db_info$db_name,
+    host = db_info$db_host,
+    port = db_info$db_port,
+    user = db_info$db_user,
+    password = db_info$db_password
     #maxSize = 10,
     #idleTimeout = 40000
   )

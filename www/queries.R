@@ -1,3 +1,13 @@
+
+# Read database info from .congif file
+read_db_info <- function(config_file){
+  df <- read.table(config_file)
+  
+  l <- as.list(as.character(df$V2))
+  names(l) <- df$V1
+  l
+}
+
 # Returns the assocsiations table with variables matching the dataset defined by ds_label
 
 get_associations_by_ds <- function(pool,ds_label){
@@ -80,7 +90,6 @@ join_variables <- function(pool,assocs_tbl,varnum){
     rename(association_id = id) %>%
     left_join(var_tbl,by = "association_id")
  
-  print(colnames(assocs_tbl))
   # Removes unnecessary columns
   if (varnum == 1){
     assocs_tbl <- assocs_tbl %>%
@@ -104,7 +113,6 @@ join_variables <- function(pool,assocs_tbl,varnum){
       separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
   }
   incProgress(0.2)
-  print(colnames(assocs_tbl))
   #Join metavariables
   metavar_tbl <- get_metavariables(pool,assocs_tbl_orig)
   if(!is.null(metavar_tbl)){
