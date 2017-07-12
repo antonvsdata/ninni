@@ -1,8 +1,8 @@
 # Returns the assocsiations table with variables matching the dataset defined by ds_label
 
-get_associations_by_ds <- function(conn,ds_label){
-  ds_tbl <- conn %>% tbl("datasets") %>% filter(label == ds_label)
-  assocs_tbl <- conn %>% tbl("associations") %>% semi_join(ds_tbl, by = c("dataset_id" = "id"))
+get_associations_by_ds <- function(pool,ds_label){
+  ds_tbl <- pool %>% tbl("datasets") %>% filter(label == ds_label)
+  assocs_tbl <- pool %>% tbl("associations") %>% semi_join(ds_tbl, by = c("dataset_id" = "id"))
   
   ds_tbl_df <- collect(ds_tbl)
   varnum <- ds_tbl_df$varnum
@@ -12,17 +12,17 @@ get_associations_by_ds <- function(conn,ds_label){
 }
 
 get_datasets <- function(pool){
-  ds_tbl <- src_pool(pool) %>% tbl("datasets") %>% collect()
+  ds_tbl <- pool %>% tbl("datasets") %>% collect()
 }
 
-get_metavariables <- function(conn,assocs_tbl){
+get_metavariables <- function(pool,assocs_tbl){
   
   final_tbl <- NULL
   
   # Get numeric metavariables
-  numval_tbl <- conn %>% tbl("numval") %>%
+  numval_tbl <- pool %>% tbl("numval") %>%
     semi_join(assocs_tbl, by = c("association_id" = "id"))
-  metavar_tbl <- conn %>% tbl("metavariables") %>%
+  metavar_tbl <- pool %>% tbl("metavariables") %>%
     semi_join(numval_tbl, by = c("id" = "metavariable_id")) %>% collect()
   
   # Add metavar as column name and values as column elements to data frame
@@ -42,9 +42,9 @@ get_metavariables <- function(conn,assocs_tbl){
   }
   
   #Get character metavariables
-  strval_tbl <- conn %>% tbl("strval") %>%
+  strval_tbl <- pool %>% tbl("strval") %>%
     semi_join(assocs_tbl, by = c("association_id" = "id"))
-  metavar_tbl <- conn %>% tbl("metavariables") %>%
+  metavar_tbl <- pool %>% tbl("metavariables") %>%
     semi_join(strval_tbl, by = c("id" = "metavariable_id")) %>% collect()
   
   # Add metavar as column name and values as column elements to data frame
@@ -66,29 +66,32 @@ get_metavariables <- function(conn,assocs_tbl){
 }
 # Joins the variables and metavariables to the associations table
 # Returns COLLECTED local data frame
-join_variables <- function(conn,assocs_tbl,varnum){
+join_variables <- function(pool,assocs_tbl,varnum){
   
   assocs_tbl_orig <- assocs_tbl
   
+  
   # Searches the variables connected to the associations and joins them to the assocs_tbl
-  assoc_to_var_tbl <- conn %>% tbl("associationtovariable") %>% 
+  assoc_to_var_tbl <- pool %>% tbl("associationtovariable") %>% 
     semi_join(assocs_tbl, by = c("association_id" = "id"))
-  var_tbl <- conn %>% tbl("variables") %>% 
+  var_tbl <- pool %>% tbl("variables") %>% 
     inner_join(assoc_to_var_tbl, by = c("id" = "variable_id"))
-  assocs_tbl <- left_join(assocs_tbl,var_tbl,by = c("id" = "association_id"))
+  assocs_tbl <- assocs_tbl %>%
+    rename(association_id = id) %>%
+    left_join(var_tbl,by = "association_id")
  
   print(colnames(assocs_tbl))
   # Removes unnecessary columns
   if (varnum == 1){
     assocs_tbl <- assocs_tbl %>%
-      select(-id,-id.x,-id.y,-dataset_id,-variable_id) %>%
+      select(-id.x,-id.y,-dataset_id) %>%
       collect()
   }
   # Removes unnecessary columns and combines the rows of same association
   # (Before this the table had two rows with the same association information, but only one variable each)
   if (varnum == 2){
     assocs_tbl <- assocs_tbl %>%
-      select(-id,-id.x,-id.y,-dataset_id,-variable_id) %>%
+      select(-id.x,-id.y,-dataset_id) %>%
       collect()
     incProgress(0.2,message = "Processing dataset")
     assocs_tbl <- assocs_tbl %>%
@@ -103,7 +106,7 @@ join_variables <- function(conn,assocs_tbl,varnum){
   incProgress(0.2)
   print(colnames(assocs_tbl))
   #Join metavariables
-  metavar_tbl <- get_metavariables(conn,assocs_tbl_orig)
+  metavar_tbl <- get_metavariables(pool,assocs_tbl_orig)
   if(!is.null(metavar_tbl)){
     assocs_tbl <- left_join(assocs_tbl,metavar_tbl,by="association_id")
   }
@@ -287,23 +290,23 @@ varfilter_eff <- function(dframe,eff_min = -Inf,eff_max = Inf,varnum){
 
 # NOTE: does not have variable labels!! FIX!
 
-# filter_by_var <- function(conn,assocs_tbl,var_labels,varnum){
+# filter_by_var <- function(pool,assocs_tbl,var_labels,varnum){
 #   var_labels <- var_labels  %>% strsplit(split=",") %>% unlist
 #   if (length(var_labels) == 1){
-#     var_tbl <- conn %>% tbl("variables") %>% filter(label == var_labels | description == var_labels)
+#     var_tbl <- pool %>% tbl("variables") %>% filter(label == var_labels | description == var_labels)
 #   }
 #   else{
-#     var_tbl <- conn %>% tbl("variables") %>% filter(label %in% var_labels | description %in% var_labels)
+#     var_tbl <- pool %>% tbl("variables") %>% filter(label %in% var_labels | description %in% var_labels)
 #   }
 #   
 #   if (varnum == 1){
-#     assoc_to_var_tbl <- conn %>% tbl("associationtovariable") %>% inner_join(var_tbl,by = c("variable_id" = "id"))
+#     assoc_to_var_tbl <- pool %>% tbl("associationtovariable") %>% inner_join(var_tbl,by = c("variable_id" = "id"))
 #     assocs_tbl <- inner_join(assocs_tbl,assoc_to_var_tbl,by = c("id" = "association_id"))
 #   }
 #   if (varnum == 2){
-#     assoc_to_var_tbl <- conn %>% tbl("associationtovariable") %>% semi_join(var_tbl,by = c("variable_id" = "id"))
+#     assoc_to_var_tbl <- pool %>% tbl("associationtovariable") %>% semi_join(var_tbl,by = c("variable_id" = "id"))
 #     assocs_tbl <- semi_join(assocs_tbl,assoc_to_var_tbl,by = c("id" = "association_id")) %>%
-#       join_variables(conn,assocs_tbl,varnum)
+#       join_variables(pool,assocs_tbl,varnum)
 #   }
 #   
 #   return(assocs_tbl)

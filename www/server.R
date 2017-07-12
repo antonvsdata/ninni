@@ -27,13 +27,11 @@ shinyServer(function(input,output){
       return (NULL)
     }
     withProgress(message = "Retrieving dataset from database",{
-      db_conn <- src_pool(pool)
-      associations_list <- get_associations_by_ds(db_conn,input$ds_label)
+      associations_list <- get_associations_by_ds(pool,input$ds_label)
       incProgress(0.3)
-      associations_list$dframe <- join_variables(db_conn,associations_list$dframe,associations_list$varnum)
+      associations_list$dframe <- join_variables(pool,associations_list$dframe,associations_list$varnum)
       associations_list$dframe <- make_pretty(associations_list$dframe,associations_list$varnum)
     })
-    
     
     return (associations_list)
   })
@@ -237,6 +235,7 @@ shinyServer(function(input,output){
       }
     }
     
+    # Filters for extra metavariables
     if(!is.null(extra_filters())){
       if(associations_list$varnum == 1){
         col_limit <- 8
@@ -365,7 +364,8 @@ shinyServer(function(input,output){
               plotOutput("volcano_static", height = "700"))
     }
     else{
-      plotlyOutput("volcanoly", height = "700")
+      #plotOutput("volcano_static", height = "700")
+      plotlyOutput("volcanoly", height = "700px")
     }
   })
   
