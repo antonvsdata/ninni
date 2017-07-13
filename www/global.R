@@ -12,8 +12,7 @@ library(reshape2)
 source("visualizations.R")
 source("queries.R")
 
-db_info <- read_db_info("database_www.config")
-print(db_info)
+db_info <- read_db_info("/home/users/antom/Projects/ninni/src/database_import.config")
 
 if(!exists("pool")){
   pool <- dbPool(

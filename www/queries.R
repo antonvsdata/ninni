@@ -101,16 +101,17 @@ join_variables <- function(pool,assocs_tbl,varnum){
   if (varnum == 2){
     assocs_tbl <- assocs_tbl %>%
       select(-id.x,-id.y,-dataset_id) %>%
-      collect()
+      collect() %>%
+      as.data.frame()
     incProgress(0.2,message = "Processing dataset")
     assocs_tbl <- assocs_tbl %>%
       group_by(association_id) %>%
-      mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
-      ungroup() %>%
-      select(-description,-label) %>%
-      distinct() %>% 
-      separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
-      separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
+      dplyr::mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
+      dplyr::ungroup() %>%
+      dplyr::select(-description,-label) %>%
+      dplyr::distinct() %>% 
+      tidyr::separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
+      tidyr::separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
   }
   incProgress(0.2)
   #Join metavariables

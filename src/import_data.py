@@ -154,7 +154,7 @@ def isfloat(value):
 def import_associations(file, dsid, varnum, maxlines=-1):
     global metavariableID, associationID, strvalID, numvalID
     with open(file, 'rt') as csvfile:
-        print("Parsing associations...")
+        print("Importing associations...")
         rdr = csv.DictReader(csvfile,delimiter=',')
         # Save first row separately to check the number of columns
         first_row = next(rdr)

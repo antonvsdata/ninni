@@ -4,7 +4,6 @@ packages <- c("shiny",
               "dplyr",
               "tidyr",
               "RPostgreSQL",
-              "ggplot2",
               "plotly",
               "reshape2",
               "dbplyr")
@@ -12,3 +11,4 @@ packages <- c("shiny",
 install.packages(packages)
 
 devtools::install_github("rstudio/pool")
+devtools::install_github('hadley/ggplot2')
