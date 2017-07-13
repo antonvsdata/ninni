@@ -384,52 +384,48 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
 }
 
 lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,color_col = NULL, color_type = NULL){
-  
+  # For OR and FC, use log2 effect
   if(effect_type %in% c("OR","FC")){
-    Y <- "-log10(P) * sign(log2(Effect))"
+    dframe <- dframe %>% mutate(Y = -log10(P) * sign(log2(Effect)))
+    y_label <- "-log10(P) * sign(log2(Effect))"
   }
   else{
-    Y <- "-log10(P) * sign(Effect)"
+    dframe <- dframe %>% mutate(Y = -log10(P) * sign(Effect))
+    y_label <- "-log10(P) * sign(Effect)"
   }
-  
-  if(!is.null(color_col)){
-    if(color_type == "Continuous"){
-      coloring <- color_col
-    }
-    else{
-      coloring <- paste("as.factor(",color_col,")",sep="")
-    }
-  }
-  
+  # For datasets with interactions, the combinations of variables are used as x-axis
   if(varnum == 1){
-    if(!is.null(color_col)){
-      p <- ggplot(dframe, aes(x = Variable,y = eval(parse(text = Y)), color = eval(parse(text =coloring)) ))
-    }
-    else{
-      p <- ggplot(dframe, aes(x = Variable,y = eval(parse(text = Y))))
-    }
-    p <- p +
-      scale_x_discrete(breaks = sort(dframe$Variable)[seq(1,nrow(dframe),length.out = 40)])
+    x_axis <- "Variable"
+    x_label <- "Variable"
+    x_breaks <- sort(dframe$Variable)[seq(1,nrow(dframe),length.out = 40)]
   }
   if(varnum == 2){
     dframe <- dframe %>% mutate(X = paste(Variable1,Variable2,sep="_x_"))
-    if(!is.null(color_col)){
-      p <- ggplot(dframe, aes(x = X,y = eval(parse(text = Y)), color = eval(parse(text =coloring)) ))
+    x_axis <- "X"
+    x_label <- "Variables"
+    x_breaks <- sort(dframe$X)[seq(1,nrow(dframe),length.out = 40)]
+  }
+  # Color is discretised by changing the coloring column to factor
+  if(!is.null(color_col)){
+    if(color_type == "Discrete"){
+      dframe[,color_col] <- as.factor(dframe[,color_col])
     }
-    else{
-      p <- ggplot(dframe, aes(x = X,y = eval(parse(text = Y))))
-    }
-    p <- p +
-      xlab("Variables") +
-      scale_x_discrete(breaks = sort(dframe$X)[seq(1,nrow(dframe),length.out = 40)])
   }
   
+  
+  if(!is.null(color_col)){
+    p <- ggplot(dframe, aes_string(x = x_axis,y = "Y", color = color_col))
+  }
+  else{
+    p <- ggplot(dframe, aes_string(x = x_axis,y = "Y"))
+  }
   p <- p +
+    scale_x_discrete(breaks = x_breaks) +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           axis.text.x = element_text(angle = 90)) +
-    ylab(Y)
+    labs(x = x_label, y = y_label)
   
   if (interactive){
     if (varnum == 1){
