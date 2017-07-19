@@ -1,6 +1,5 @@
 shinyServer(function(input,output){
   
-  
   ds_labels <- reactive({
     ds_dframe$Label
   })
