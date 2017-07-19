@@ -128,10 +128,13 @@ join_variables <- function(pool,assocs_tbl,varnum){
 filter_variable <- function(assocs_tbl,var_labels,varnum){
   var_labels <- var_labels  %>% strsplit(split=",") %>% unlist()
   
+  # Exclude variables marked with '-'
   if(any(grepl("^-",var_labels))){
-    exclusions <- var_labels[grepl("^-",var_labels)] %>% sub("-","",.)
+    # Separate exclusions from other variable labels
+    exclusions <- var_labels[grepl("^-",var_labels)] %>% gsub("^-","",.)
     var_labels <- var_labels[!grepl("^-",var_labels)]
-
+    
+    # Exclude variables marked with '*' wildcard
     excl_asterix <- exclusions[grepl("\\*$",exclusions)]
     for(excl in excl_asterix){
       excl <- paste("^",gsub("\\*",".\\*",excl),sep="")
@@ -142,7 +145,7 @@ filter_variable <- function(assocs_tbl,var_labels,varnum){
         assocs_tbl <- assocs_tbl %>% filter(!grepl(excl,Variable1) & !grepl(excl,Variable2))
       }
     }
-
+    # Exclude non-wildcard variables
     exclusions <- exclusions[!grepl("\\*$",exclusions)]
     if (varnum == 1){
       assocs_tbl <- assocs_tbl %>% filter(!Variable %in% exclusions)
@@ -151,7 +154,9 @@ filter_variable <- function(assocs_tbl,var_labels,varnum){
       assocs_tbl <- assocs_tbl %>% filter(!Variable1 %in% exclusions & !Variable2 %in% exclusions)
     }
   }
-
+  
+  # Limit associations to those matching search
+  # First find all the variables matching wildcards
   var_asterix <- var_labels[grepl("\\*$",var_labels)]
   if(length(var_asterix)){
     assocs_tbl_filtered <- NULL
@@ -173,15 +178,16 @@ filter_variable <- function(assocs_tbl,var_labels,varnum){
     assocs_tbl <- assocs_tbl_filtered
   }
   
-
+  # Then add non-wildcard variables
   var_labels <- var_labels[!grepl("\\*$",var_labels)]
   if(length(var_labels)){
     if (varnum == 1){
-      assocs_tbl <- assocs_tbl %>% filter(Variable %in% var_labels)
+      assocs_tmp <- assocs_tbl %>% filter(Variable %in% var_labels)
     }
     if (varnum == 2){
-      assocs_tbl <- assocs_tbl %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels)
+      assocs_tmp <- assocs_tbl %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels)
     }
+    assocs_tbl <- union(assocs_tbl, assocs_tmp)
   }
   
   assocs_tbl
@@ -239,11 +245,12 @@ filter_description <- function(assocs_tbl,desc_labels,varnum){
   desc_labels <- desc_labels[!grepl("\\*$",desc_labels)]
   if(length(desc_labels)){
     if (varnum == 1){
-      assocs_tbl <- assocs_tbl %>% filter(Description %in% desc_labels)
+      assocs_tmp <- assocs_tbl %>% filter(Description %in% desc_labels)
     }
     if (varnum == 2){
-      assocs_tbl <- assocs_tbl %>% filter(Description1 %in% desc_labels | Description2 %in% desc_labels)
+      assocs_tmp <- assocs_tbl %>% filter(Description1 %in% desc_labels | Description2 %in% desc_labels)
     }
+    assocs_tbl <- union(assocs_tbl, assocs_tmp)
   }
   
   assocs_tbl
