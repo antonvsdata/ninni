@@ -109,6 +109,7 @@ join_variables <- function(pool,assocs_tbl,varnum){
       dplyr::mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
       dplyr::ungroup() %>%
       dplyr::select(-description,-label) %>%
+      as.data.frame() %>%
       dplyr::distinct() %>% 
       tidyr::separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
       tidyr::separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
