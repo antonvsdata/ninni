@@ -150,8 +150,7 @@ def isfloat(value):
         return False
     
 # Adds associations to the database, checks if the dataset has one or two variables and acts accordingly
-# maxlines parameter is only for testing
-def import_associations(file, dsid, varnum, maxlines=-1):
+def import_associations(file, dsid, varnum, maxlines):
     global metavariableID, associationID, strvalID, numvalID
     with open(file, 'rt') as csvfile:
         print("Importing associations...")
@@ -200,7 +199,7 @@ def import_associations(file, dsid, varnum, maxlines=-1):
             associationID += 1
             if(maxlines > 0 and rowcount >= maxlines):
                 break
-            if(rdr.line_num % 1000 == 0):
+            if(rowcount % 1000 == 0):
                 dbconn.commit()
                 print("{0} rows imported".format(rowcount))
 
@@ -210,7 +209,7 @@ def import_associations(file, dsid, varnum, maxlines=-1):
 
 # Read the datasets file, populate the Datasets table and calls other functions to populate
 # the other tables
-def import_datasets(file):
+def import_datasets(file, maxlines):
     global datasetID
     with open(file,'r') as dataset_file:
         rdr = csv.DictReader(dataset_file, delimiter = ",")
@@ -220,7 +219,7 @@ def import_datasets(file):
             print("Importing dataset ", row["DATASET_FILENAME"], "...")
             cursor.execute(add_dataset, dataset)
             print("Dataset information inserted")
-            import_associations(row["DATASET_FILENAME"], datasetID,row["VARNUM"])
+            import_associations(row["DATASET_FILENAME"], datasetID, row["VARNUM"], maxlines)
             import_datatometa(datasetID, row["METADATA_LABELS"])
             if (row["VARIABLES_FILENAME"] is not None and row["VARIABLES_FILENAME"] != ""):
                 update_variables(row["VARIABLES_FILENAME"])
@@ -287,13 +286,14 @@ def datasets_exist(datasetfile):
             
             
 def main():
-    file = None
-    maxlines = None
+    #file = None
+    #maxlines = None
     parser = argparse.ArgumentParser()
     parser.add_argument("-dsf", "--dataset_file", help="The file containing information on the datasets to import")
     parser.add_argument("-mdf","--meta_data_file", help="The file containing the metadata for the datasets")
     parser.add_argument("-a","--append", action = 'store_true', help="Add dataset to the databse instead of clearing the database before import")
-        
+    parser.add_argument("-ml","--maxlines", default = -1, help = "Maximum number of lines imported per dataset (mainly for testing, defaults to unlimited)")
+    
     args = parser.parse_args()
     
     if not args.append: # Database is cleared before import
@@ -326,7 +326,7 @@ def main():
     if args.dataset_file:
         try:
             check_files_exist(args.dataset_file)
-            import_datasets(args.dataset_file)
+            import_datasets(args.dataset_file, int(args.maxlines))
         except FileNotFoundError as e:
             print("File not found:", e.file)
     
