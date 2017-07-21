@@ -40,6 +40,7 @@ add_rowcount = ("UPDATE Datasets SET rowcount = %s WHERE id = %s")
 datasetquery = ("SELECT * FROM datasets WHERE label=%s")
 
 add_metavar = ("INSERT INTO metavariables (ID, label) VALUES (%s, %s)")
+metavarquery = ("SELECT * FROM metavariables WHERE label = %s")
 add_numval = ("INSERT INTO numval (ID, value, association_id, metavariable_id) VALUES (%s, %s, %s, %s)")
 add_strval = ("INSERT INTO strval (ID, value, association_id, metavariable_id) VALUES (%s, %s, %s, %s)")
 
@@ -122,7 +123,7 @@ def create_varid(var_label):
     # Check if variable with the same label already exists in the database
     cursor.execute(varquery, (var_label,))
     var_row = cursor.fetchone()
-    if(var_row is not None):
+    if var_row is not None:
         varID = var_row[0]
     else:
         cursor.execute(add_var, (variableID, var_label,var_label))
@@ -140,7 +141,13 @@ def import_assoctovar(assoc_id, var_label):
     if (varid is not None):
         cursor.execute(add_assoctovar, (associationToVariableID, assoc_id, varid))
         associationToVariableID += 1
-
+        
+def import_metavariable(label):
+    global metavariableID
+    
+    if metavar_row is None:
+        cursor.execute(add_metavar, (metavariableID, label))
+        metavariableID +=1
 
 def isfloat(value):
     try:
@@ -172,13 +179,20 @@ def import_associations(file, dsid, varnum, maxlines):
             for i in range(0,metavarnum):
                 metavars[i] = [None] * 3
                 metavars[i][0] = rdr.fieldnames[i+col_limit]
-                metavars[i][1] = metavariableID
+                # If metavariable already exists in the database, get its ID
+                cursor.execute(metavarquery, (rdr.fieldnames[i+col_limit],))
+                metavar_row = cursor.fetchone()
+                if metavar_row is not None:
+                    metavars[i][1] = metavar_row[0]
+                # If metavariable does not exist in the database, import it and save ID
+                else:
+                    metavars[i][1] = metavariableID
+                    cursor.execute(add_metavar, (metavariableID, rdr.fieldnames[i+col_limit]))
+                    metavariableID +=1
                 if isfloat(first_row[metavars[i][0]]):
                     metavars[i][2] = "num"
                 else:
                     metavars[i][2] = "str"
-                cursor.execute(add_metavar, (metavariableID, rdr.fieldnames[i+col_limit]))
-                metavariableID +=1
             dbconn.commit()
         rowcount = 0
         for row in rdr:
