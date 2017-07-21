@@ -5,10 +5,8 @@ shinyServer(function(input,output){
   })
   
   output$ds_choice <- renderUI({
-    selectizeInput("ds_label",label = NULL, width = "100%",
-                   choices = ds_labels(), options = list(maxItems = 1,
-                                                         placeholder = 'Choose a dataset',
-                                                         onInitialize = I('function() { this.setValue(""); }')))
+    selectizeInput("ds_label",label = "Dataset label", width = "100%", multiple = TRUE,
+                   choices = ds_labels(), options = list(placeholder = "Choose a dataset"))
   })
   
   output$ds_info <- renderUI({
@@ -18,19 +16,17 @@ shinyServer(function(input,output){
   # Handles the query to the database
   # Reactive expressions cache their value, so filtering the same dataset multiple times
   # does not provoke a new database query
-  
-  associations_list_query <- reactive({
+  associations_list_query <- eventReactive(input$query,{
     if(is.null(input$ds_label)){
       return(NULL)
     }
-    if (input$ds_label == ""){
+    if (!length(input$ds_label)){
       return (NULL)
     }
     withProgress(message = "Retrieving dataset from database",{
-      associations_list <- get_associations_by_ds(pool,input$ds_label)
+      associations_list <- get_associations(pool,input$ds_label, input$var_keywords, input$metadata_keywords)
       incProgress(0.3)
-      associations_list$dframe <- join_variables(pool,associations_list$dframe,associations_list$varnum)
-      associations_list$dframe <- make_pretty(associations_list$dframe,associations_list$varnum)
+      associations_list$dframe <- join_variables(pool,associations_list$dframe,associations_list$datasets)
     })
     
     return (associations_list)
@@ -91,11 +87,11 @@ shinyServer(function(input,output){
     if(is.null(associations_list_query())){
       return(NULL)
     }
-    if(associations_list_query()$varnum == 1){
-      col_limit <- 8
+    if(any(associations_list_query()$varnum == 2)){
+      col_limit <- 11
     }
-    else{ #varnum == 2
-      col_limit <- 10
+    else{ #all datasets have varnum == 1
+      col_limit <- 9
     }
     dframe <- associations_list_query()$dframe %>% as.data.frame()
     if(ncol(dframe) == col_limit){
@@ -157,11 +153,10 @@ shinyServer(function(input,output){
     )
   })
   
-    # Returns a list with following objects:
+  # Returns a list with following objects:
   # - dframe: a data frame with the associations
   # - varnum: the number of variables in the dataset
   # - effect_type
-  
   # Filter the associations dataframe
   associations_list <- eventReactive(input$submit,{
     
@@ -187,22 +182,30 @@ shinyServer(function(input,output){
         dframe <- varfilter_eff(dframe, as.numeric(input$var_eff_min), as.numeric(input$var_eff_max), associations_list$varnum)
       }
     }
-
-    
     # Association filters:
     
     # Variable
     # Keywords, comma separated
     if (input$var_labels != ""){
-      dframe <- filter_variable(dframe,input$var_labels,associations_list$varnum)
+      if(any(associations_list$varnum == 2)){
+        cols <- c("Variable1", "Variable2")
+      }
+      else{
+        cols <- "Variable1"
+      }
+      dframe <- filter_by_keyword(dframe,cols,input$var_labels)
     }
-    
     # Description
     # Keywords, comma separated
     if (input$description_labels != ""){
-      dframe <- filter_description(dframe,input$description_labels,associations_list$varnum)
+      if(any(associations_list$varnum == 2)){
+        cols <- c("Description1","Description2")
+      }
+      else{
+        cols <- "Description1"
+      }
+      dframe <- filter_by_keyword(dframe,cols,input$description_labels)
     }
-    
     # P-value <
     if(input$p_limit != ""){
       if (input$p_limit_fdr){
@@ -237,11 +240,11 @@ shinyServer(function(input,output){
     
     # Filters for extra metavariables
     if(!is.null(extra_filters())){
-      if(associations_list$varnum == 1){
-        col_limit <- 8
+      if(any(associations_list$varnum == 2)){
+        col_limit <- 11
       }
-      else{ #varnum == 2
-        col_limit <- 10
+      else{ # each varnum == 1
+        col_limit <- 9
       }
       for(i in (col_limit+1):ncol(dframe)){
         if(class(dframe[,i]) == "numeric"){
@@ -266,9 +269,9 @@ shinyServer(function(input,output){
         else if(class(dframe[,i]) == "character"){
           inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"label",sep="_"))]
           expr <- paste("input",inputid,sep="$")
-          keywords <- eval(parse(text = expr)) %>% split(",")
+          keywords <- eval(parse(text = expr))
           if(keywords != ""){
-            dframe <- dframe[dframe[,i] %in% keywords,]
+            dframe <- filter_by_keyword(dframe,colnames(dframe)[i], keywords)
           }
         }
       }

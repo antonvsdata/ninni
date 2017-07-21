@@ -8,17 +8,95 @@ read_db_info <- function(config_file){
   l
 }
 
-# Returns the assocsiations table with variables matching the dataset defined by ds_label
+get_associations <- function(pool,ds_labels,var_keywords,metadata_keywords){
+  assocs_tbl <- pool %>% tbl("associations")
+  ds_tbl <- pool %>% tbl("datasets")
+  
+  if(metadata_keywords != "" | length(ds_labels > 0)){
+    ds_tbl <- filter_datasets(pool, ds_tbl, metadata_keywords, ds_labels)
+    assocs_tbl <- asssocs_tbl <- assocs_tbl %>%
+      semi_join(ds_tbl, by = c("dataset_id" = "id"))
+  }
+  
+  if(var_keywords != ""){
+    tmp_list <- filter_associations_by_variable(pool,assocs_tbl,ds_tbl,var_keywords)
+    assocs_tbl <- tmp_list[[1]]
+    ds_tbl <- tmp_list[[2]]
+  }
+  
+  ds_df <- collect(ds_tbl)
+  varnum <- ds_df$varnum
+  effect_type <-ds_df$effect_type
+  
+  return(list(dframe = assocs_tbl, datasets = ds_df, varnum = varnum, effect_type = effect_type))
+}
 
-get_associations_by_ds <- function(pool,ds_label){
-  ds_tbl <- pool %>% tbl("datasets") %>% filter(label == ds_label)
-  assocs_tbl <- pool %>% tbl("associations") %>% semi_join(ds_tbl, by = c("dataset_id" = "id"))
+filter_datasets <- function(pool, ds_tbl, metadata_keywords, ds_labels){
+  # Filter by metadata tag
+  if(metadata_keywords != ""){
+    keywords <- metadata_keywords %>% strsplit(split=",") %>% unlist()
+    if(length(keywords == 1)){
+      meta_tbl <- conn %>% tbl("datasetmetadata") %>%
+        filter(label == keywords)
+    }
+    else{
+      meta_tbl <- conn %>% tbl("datasetmetadata") %>%
+        filter(label %in% keywords)
+    }
+    ds_to_meta_tbl <- conn %>% tbl("datasettometadata") %>%
+      semi_join(meta_tbl,by=c("datasetmetadata_id" = "id"))
+    ds_tbl <- ds_tbl %>%
+      semi_join(ds_to_meta_tbl,by=c("id"="dataset_id"))
+  }
   
-  ds_tbl_df <- collect(ds_tbl)
-  varnum <- ds_tbl_df$varnum
-  effect_type <-ds_tbl_df$effect_type
+  #Filter by dataset label
+  if(length(ds_labels > 0)){
+    if(length(ds_labels) == 1){
+      ds_tbl <- ds_tbl %>% filter(label == ds_labels)
+    }
+    else{
+      ds_tbl <- ds_tbl %>% filter(label %in% ds_labels)
+    }
+  }
   
-  return (list(dframe =assocs_tbl,varnum = varnum,effect_type = effect_type))
+  ds_tbl
+}
+
+filter_associations_by_variable <- function(pool,assocs_tbl,ds_tbl,var_keywords){
+  keywords <- var_keywords %>% strsplit(split=",") %>% unlist()
+  
+  var_tbl <- filtered_var_tbl(pool, keywords)
+  
+  assoc_to_var_tbl <- pool %>% tbl("associationtovariable") %>%
+    semi_join(var_tbl,by=c("variable_id" = "id"))
+  assocs_tbl <- assocs_tbl %>%
+    semi_join(assoc_to_var_tbl,by = c("id" = "association_id"))
+  ds_tbl <- ds_tbl %>%
+    semi_join(assocs_tbl,by=c("id" = "dataset_id"))
+  
+  return(list(assocs_tbl,ds_tbl))
+}
+
+# Get variable table filtered by keywords
+filtered_var_tbl <- function(pool, var_keywords){
+  # Get variable table as data frame
+  var_df <- pool %>% tbl("variables") %>% collect()
+  
+  var_df <- filter_by_keyword(var_df,"label",var_keywords)
+  
+  accepted_labels <- var_df$label
+  
+  if(!length(accepted_labels))
+    stop("No variables matching the search found in the database")
+  
+  if(length(accepted_labels) == 1){
+    var_tbl <- pool %>% tbl("variables") %>% filter(label == accepted_labels)
+  }
+  else{
+    var_tbl <- pool %>% tbl("variables") %>% filter(label %in% accepted_labels)
+  }
+  
+  var_tbl
 }
 
 get_datasets <- function(pool){
@@ -76,10 +154,9 @@ get_metavariables <- function(pool,assocs_tbl){
 }
 # Joins the variables and metavariables to the associations table
 # Returns COLLECTED local data frame
-join_variables <- function(pool,assocs_tbl,varnum){
+join_variables <- function(pool,assocs_tbl,ds_df){
   
-  assocs_tbl_orig <- assocs_tbl
-  
+  metavar_tbl <- get_metavariables(pool,assocs_tbl)
   
   # Searches the variables connected to the associations and joins them to the assocs_tbl
   assoc_to_var_tbl <- pool %>% tbl("associationtovariable") %>% 
@@ -89,44 +166,125 @@ join_variables <- function(pool,assocs_tbl,varnum){
   assocs_tbl <- assocs_tbl %>%
     rename(association_id = id) %>%
     left_join(var_tbl,by = "association_id")
- 
-  # Removes unnecessary columns
-  if (varnum == 1){
-    assocs_tbl <- assocs_tbl %>%
-      select(-id.x,-id.y,-dataset_id) %>%
-      collect()
-  }
-  # Removes unnecessary columns and combines the rows of same association
-  # (Before this the table had two rows with the same association information, but only one variable each)
-  if (varnum == 2){
-    assocs_tbl <- assocs_tbl %>%
-      select(-id.x,-id.y,-dataset_id) %>%
-      collect() %>%
-      as.data.frame()
-    incProgress(0.2,message = "Processing dataset")
-    assocs_tbl <- assocs_tbl %>%
-      group_by(association_id) %>%
-      dplyr::mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
-      dplyr::ungroup() %>%
-      dplyr::select(-description,-label) %>%
-      as.data.frame() %>%
-      dplyr::distinct() %>% 
-      tidyr::separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
-      tidyr::separate(var_descriptions, c("var_description1","var_description2"), sep = ";")
-  }
-  incProgress(0.2)
-  #Join metavariables
-  metavar_tbl <- get_metavariables(pool,assocs_tbl_orig)
-  if(!is.null(metavar_tbl)){
-    assocs_tbl <- left_join(assocs_tbl,metavar_tbl,by="association_id")
-  }
-  assocs_tbl <- select(assocs_tbl,-association_id)
   
-  return (assocs_tbl)
+  assocs_df <- collect(assocs_tbl)
+  dataset_ids <- sort(unique(assocs_df$dataset_id))
+  
+  assocs_df_edited <- data.frame()
+  for(ds_id in dataset_ids){
+    assocs_df_tmp <- assocs_df %>% filter(dataset_id == ds_id)
+    varnum <- ds_df[ds_df$id == ds_id, "varnum"]
+    assocs_df_tmp$dataset_label <- as.character(ds_df[ds_df$id == ds_id, "label"])
+    
+    # Removes unnecessary columns
+    if (varnum == 1){
+      assocs_df_tmp <- assocs_df_tmp %>%
+        select(-id.x,-id.y, -dataset_id) %>%
+        collect() %>%
+        make_pretty(varnum)
+    }
+    # Removes unnecessary columns and combines the rows of same association
+    # (Before this the table had two rows with the same association information, but only one variable each)
+    if (varnum == 2){
+      assocs_df_tmp <- assocs_df_tmp %>%
+        select(-id.x,-id.y, -dataset_id) %>%
+        collect() %>%
+        as.data.frame()
+      incProgress(0.2,message = "Processing dataset")
+      assocs_df_tmp <- assocs_df_tmp %>%
+        group_by(association_id) %>%
+        dplyr::mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
+        dplyr::ungroup() %>%
+        dplyr::select(-description,-label) %>%
+        as.data.frame() %>%
+        dplyr::distinct() %>% 
+        tidyr::separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
+        tidyr::separate(var_descriptions, c("var_description1","var_description2"), sep = ";") %>%
+        make_pretty(varnum)
+    }
+    # Join metavariables
+    if(!is.null(metavar_tbl)){
+      assocs_df_tmp <- left_join(assocs_df_tmp,metavar_tbl,by="association_id")
+    }
+    assocs_df_edited <- bind_rows(assocs_df_edited, assocs_df_tmp)
+  }
+  assocs_df <- assocs_df_edited
+  
+  incProgress(0.2)
+  assocs_df <- select(assocs_df,-association_id)
+  
+  return (assocs_df)
 }
 
-filter_variable <- function(assocs_tbl,var_labels,varnum){
-  var_labels <- var_labels  %>% strsplit(split=",") %>% unlist()
+make_pretty <- function(dframe,varnum){
+  if (varnum == 1){
+    dframe <- dframe %>% select(dataset_label,label,effect_l95,effect_u95,effect,n,p,p_fdr,description,everything()) %>%
+      rename(Dataset = dataset_label, Variable1 = label, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95, Effect = effect,
+             N = n, P = p, P_FDR = p_fdr,Description1 = description)
+  }
+  if (varnum == 2){
+    dframe <- dframe %>% select(dataset_label, var_label1,var_label2,effect_l95,effect_u95,effect,n,
+                                p,p_fdr,var_description1,var_description2,everything()) %>%
+      rename(Dataset = dataset_label, Variable1 = var_label1, Variable2 = var_label2, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
+             Effect = effect, N = n, P = p, P_FDR = p_fdr,Description1 = var_description1, Description2 = var_description2)
+  }
+  dframe
+}
+
+# Filter a data frame by keywords on a column
+# keywords that start with a '-' are exclusions from the search
+# keywords that end with a '*' are wildcards
+filter_by_keyword <- function(dframe, cols, keywords){
+  
+  # Split at ',' and remove space from beginning
+  keywords <- keywords  %>% strsplit(split=",") %>% unlist() %>% gsub("^ ", "",.)
+  
+  # Separate exclusions and iclusions
+  inclusions <- keywords[!grepl("^-",keywords)]
+  exclusions <- keywords[grepl("^-",keywords)] %>% gsub("^-","",.)
+  
+  if(length(inclusions)){
+    # Limit associations to those matching inlcusions
+    # First find all the values matching wildcards
+    wildcards <- inclusions[grepl("\\*$",inclusions)]
+    dframe_filtered <- dframe[1,][-1,] # empty data frame with same colnames as dframe
+    if(length(wildcards)){
+      for(wc in wildcards){
+        wc <- paste("^",gsub("\\*",".\\*",wc),sep="")
+        dframe_tmp <- dframe %>% filter_at(.vars = cols, any_vars(grepl(wc,.)))
+        dframe_filtered <- union(dframe_filtered,dframe_tmp)
+      }
+    }
+    # Then add non-wildcard variables
+    inclusions <- inclusions[!grepl("\\*$",inclusions)]
+    if(length(inclusions)){
+      dframe_tmp <- dframe %>% filter_at(.vars = cols, any_vars(. %in% inclusions))
+      dframe_filtered <- union(dframe_filtered, dframe_tmp)
+    }
+    dframe <- dframe_filtered
+  }
+  
+  # Exclude by keywords marked with '-'
+  if(length(exclusions)){
+    # Exclude variables marked with '*' wildcard
+    wildcards <- exclusions[grepl("\\*$",exclusions)]
+    for(wc in wildcards){
+      wc <- paste("^",gsub("\\*",".\\*",wc),sep="")
+      # Remove all rows where any of the cols matches wildcard
+      dframe <- dframe %>% filter_at(.vars = cols, all_vars(!grepl(wc,.)))
+    }
+    # Exclude non-wildcard variables
+    exclusions <- exclusions[!grepl("\\*$",exclusions)]
+    # Remove all rows where any of the cols matches any of the exclusions
+    dframe <- dframe %>% filter_at(.vars = cols, all_vars(! . %in% exclusions))
+  }
+  
+  dframe
+}
+
+filter_variable <- function(assocs_df,var_labels,varnum){
+  # Split at ',' and remove space from beginning
+  var_labels <- var_labels  %>% strsplit(split=",") %>% unlist() %>% gsub("^ ", "",.)
   
   # Exclude variables marked with '-'
   if(any(grepl("^-",var_labels))){
@@ -139,19 +297,19 @@ filter_variable <- function(assocs_tbl,var_labels,varnum){
     for(excl in excl_asterix){
       excl <- paste("^",gsub("\\*",".\\*",excl),sep="")
       if (varnum == 1){
-        assocs_tbl <- assocs_tbl %>% filter(!grepl(excl,Variable))
+        assocs_df <- assocs_df %>% filter(!grepl(excl,Variable1))
       }
       if (varnum == 2){
-        assocs_tbl <- assocs_tbl %>% filter(!grepl(excl,Variable1) & !grepl(excl,Variable2))
+        assocs_df <- assocs_df %>% filter(!grepl(excl,Variable1) & !grepl(excl,Variable2))
       }
     }
     # Exclude non-wildcard variables
     exclusions <- exclusions[!grepl("\\*$",exclusions)]
     if (varnum == 1){
-      assocs_tbl <- assocs_tbl %>% filter(!Variable %in% exclusions)
+      assocs_df <- assocs_df %>% filter(!Variable1 %in% exclusions)
     }
     if (varnum == 2){
-      assocs_tbl <- assocs_tbl %>% filter(!Variable1 %in% exclusions & !Variable2 %in% exclusions)
+      assocs_df <- assocs_df %>% filter(!Variable1 %in% exclusions & !Variable2 %in% exclusions)
     }
   }
   
@@ -159,42 +317,43 @@ filter_variable <- function(assocs_tbl,var_labels,varnum){
   # First find all the variables matching wildcards
   var_asterix <- var_labels[grepl("\\*$",var_labels)]
   if(length(var_asterix)){
-    assocs_tbl_filtered <- NULL
+    assocs_df_filtered <- NULL
     for(var_ast in var_asterix){
       var_ast <- paste("^",gsub("\\*",".\\*",var_ast),sep="")
       if (varnum == 1){
-        assocs_tmp <- assocs_tbl %>% filter(grepl(var_ast,Variable))
+        assocs_tmp <- assocs_df %>% filter(grepl(var_ast,Variable1))
       }
       if (varnum == 2){
-        assocs_tmp <- assocs_tbl %>% filter(grepl(var_ast,Variable1) | grepl(var_ast,Variable2))
+        assocs_tmp <- assocs_df %>% filter(grepl(var_ast,Variable1) | grepl(var_ast,Variable2))
       }
-      if(is.null(assocs_tbl_filtered)){
-        assocs_tbl_filtered <- assocs_tmp
+      if(is.null(assocs_df_filtered)){
+        assocs_df_filtered <- assocs_tmp
       }
       else{
-        assocs_tbl_filtered <- union(assocs_tbl_filtered,assocs_tmp)
+        assocs_df_filtered <- union(assocs_df_filtered,assocs_tmp)
       }
     }
-    assocs_tbl <- assocs_tbl_filtered
+    assocs_df <- assocs_df_filtered
   }
   
   # Then add non-wildcard variables
   var_labels <- var_labels[!grepl("\\*$",var_labels)]
   if(length(var_labels)){
     if (varnum == 1){
-      assocs_tmp <- assocs_tbl %>% filter(Variable %in% var_labels)
+      assocs_tmp <- assocs_df %>% filter(Variable1 %in% var_labels)
     }
     if (varnum == 2){
-      assocs_tmp <- assocs_tbl %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels)
+      assocs_tmp <- assocs_df %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels)
     }
-    assocs_tbl <- union(assocs_tbl, assocs_tmp)
+    assocs_df <- union(assocs_df, assocs_tmp)
   }
   
-  assocs_tbl
+  assocs_df
 }
 
-filter_description <- function(assocs_tbl,desc_labels,varnum){
-  desc_labels <- desc_labels  %>% strsplit(split=",") %>% unlist()
+filter_description <- function(assocs_df,desc_labels,varnum){
+  # Split at ',' and remove space from beginning
+  desc_labels <- desc_labels  %>% strsplit(split=",") %>% unlist() %>% gsub("^ ", "",.)
   
   if(any(grepl("^-",desc_labels))){
     exclusions <- desc_labels[grepl("^-",desc_labels)] %>% sub("-","",.)
@@ -204,71 +363,56 @@ filter_description <- function(assocs_tbl,desc_labels,varnum){
     for(excl in excl_asterix){
       excl <- paste("^",gsub("\\*",".\\*",excl),sep="")
       if (varnum == 1){
-        assocs_tbl <- assocs_tbl %>% filter(!grepl(excl,Description))
+        assocs_df <- assocs_df %>% filter(!grepl(excl,Description))
       }
       if (varnum == 2){
-        assocs_tbl <- assocs_tbl %>% filter(!grepl(excl,Description1) & !grepl(excl,Description2))
+        assocs_df <- assocs_df %>% filter(!grepl(excl,Description1) & !grepl(excl,Description2))
       }
     }
     
     exclusions <- exclusions[!grepl("\\*$",exclusions)]
     if (varnum == 1){
-      assocs_tbl <- assocs_tbl %>% filter(!Description %in% exclusions)
+      assocs_df <- assocs_df %>% filter(!Description %in% exclusions)
     }
     if (varnum == 2){
-      assocs_tbl <- assocs_tbl %>% filter(!Description1 %in% exclusions & !Description2 %in% exclusions)
+      assocs_df <- assocs_df %>% filter(!Description1 %in% exclusions & !Description2 %in% exclusions)
     }
   }
   
   desc_asterix <- desc_labels[grepl("\\*$",desc_labels)]
   if(length(desc_asterix)){
-    assocs_tbl_filtered <- NULL
+    assocs_df_filtered <- NULL
     for(desc_ast in desc_asterix){
       desc_ast <- paste("^",gsub("\\*",".\\*",desc_ast),sep="")
       if (varnum == 1){
-        assocs_tmp <- assocs_tbl %>% filter(grepl(desc_ast,Description))
+        assocs_tmp <- assocs_df %>% filter(grepl(desc_ast,Description))
       }
       if (varnum == 2){
-        assocs_tmp <- assocs_tbl %>% filter(grepl(desc_ast,Description1) | grepl(desc_ast,Description2))
+        assocs_tmp <- assocs_df %>% filter(grepl(desc_ast,Description1) | grepl(desc_ast,Description2))
       }
-      if(is.null(assocs_tbl_filtered)){
-        assocs_tbl_filtered <- assocs_tmp
+      if(is.null(assocs_df_filtered)){
+        assocs_df_filtered <- assocs_tmp
       }
       else{
-        assocs_tbl_filtered <- union(assocs_tbl_filtered,assocs_tmp)
+        assocs_df_filtered <- union(assocs_df_filtered,assocs_tmp)
       }
     }
-    assocs_tbl <- assocs_tbl_filtered
+    assocs_df <- assocs_df_filtered
   }
   
   
   desc_labels <- desc_labels[!grepl("\\*$",desc_labels)]
   if(length(desc_labels)){
     if (varnum == 1){
-      assocs_tmp <- assocs_tbl %>% filter(Description %in% desc_labels)
+      assocs_tmp <- assocs_df %>% filter(Description %in% desc_labels)
     }
     if (varnum == 2){
-      assocs_tmp <- assocs_tbl %>% filter(Description1 %in% desc_labels | Description2 %in% desc_labels)
+      assocs_tmp <- assocs_df %>% filter(Description1 %in% desc_labels | Description2 %in% desc_labels)
     }
-    assocs_tbl <- union(assocs_tbl, assocs_tmp)
+    assocs_df <- union(assocs_df, assocs_tmp)
   }
   
-  assocs_tbl
-}
-
-make_pretty <- function(dframe,varnum){
-  if (varnum == 1){
-    dframe <- dframe %>% select(label,effect_l95,effect_u95,effect,n,p,p_fdr,description,everything()) %>%
-      rename(Variable = label, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95, Effect = effect,
-             N = n, P = p, P_FDR = p_fdr,Description = description)
-  }
-  if (varnum == 2){
-    dframe <- dframe %>% select(var_label1,var_label2,effect_l95,effect_u95,effect,n,
-                        p,p_fdr,var_description1,var_description2,everything()) %>%
-      rename(Variable1 = var_label1, Variable2 = var_label2, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
-             Effect = effect, N = n, P = p, P_FDR = p_fdr,Description1 = var_description1, Description2 = var_description2)
-  }
-  dframe
+  assocs_df
 }
 
 varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
@@ -278,53 +422,28 @@ varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
   else{
     dframe_fltrd <- dframe %>% filter(P < p_limit)
   }
-  if (varnum == 1){
-    vars_accepted <- unique(dframe_fltrd$Variable)
-    dframe <- dframe %>% filter(Variable %in% vars_accepted)
-  }
-  if (varnum == 2){
+  if (any(varnum == 2)){
     vars_accepted <- c(dframe_fltrd$Variable1,dframe_fltrd$Variable2) %>% unique()
     dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
   }
+  else{
+    vars_accepted <- unique(dframe_fltrd$Variable1)
+    dframe <- dframe %>% filter(Variable1 %in% vars_accepted)
+  }
+  
   dframe
 }
 
 varfilter_eff <- function(dframe,eff_min = -Inf,eff_max = Inf,varnum){
   dframe_fltrd <- dframe %>% filter(Effect > eff_min & Effect < eff_max)
-  if (varnum == 1){
-    vars_accepted <- unique(dframe_fltrd$Variable)
-    dframe <- dframe %>% filter(Variable %in% vars_accepted)
-  }
-  if (varnum == 2){
+  if (any(varnum == 2)){
     vars_accepted <- c(dframe_fltrd$Variable1,dframe_fltrd$Variable2) %>% unique()
     dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
   }
+  else{
+    vars_accepted <- unique(dframe_fltrd$Variable1)
+    dframe <- dframe %>% filter(Variable1 %in% vars_accepted)
+  }
+  
   dframe
 }
-
-# Filters the pre-collected associations table, shows only the chosen variables
-# Returns COLLECTED local data frames
-
-# NOTE: does not have variable labels!! FIX!
-
-# filter_by_var <- function(pool,assocs_tbl,var_labels,varnum){
-#   var_labels <- var_labels  %>% strsplit(split=",") %>% unlist
-#   if (length(var_labels) == 1){
-#     var_tbl <- pool %>% tbl("variables") %>% filter(label == var_labels | description == var_labels)
-#   }
-#   else{
-#     var_tbl <- pool %>% tbl("variables") %>% filter(label %in% var_labels | description %in% var_labels)
-#   }
-#   
-#   if (varnum == 1){
-#     assoc_to_var_tbl <- pool %>% tbl("associationtovariable") %>% inner_join(var_tbl,by = c("variable_id" = "id"))
-#     assocs_tbl <- inner_join(assocs_tbl,assoc_to_var_tbl,by = c("id" = "association_id"))
-#   }
-#   if (varnum == 2){
-#     assoc_to_var_tbl <- pool %>% tbl("associationtovariable") %>% semi_join(var_tbl,by = c("variable_id" = "id"))
-#     assocs_tbl <- semi_join(assocs_tbl,assoc_to_var_tbl,by = c("id" = "association_id")) %>%
-#       join_variables(pool,assocs_tbl,varnum)
-#   }
-#   
-#   return(assocs_tbl)
-# }

@@ -162,7 +162,7 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
   # The variable label(s) are added to tooltip info
   # Other tooltip info is included in dummy aesthetics label*
   if (varnum == 1){
-    p <- ggplot(dframe, aes(label0 = Variable, label1 = Description))
+    p <- ggplot(dframe, aes(label0 = Variable1, label1 = Description1))
   }
   if(varnum == 2){
     p <- ggplot(dframe, aes(label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2))
@@ -181,7 +181,7 @@ make_volcanoplotly <- function(dframe,effect_type,varnum,double_filter,
       }
       # The ggplot object needs to be redone since dframe has been altered
       if (varnum == 1){
-        p <- ggplot(dframe, aes(label0 = Variable,label1 = Description))
+        p <- ggplot(dframe, aes(label0 = Variable1,label1 = Description1))
       }
       if(varnum == 2){
         p <- ggplot(dframe, aes(label00 = Variable1, label0 = Variable2, label1 = Description1, label2 = Description2))
@@ -333,7 +333,7 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
   # Interactivity can be disabled
   if (interactive){
     if (varnum == 1){
-      p <- p + geom_point(aes(label0 = Variable, label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- p + geom_point(aes(label0 = Variable1, label1 = Description1, label3 = Effect, label4 = P_FDR, label5 = N))
       p <- ggplotly(p, tooltip = c("label0","label1","label3","label4","label5"))
     }
     if(varnum == 2){
@@ -373,7 +373,7 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
       p <- ggplotly(p, tooltip = c("label00","label0","label1","label2","label3","label4","label5"))
     }
     if (varnum == 1){
-      p <- p + geom_point(aes(x=expected, y=observed,label0 = Variable, label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- p + geom_point(aes(x=expected, y=observed,label0 = Variable1, label1 = Description1, label3 = Effect, label4 = P_FDR, label5 = N))
       p <- ggplotly(p, tooltip = c("label0","label1","label3","label4","label5"))
     }
   }
@@ -395,9 +395,9 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,col
   }
   # For datasets with interactions, the combinations of variables are used as x-axis
   if(varnum == 1){
-    x_axis <- "Variable"
+    x_axis <- "Variable1"
     x_label <- "Variable"
-    x_breaks <- sort(dframe$Variable)[seq(1,nrow(dframe),length.out = 40)]
+    x_breaks <- sort(dframe$Variable1)[seq(1,nrow(dframe),length.out = 40)]
   }
   if(varnum == 2){
     dframe <- dframe %>% mutate(X = paste(Variable1,Variable2,sep="_x_"))
@@ -429,7 +429,7 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,col
   
   if (interactive){
     if (varnum == 1){
-      p <- p + geom_point(aes(label0 = Variable, label1 = Description, label3 = Effect, label4 = P_FDR, label5 = N))
+      p <- p + geom_point(aes(label0 = Variable1, label1 = Description1, label3 = Effect, label4 = P_FDR, label5 = N))
       p <- ggplotly(p, tooltip = c("label0","label1","label3","label4","label5"))
     }
     if(varnum == 2){
