@@ -8,6 +8,7 @@ read_db_info <- function(config_file){
   l
 }
 
+# Get associations from the database matching search
 get_associations <- function(pool,ds_labels,var_keywords,metadata_keywords){
   assocs_tbl <- pool %>% tbl("associations")
   ds_tbl <- pool %>% tbl("datasets")
@@ -27,6 +28,17 @@ get_associations <- function(pool,ds_labels,var_keywords,metadata_keywords){
   ds_df <- collect(ds_tbl)
   varnum <- ds_df$varnum
   effect_type <-ds_df$effect_type
+  
+  
+  if(any(ds_df$varnum == 2)){
+    varnum <- 2
+  }
+  if(length(unique(ds_df$effect_type)) == 1){
+    effect_type <- unique(ds_df$effect_type)
+  }
+  else{
+    effect_type <- "Multiple"
+  }
   
   return(list(dframe = assocs_tbl, datasets = ds_df, varnum = varnum, effect_type = effect_type))
 }
@@ -282,139 +294,8 @@ filter_by_keyword <- function(dframe, cols, keywords){
   dframe
 }
 
-filter_variable <- function(assocs_df,var_labels,varnum){
-  # Split at ',' and remove space from beginning
-  var_labels <- var_labels  %>% strsplit(split=",") %>% unlist() %>% gsub("^ ", "",.)
-  
-  # Exclude variables marked with '-'
-  if(any(grepl("^-",var_labels))){
-    # Separate exclusions from other variable labels
-    exclusions <- var_labels[grepl("^-",var_labels)] %>% gsub("^-","",.)
-    var_labels <- var_labels[!grepl("^-",var_labels)]
-    
-    # Exclude variables marked with '*' wildcard
-    excl_asterix <- exclusions[grepl("\\*$",exclusions)]
-    for(excl in excl_asterix){
-      excl <- paste("^",gsub("\\*",".\\*",excl),sep="")
-      if (varnum == 1){
-        assocs_df <- assocs_df %>% filter(!grepl(excl,Variable1))
-      }
-      if (varnum == 2){
-        assocs_df <- assocs_df %>% filter(!grepl(excl,Variable1) & !grepl(excl,Variable2))
-      }
-    }
-    # Exclude non-wildcard variables
-    exclusions <- exclusions[!grepl("\\*$",exclusions)]
-    if (varnum == 1){
-      assocs_df <- assocs_df %>% filter(!Variable1 %in% exclusions)
-    }
-    if (varnum == 2){
-      assocs_df <- assocs_df %>% filter(!Variable1 %in% exclusions & !Variable2 %in% exclusions)
-    }
-  }
-  
-  # Limit associations to those matching search
-  # First find all the variables matching wildcards
-  var_asterix <- var_labels[grepl("\\*$",var_labels)]
-  if(length(var_asterix)){
-    assocs_df_filtered <- NULL
-    for(var_ast in var_asterix){
-      var_ast <- paste("^",gsub("\\*",".\\*",var_ast),sep="")
-      if (varnum == 1){
-        assocs_tmp <- assocs_df %>% filter(grepl(var_ast,Variable1))
-      }
-      if (varnum == 2){
-        assocs_tmp <- assocs_df %>% filter(grepl(var_ast,Variable1) | grepl(var_ast,Variable2))
-      }
-      if(is.null(assocs_df_filtered)){
-        assocs_df_filtered <- assocs_tmp
-      }
-      else{
-        assocs_df_filtered <- union(assocs_df_filtered,assocs_tmp)
-      }
-    }
-    assocs_df <- assocs_df_filtered
-  }
-  
-  # Then add non-wildcard variables
-  var_labels <- var_labels[!grepl("\\*$",var_labels)]
-  if(length(var_labels)){
-    if (varnum == 1){
-      assocs_tmp <- assocs_df %>% filter(Variable1 %in% var_labels)
-    }
-    if (varnum == 2){
-      assocs_tmp <- assocs_df %>% filter(Variable1 %in% var_labels | Variable2 %in% var_labels)
-    }
-    assocs_df <- union(assocs_df, assocs_tmp)
-  }
-  
-  assocs_df
-}
-
-filter_description <- function(assocs_df,desc_labels,varnum){
-  # Split at ',' and remove space from beginning
-  desc_labels <- desc_labels  %>% strsplit(split=",") %>% unlist() %>% gsub("^ ", "",.)
-  
-  if(any(grepl("^-",desc_labels))){
-    exclusions <- desc_labels[grepl("^-",desc_labels)] %>% sub("-","",.)
-    desc_labels <- desc_labels[!grepl("^-",desc_labels)]
-    
-    excl_asterix <- exclusions[grepl("\\*$",exclusions)]
-    for(excl in excl_asterix){
-      excl <- paste("^",gsub("\\*",".\\*",excl),sep="")
-      if (varnum == 1){
-        assocs_df <- assocs_df %>% filter(!grepl(excl,Description))
-      }
-      if (varnum == 2){
-        assocs_df <- assocs_df %>% filter(!grepl(excl,Description1) & !grepl(excl,Description2))
-      }
-    }
-    
-    exclusions <- exclusions[!grepl("\\*$",exclusions)]
-    if (varnum == 1){
-      assocs_df <- assocs_df %>% filter(!Description %in% exclusions)
-    }
-    if (varnum == 2){
-      assocs_df <- assocs_df %>% filter(!Description1 %in% exclusions & !Description2 %in% exclusions)
-    }
-  }
-  
-  desc_asterix <- desc_labels[grepl("\\*$",desc_labels)]
-  if(length(desc_asterix)){
-    assocs_df_filtered <- NULL
-    for(desc_ast in desc_asterix){
-      desc_ast <- paste("^",gsub("\\*",".\\*",desc_ast),sep="")
-      if (varnum == 1){
-        assocs_tmp <- assocs_df %>% filter(grepl(desc_ast,Description))
-      }
-      if (varnum == 2){
-        assocs_tmp <- assocs_df %>% filter(grepl(desc_ast,Description1) | grepl(desc_ast,Description2))
-      }
-      if(is.null(assocs_df_filtered)){
-        assocs_df_filtered <- assocs_tmp
-      }
-      else{
-        assocs_df_filtered <- union(assocs_df_filtered,assocs_tmp)
-      }
-    }
-    assocs_df <- assocs_df_filtered
-  }
-  
-  
-  desc_labels <- desc_labels[!grepl("\\*$",desc_labels)]
-  if(length(desc_labels)){
-    if (varnum == 1){
-      assocs_tmp <- assocs_df %>% filter(Description %in% desc_labels)
-    }
-    if (varnum == 2){
-      assocs_tmp <- assocs_df %>% filter(Description1 %in% desc_labels | Description2 %in% desc_labels)
-    }
-    assocs_df <- union(assocs_df, assocs_tmp)
-  }
-  
-  assocs_df
-}
-
+# Filter variables by p-value, keep all variables that
+#have at least one association meeting criterion
 varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
   if (fdr){
     dframe_fltrd <- dframe %>% filter(P_FDR < p_limit)
@@ -422,7 +303,7 @@ varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
   else{
     dframe_fltrd <- dframe %>% filter(P < p_limit)
   }
-  if (any(varnum == 2)){
+  if(varnum == 2){
     vars_accepted <- c(dframe_fltrd$Variable1,dframe_fltrd$Variable2) %>% unique()
     dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
   }
@@ -436,7 +317,7 @@ varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
 
 varfilter_eff <- function(dframe,eff_min = -Inf,eff_max = Inf,varnum){
   dframe_fltrd <- dframe %>% filter(Effect > eff_min & Effect < eff_max)
-  if (any(varnum == 2)){
+  if (varnum == 2){
     vars_accepted <- c(dframe_fltrd$Variable1,dframe_fltrd$Variable2) %>% unique()
     dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
   }

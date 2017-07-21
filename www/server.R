@@ -87,7 +87,7 @@ shinyServer(function(input,output){
     if(is.null(associations_list_query())){
       return(NULL)
     }
-    if(any(associations_list_query()$varnum == 2)){
+    if(associations_list_query()$varnum == 2){
       col_limit <- 11
     }
     else{ #all datasets have varnum == 1
@@ -187,7 +187,7 @@ shinyServer(function(input,output){
     # Variable
     # Keywords, comma separated
     if (input$var_labels != ""){
-      if(any(associations_list$varnum == 2)){
+      if(associations_list$varnum == 2){
         cols <- c("Variable1", "Variable2")
       }
       else{
@@ -198,7 +198,7 @@ shinyServer(function(input,output){
     # Description
     # Keywords, comma separated
     if (input$description_labels != ""){
-      if(any(associations_list$varnum == 2)){
+      if(associations_list$varnum == 2){
         cols <- c("Description1","Description2")
       }
       else{
@@ -240,7 +240,7 @@ shinyServer(function(input,output){
     
     # Filters for extra metavariables
     if(!is.null(extra_filters())){
-      if(any(associations_list$varnum == 2)){
+      if(associations_list$varnum == 2){
         col_limit <- 11
       }
       else{ # each varnum == 1
@@ -288,12 +288,14 @@ shinyServer(function(input,output){
     str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
              "P-value range:","Effect range:")
     values <- nrow(associations_list()$dframe) %>% as.character()
-    if (associations_list()$varnum == 1)
-      values <- c(values, associations_list()$dframe$Variable %>%
-                    unique() %>% length() %>% as.character() )
-    if (associations_list()$varnum ==2)
+    if (associations_list()$varnum ==2){
       values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
                     unique() %>% length() %>% as.character() )
+    }
+    else{
+      values <- c(values, associations_list()$dframe$Variable %>%
+                    unique() %>% length() %>% as.character() )
+    }
     values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
                 associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
                 paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
@@ -339,6 +341,9 @@ shinyServer(function(input,output){
   # or static figures, if dataset has more than 10 000 associations
   
   output$heatmap <- renderUI({
+    if (associations_list()$effect_type == "Multiple"){
+      return(h5("Multiple different effect types can't be plotted together"))
+    }
     if (associations_list()$varnum == 2){
       if (nrow(associations_list()$dframe) > 10000){
         tagList(h5("Wow, your data is BIG! Plotting static figure."),
@@ -362,6 +367,9 @@ shinyServer(function(input,output){
   })
   
   output$volcano <- renderUI({
+    if (associations_list()$effect_type == "Multiple"){
+      return(h5("Multiple different effect types can't be plotted together"))
+    }
     if (nrow(associations_list()$dframe) > 10000){
       tagList(h5("Wow, your data is BIG! Plotting static figure."),
               plotOutput("volcano_static", height = "700"))
@@ -405,6 +413,9 @@ shinyServer(function(input,output){
   })
   
   output$qq_plot <-renderUI({
+    if (associations_list()$effect_type == "Multiple"){
+      return(h5("Multiple different effect types can't be plotted together"))
+    }
     if (input$qq_choice == "p-values"){
       if (nrow(associations_list()$dframe) > 10000){
         t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
@@ -445,6 +456,9 @@ shinyServer(function(input,output){
   })
   
   output$lady_manhattan_plot_choices <- renderUI({
+    if (associations_list()$effect_type == "Multiple"){
+      return(h5("Multiple different effect types can't be plotted together"))
+    }
     tagList(
       checkboxInput("lady_coloring","Coloring according to column"),
       conditionalPanel("input.lady_coloring == true",
