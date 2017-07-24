@@ -33,6 +33,9 @@ get_associations <- function(pool,ds_labels,var_keywords,metadata_keywords){
   if(any(ds_df$varnum == 2)){
     varnum <- 2
   }
+  else{
+    varnum <- 1
+  }
   if(length(unique(ds_df$effect_type)) == 1){
     effect_type <- unique(ds_df$effect_type)
   }
@@ -46,16 +49,19 @@ get_associations <- function(pool,ds_labels,var_keywords,metadata_keywords){
 filter_datasets <- function(pool, ds_tbl, metadata_keywords, ds_labels){
   # Filter by metadata tag
   if(metadata_keywords != ""){
-    keywords <- metadata_keywords %>% strsplit(split=",") %>% unlist()
-    if(length(keywords == 1)){
-      meta_tbl <- conn %>% tbl("datasetmetadata") %>%
+    keywords <- metadata_keywords %>%
+      strsplit(split=",") %>% unlist() %>%
+      gsub("^ ","",.)
+    
+    if(length(keywords) == 1){
+      meta_tbl <- pool %>% tbl("datasetmetadata") %>%
         filter(label == keywords)
     }
     else{
-      meta_tbl <- conn %>% tbl("datasetmetadata") %>%
+      meta_tbl <- pool %>% tbl("datasetmetadata") %>%
         filter(label %in% keywords)
     }
-    ds_to_meta_tbl <- conn %>% tbl("datasettometadata") %>%
+    ds_to_meta_tbl <- pool %>% tbl("datasettometadata") %>%
       semi_join(meta_tbl,by=c("datasetmetadata_id" = "id"))
     ds_tbl <- ds_tbl %>%
       semi_join(ds_to_meta_tbl,by=c("id"="dataset_id"))
@@ -94,7 +100,10 @@ filtered_var_tbl <- function(pool, var_keywords){
   # Get variable table as data frame
   var_df <- pool %>% tbl("variables") %>% collect()
   
-  var_df <- filter_by_keyword(var_df,"label",var_keywords)
+  # Get all variables where either label or description matches keywords
+  var_df_label <- filter_by_keyword(var_df,"label",var_keywords)
+  var_df_description <- filter_by_keyword(var_df,"description",var_keywords)
+  var_df <- union(var_df_label, var_df_description)
   
   accepted_labels <- var_df$label
   
@@ -112,7 +121,24 @@ filtered_var_tbl <- function(pool, var_keywords){
 }
 
 get_datasets <- function(pool){
-  ds_tbl <- pool %>% tbl("datasets") %>% collect()
+  # Get dataset metadata
+  meta_tbl <- pool %>% tbl("datasetmetadata")
+  ds_to_meta_tbl <- pool %>% tbl("datasettometadata") %>%
+    inner_join(meta_tbl,by=c("datasetmetadata_id" = "id")) %>%
+    collect() %>%
+    # Put all metadata tags from one dataset into one row
+    group_by(dataset_id) %>%
+    mutate(Metadata_labels = paste(label, collapse=","), Metadata_descriptions = paste(description, collapse=",")) %>%
+    ungroup() %>%
+    select(-label,-description, -id, -datasetmetadata_id) %>%
+    distinct()
+  # Join metadata to dataset table and rename columns
+  ds_tbl <- pool %>% tbl("datasets") %>%
+    collect() %>%
+    left_join(ds_to_meta_tbl,by=c("id" = "dataset_id")) %>%
+    rename(Label = label, Description = description, Number_of_variables = varnum,
+           Effect_type = effect_type, Number_of_associations = rowcount)
+  ds_tbl
 }
 
 get_metavariables <- function(pool,assocs_tbl){

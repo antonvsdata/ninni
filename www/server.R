@@ -17,10 +17,7 @@ shinyServer(function(input,output){
   # Reactive expressions cache their value, so filtering the same dataset multiple times
   # does not provoke a new database query
   associations_list_query <- eventReactive(input$query,{
-    if(is.null(input$ds_label)){
-      return(NULL)
-    }
-    if (!length(input$ds_label)){
+    if (!length(input$ds_label) & input$var_keywords == "" & input$metadata_keywords == ""){
       return (NULL)
     }
     withProgress(message = "Retrieving dataset from database",{
@@ -285,24 +282,26 @@ shinyServer(function(input,output){
     if(is.null(associations_list())){
       return(NULL)
     }
-    str <- c("Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
+    string <- c("Number of datasets","Effect type(s)", "Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
              "P-value range:","Effect range:")
-    values <- nrow(associations_list()$dframe) %>% as.character()
+    values <- c(nrow(associations_list()$datasets),
+                associations_list()$datasets$effect_type %>% unique() %>% paste(collapse=","),
+                nrow(associations_list()$dframe))
     if (associations_list()$varnum ==2){
       values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
-                    unique() %>% length() %>% as.character() )
+                    unique() %>% length())
     }
     else{
-      values <- c(values, associations_list()$dframe$Variable %>%
-                    unique() %>% length() %>% as.character() )
+      values <- c(values, associations_list()$dframe$Variable1 %>%
+                    unique() %>% length())
     }
-    values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow() %>% as.character(),
-                associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow() %>% as.character(),
+    values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow(),
+                associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow(),
                 paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
                       (associations_list()$dframe$P) %>% max() %>% signif(digits=3)),
                 paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits=3), "...",
                       (associations_list()$dframe$Effect) %>% max() %>% signif(digits=3)))
-    data.frame(str,values)
+    data.frame(string,values)
   },include.rownames=FALSE, include.colnames = FALSE)
   
   # Shows all the datasets in database
@@ -329,7 +328,7 @@ shinyServer(function(input,output){
   
   output$download_button <- downloadHandler(
     filename = function(){
-      paste(input$ds_label,".csv", sep = "")
+      "Ninni_data_output.csv"
     },
     
     content = function(file){
@@ -344,17 +343,33 @@ shinyServer(function(input,output){
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
     }
-    if (associations_list()$varnum == 2){
-      if (nrow(associations_list()$dframe) > 10000){
-        tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                plotOutput("heatmap_static", height = "800"))
-      }
-      else{
-        plotlyOutput("heatmaply", height = "800")
-      }
+    if (associations_list()$varnum == 1){
+      return(h5("Heat map requires associations with 2 variables"))
+    }
+    # Check if the same variables have multiple different associations
+    n_copies <- associations_list()$dframe %>%
+      group_by(Variable1, Variable2) %>%
+      summarise(n = n())
+    if (any(n_copies$n > 1)){
+      return(h5("Dataset contains multiple copies of the same association: heat map can't be plotted"))
+    }
+    
+    out <- tagList()
+    # Check if there are associations with only one variable
+    # They will be removed before plotting the heatmap
+    n_not_plotted <- length(which(is.na(associations_list()$dframe$Variable1) | is.na(associations_list()$dframe$Variable2)))
+    if(n_not_plotted > 0){
+      n_plotted <- nrow(associations_list()$dframe) - n_not_plotted
+      out <- tagList(out, h5(paste("Only associations with 2 variables will be plotted in the heat map. Removed ",n_not_plotted," associations, plotted ", n_plotted, " associations.", sep="")))
+    }
+    if (nrow(associations_list()$dframe) > 10000){
+      out <- tagList(out,
+                     h5("Wow, your data is BIG! Plotting static figure."),
+                     plotOutput("heatmap_static", height = "800"))
     }
     else{
-      h5("Heat map requires a dataset with 2 variables.")
+      out <- tagList(out,
+                     plotlyOutput("heatmaply", height = "800"))
     }
   })
   
@@ -370,7 +385,7 @@ shinyServer(function(input,output){
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
     }
-    if (nrow(associations_list()$dframe) > 10000){
+    if (nrow(associations_list()$dframe) > 1000){
       tagList(h5("Wow, your data is BIG! Plotting static figure."),
               plotOutput("volcano_static", height = "700"))
     }
@@ -381,35 +396,14 @@ shinyServer(function(input,output){
   })
   
   output$volcano_static <- renderPlot({
-    if (input$double_filter){
-      if (input$df_eff_limit_log2){
-        eff_lim <- as.numeric(input$df_effect_limit)
-      }
-      else{
-        eff_lim <- log2(as.numeric(input$df_effect_limit))
-      }
-      volcano_static(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                     as.numeric(input$df_p_limit), input$df_p_limit_fdr, eff_lim)
-    }
-    else{
-      volcano_static(associations_list()$dframe,associations_list()$effect_type, associations_list()$varnum,input$double_filter)
-    }
+    volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
+                       as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, interactive = FALSE)
   })
   
   output$volcanoly <- renderPlotly({
-    if (input$double_filter){
-      if (input$df_eff_limit_log2){
-        eff_lim <- as.numeric(input$df_effect_limit)
-      }
-      else{
-        eff_lim <- log2(as.numeric(input$df_effect_limit))
-      }
-      make_volcanoplotly(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                         as.numeric(input$df_p_limit),input$df_p_limit_fdr, eff_lim)
-    }
-    else{
-      make_volcanoplotly(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter)
-    }
+    volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
+                         as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, interactive = TRUE)
+    
   })
   
   output$qq_plot <-renderUI({
