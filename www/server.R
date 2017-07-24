@@ -1,12 +1,13 @@
 shinyServer(function(input,output){
   
-  ds_labels <- reactive({
-    ds_dframe$Label
-  })
-  
   output$ds_choice <- renderUI({
     selectizeInput("ds_label",label = "Dataset label", width = "100%", multiple = TRUE,
-                   choices = ds_labels(), options = list(placeholder = "Choose a dataset"))
+                   choices = ds_dframe$Label, options = list(placeholder = "Choose a dataset"))
+  })
+  
+  output$metadata_tags_ui <- renderUI({
+    selectizeInput("metadata_tags","Metadata tags", width = "100%", multiple = TRUE,
+                   choices = na.omit(ds_dframe$Metadata_labels), options = list(placeholder = "Choose metadata tags"))
   })
   
   output$ds_info <- renderUI({
@@ -17,11 +18,11 @@ shinyServer(function(input,output){
   # Reactive expressions cache their value, so filtering the same dataset multiple times
   # does not provoke a new database query
   associations_list_query <- eventReactive(input$query,{
-    if (!length(input$ds_label) & input$var_keywords == "" & input$metadata_keywords == ""){
+    if (!length(input$ds_label) & input$var_keywords == "" & !length(input$metadata_tags)){
       return (NULL)
     }
     withProgress(message = "Retrieving dataset from database",{
-      associations_list <- get_associations(pool,input$ds_label, input$var_keywords, input$metadata_keywords)
+      associations_list <- get_associations(pool,input$ds_label, input$var_keywords, input$metadata_tags)
       incProgress(0.3)
       associations_list$dframe <- join_variables(pool,associations_list$dframe,associations_list$datasets)
     })
@@ -385,7 +386,7 @@ shinyServer(function(input,output){
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
     }
-    if (nrow(associations_list()$dframe) > 1000){
+    if (nrow(associations_list()$dframe) > 10000){
       tagList(h5("Wow, your data is BIG! Plotting static figure."),
               plotOutput("volcano_static", height = "700"))
     }

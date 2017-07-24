@@ -9,12 +9,12 @@ read_db_info <- function(config_file){
 }
 
 # Get associations from the database matching search
-get_associations <- function(pool,ds_labels,var_keywords,metadata_keywords){
+get_associations <- function(pool,ds_labels,var_keywords,metadata_tags){
   assocs_tbl <- pool %>% tbl("associations")
   ds_tbl <- pool %>% tbl("datasets")
   
-  if(metadata_keywords != "" | length(ds_labels > 0)){
-    ds_tbl <- filter_datasets(pool, ds_tbl, metadata_keywords, ds_labels)
+  if(length(metadata_tags) | length(ds_labels)){
+    ds_tbl <- filter_datasets(pool, ds_tbl, metadata_tags, ds_labels)
     assocs_tbl <- asssocs_tbl <- assocs_tbl %>%
       semi_join(ds_tbl, by = c("dataset_id" = "id"))
   }
@@ -46,20 +46,17 @@ get_associations <- function(pool,ds_labels,var_keywords,metadata_keywords){
   return(list(dframe = assocs_tbl, datasets = ds_df, varnum = varnum, effect_type = effect_type))
 }
 
-filter_datasets <- function(pool, ds_tbl, metadata_keywords, ds_labels){
+filter_datasets <- function(pool, ds_tbl, metadata_tags, ds_labels){
   # Filter by metadata tag
-  if(metadata_keywords != ""){
-    keywords <- metadata_keywords %>%
-      strsplit(split=",") %>% unlist() %>%
-      gsub("^ ","",.)
+  if(length(metadata_tags)){
     
-    if(length(keywords) == 1){
+    if(length(metadata_tags) == 1){
       meta_tbl <- pool %>% tbl("datasetmetadata") %>%
-        filter(label == keywords)
+        filter(label == metadata_tags)
     }
     else{
       meta_tbl <- pool %>% tbl("datasetmetadata") %>%
-        filter(label %in% keywords)
+        filter(label %in% metadata_tags)
     }
     ds_to_meta_tbl <- pool %>% tbl("datasettometadata") %>%
       semi_join(meta_tbl,by=c("datasetmetadata_id" = "id"))

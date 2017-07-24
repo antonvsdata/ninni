@@ -8,8 +8,8 @@ shinyUI( fluidPage(
     sidebarPanel(
       h4("Dataset"),
       uiOutput("ds_choice"),
+      uiOutput("metadata_tags_ui"),
       textInput("var_keywords","Variable keywords"),
-      textInput("metadata_keywords","Metadata keywords"),
       actionButton("query","Query"),
       
       uiOutput("filters"),
