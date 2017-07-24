@@ -2,6 +2,22 @@ shinyUI( fluidPage(
   
   includeCSS("styles.css"),
   
+  # a JavaScript script for capturing the window size
+  # found from https://stackoverflow.com/questions/36995142/get-the-size-of-the-window-in-shiny
+  tags$head(tags$script('
+                                var dimension = [0, 0];
+                                $(document).on("shiny:connected", function(e) {
+                                    dimension[0] = window.innerWidth;
+                                    dimension[1] = window.innerHeight;
+                                    Shiny.onInputChange("window_size", dimension);
+                                });
+                                $(window).resize(function(e) {
+                                    dimension[0] = window.innerWidth;
+                                    dimension[1] = window.innerHeight;
+                                    Shiny.onInputChange("window_size", dimension);
+                                });
+                            ')),
+  
   titlePanel("Ninni"),
   
   sidebarLayout(

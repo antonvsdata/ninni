@@ -340,6 +340,8 @@ shinyServer(function(input,output){
   # All the visualizations can be interactive plotly figures,
   # or static figures, if dataset has more than 10 000 associations
   
+  
+  
   output$heatmap <- renderUI({
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
@@ -363,14 +365,17 @@ shinyServer(function(input,output){
       n_plotted <- nrow(associations_list()$dframe) - n_not_plotted
       out <- tagList(out, h5(paste("Only associations with 2 variables will be plotted in the heat map. Removed ",n_not_plotted," associations, plotted ", n_plotted, " associations.", sep="")))
     }
+    # Calculate size for the plot
+    n_variables <- c(associations_list()$dframe$Variable1, associations_list()$dframe$Variable2) %>%
+      unique() %>% length()
     if (nrow(associations_list()$dframe) > 10000){
       out <- tagList(out,
                      h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("heatmap_static", height = "800"))
+                     plotOutput("heatmap_static", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
     else{
       out <- tagList(out,
-                     plotlyOutput("heatmaply", height = "800"))
+                     plotlyOutput("heatmaply", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
   })
   
@@ -388,11 +393,11 @@ shinyServer(function(input,output){
     }
     if (nrow(associations_list()$dframe) > 10000){
       tagList(h5("Wow, your data is BIG! Plotting static figure."),
-              plotOutput("volcano_static", height = "700"))
+              plotOutput("volcano_static", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
     else{
       #plotOutput("volcano_static", height = "700")
-      plotlyOutput("volcanoly", height = "700px")
+      plotlyOutput("volcanoly", height = paste(input$window_size[2] - 100,"px",sep=""))
     }
   })
   
@@ -414,19 +419,19 @@ shinyServer(function(input,output){
     if (input$qq_choice == "p-values"){
       if (nrow(associations_list()$dframe) > 10000){
         t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("qq_plot_static_ps", height = "700"))
+                     plotOutput("qq_plot_static_ps", height = paste(input$window_size[2] - 100,"px",sep="")))
       }
       else{
-        t <- plotlyOutput("qq_plotly_ps", height = "700")
+        t <- plotlyOutput("qq_plotly_ps",height = paste(input$window_size[2] - 100,"px",sep=""))
       }
     }
     if (input$qq_choice == "norm"){
       if (nrow(associations_list()$dframe) > 10000){
         t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("qq_plot_static_norm", height = "700"))
+                     plotOutput("qq_plot_static_norm", height = paste(input$window_size[2] - 100,"px",sep="")))
       }
       else{
-        t <- plotlyOutput("qq_plotly_norm", height = "700")
+        t <- plotlyOutput("qq_plotly_norm", height = paste(input$window_size[2] - 100,"px",sep=""))
       }
     }
     t
@@ -471,10 +476,10 @@ shinyServer(function(input,output){
     
     if (nrow(associations_list()$dframe) > 10000){
       t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                   plotOutput("lady_manhattan_plot_static", height = "700"))
+                   plotOutput("lady_manhattan_plot_static", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
     else{
-      t <- plotlyOutput("lady_manhattan_plotly", height = "700")
+      t <- plotlyOutput("lady_manhattan_plotly", height = paste(input$window_size[2] - 100,"px",sep=""))
     }
     
     t
