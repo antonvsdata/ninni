@@ -7,7 +7,6 @@ library(RPostgreSQL)
 library(pool)
 library(ggplot2)
 library(plotly)
-library(reshape2)
 
 source("visualizations.R")
 source("queries.R")
@@ -28,7 +27,4 @@ if(!exists("pool")){
 }
 
 
-ds_dframe <- get_datasets(pool) %>%
-  select(label,description,varnum,effect_type,rowcount) %>%
-  rename(Label = label, Description = description, Number_of_variables = varnum,
-         Effect_type = effect_type, Number_of_associations = rowcount)
+ds_dframe <- get_datasets(pool)

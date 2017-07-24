@@ -4,7 +4,6 @@ packages <- c("shiny",
               "dplyr",
               "tidyr",
               "RPostgreSQL",
-              "reshape2",
               "dbplyr")
 
 install.packages(packages)
