@@ -208,7 +208,7 @@ join_variables <- function(pool,assocs_tbl,ds_df){
   assocs_df_edited <- data.frame()
   for(ds_id in dataset_ids){
     assocs_df_tmp <- assocs_df %>% filter(dataset_id == ds_id)
-    varnum <- ds_df[ds_df$id == ds_id, "varnum"]
+    varnum <- ds_df[ds_df$id == ds_id, "varnum"]$varnum
     assocs_df_tmp$dataset_label <- as.character(ds_df[ds_df$id == ds_id, "label"])
     
     # Removes unnecessary columns
@@ -222,16 +222,13 @@ join_variables <- function(pool,assocs_tbl,ds_df){
     # (Before this the table had two rows with the same association information, but only one variable each)
     if (varnum == 2){
       assocs_df_tmp <- assocs_df_tmp %>%
-        select(-id.x,-id.y, -dataset_id) %>%
-        collect() %>%
-        as.data.frame()
-      incProgress(0.2,message = "Processing dataset")
+        select(-id.x,-id.y, -dataset_id)
+      #incProgress(0.2,message = "Processing dataset")
       assocs_df_tmp <- assocs_df_tmp %>%
         group_by(association_id) %>%
         dplyr::mutate(var_labels = paste(label[1],label[2],sep = ";"),var_descriptions = paste(description[1],description[2],sep = ";")) %>%
         dplyr::ungroup() %>%
         dplyr::select(-description,-label) %>%
-        as.data.frame() %>%
         dplyr::distinct() %>% 
         tidyr::separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
         tidyr::separate(var_descriptions, c("var_description1","var_description2"), sep = ";") %>%

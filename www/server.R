@@ -456,9 +456,6 @@ shinyServer(function(input,output){
   })
   
   output$lady_manhattan_plot_choices <- renderUI({
-    if (associations_list()$effect_type == "Multiple"){
-      return(h5("Multiple different effect types can't be plotted together"))
-    }
     tagList(
       checkboxInput("lady_coloring","Coloring according to column"),
       conditionalPanel("input.lady_coloring == true",
@@ -473,7 +470,9 @@ shinyServer(function(input,output){
   })
   
   output$lady_manhattan_plot <-renderUI({
-    
+    if (associations_list()$effect_type == "Multiple"){
+      return(h5("Multiple different effect types can't be plotted together"))
+    }
     if (nrow(associations_list()$dframe) > 10000){
       t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
                    plotOutput("lady_manhattan_plot_static", height = paste(input$window_size[2] - 100,"px",sep="")))

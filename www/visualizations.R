@@ -140,7 +140,7 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
     ggplotly(p,tooltip = paste("label",1:8, sep = ""))
   }
   else{
-    vars <- dat_l$Variable1 %>% unique() %>% sort()
+    vars <- dframe_lowertri$Variable1 %>% unique() %>% sort()
     p <- p +
       scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 40)]) +
       scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 40)])
