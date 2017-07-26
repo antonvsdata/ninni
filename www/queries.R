@@ -9,27 +9,33 @@ read_db_info <- function(config_file){
 }
 
 # Get associations from the database matching search
+# User can searh by dataset label, metadata tags or variable keywords
+# Return a list with following elements:
+# - dframe: the associations table query object
+# - datasets: the datasets data frame
+# - varnum: greatest number of variables per association
+# - effect_type: effect type of datasets, "Multiple" in case of variation
 get_associations <- function(pool,ds_labels,var_keywords,metadata_tags){
   assocs_tbl <- pool %>% tbl("associations")
   ds_tbl <- pool %>% tbl("datasets")
   
+  # Filter dataset table by metadata tags and/or dataset labels
   if(length(metadata_tags) | length(ds_labels)){
     ds_tbl <- filter_datasets(pool, ds_tbl, metadata_tags, ds_labels)
     assocs_tbl <- asssocs_tbl <- assocs_tbl %>%
       semi_join(ds_tbl, by = c("dataset_id" = "id"))
   }
-  
+  # Keep only variables matching keywords
   if(var_keywords != ""){
     tmp_list <- filter_associations_by_variable(pool,assocs_tbl,ds_tbl,var_keywords)
     assocs_tbl <- tmp_list[[1]]
     ds_tbl <- tmp_list[[2]]
   }
   
+  # Determine effect type and number of variables per association
   ds_df <- collect(ds_tbl)
   varnum <- ds_df$varnum
   effect_type <-ds_df$effect_type
-  
-  
   if(any(ds_df$varnum == 2)){
     varnum <- 2
   }
@@ -40,12 +46,13 @@ get_associations <- function(pool,ds_labels,var_keywords,metadata_tags){
     effect_type <- unique(ds_df$effect_type)
   }
   else{
-    effect_type <- "Multiple"
+    effect_type <- "Multiple" # Multiple means the associations can't be plotted together
   }
   
   return(list(dframe = assocs_tbl, datasets = ds_df, varnum = varnum, effect_type = effect_type))
 }
 
+# Filter datasets by metadata tags and labels
 filter_datasets <- function(pool, ds_tbl, metadata_tags, ds_labels){
   # Filter by metadata tag
   if(length(metadata_tags)){
@@ -77,6 +84,7 @@ filter_datasets <- function(pool, ds_tbl, metadata_tags, ds_labels){
   ds_tbl
 }
 
+# Filter association table, keeping only variables matching keywords
 filter_associations_by_variable <- function(pool,assocs_tbl,ds_tbl,var_keywords){
   keywords <- var_keywords %>% strsplit(split=",") %>% unlist()
   
@@ -117,6 +125,7 @@ filtered_var_tbl <- function(pool, var_keywords){
   var_tbl
 }
 
+# Get all the datasets in the database with their metadata tags
 get_datasets <- function(pool){
   # Get dataset metadata
   meta_tbl <- pool %>% tbl("datasetmetadata")
@@ -138,6 +147,7 @@ get_datasets <- function(pool){
   ds_tbl
 }
 
+# Get the metavariables matching associations
 get_metavariables <- function(pool,assocs_tbl){
   
   final_tbl <- NULL
@@ -247,7 +257,7 @@ join_variables <- function(pool,assocs_tbl,ds_df){
   
   return (assocs_df)
 }
-
+# Reorganise and rename columns
 make_pretty <- function(dframe,varnum){
   if (varnum == 1){
     dframe <- dframe %>% select(dataset_label,label,effect_l95,effect_u95,effect,n,p,p_fdr,description,everything()) %>%
@@ -315,7 +325,7 @@ filter_by_keyword <- function(dframe, cols, keywords){
 }
 
 # Filter variables by p-value, keep all variables that
-#have at least one association meeting criterion
+# have at least one association meeting criterion
 varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
   if (fdr){
     dframe_fltrd <- dframe %>% filter(P_FDR < p_limit)
@@ -335,6 +345,8 @@ varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
   dframe
 }
 
+# Filter variables by effect, keep all variables that
+# have at least one association meeting criterion
 varfilter_eff <- function(dframe,eff_min = -Inf,eff_max = Inf,varnum){
   dframe_fltrd <- dframe %>% filter(Effect > eff_min & Effect < eff_max)
   if (varnum == 2){

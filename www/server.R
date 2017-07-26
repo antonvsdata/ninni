@@ -1,17 +1,18 @@
+
+# All elements are ordered by the tabs in Ninni
 shinyServer(function(input,output){
   
+  #----------- Sidebar ----------------
+  
+  # Multiple choice dropwdown box for choosing datasets
   output$ds_choice <- renderUI({
     selectizeInput("ds_label",label = "Dataset label", width = "100%", multiple = TRUE,
                    choices = ds_dframe$Label, options = list(placeholder = "Choose a dataset"))
   })
-  
+  # Multiple choice dropdown: search database for datasets by metadata tags
   output$metadata_tags_ui <- renderUI({
     selectizeInput("metadata_tags","Metadata tags", width = "100%", multiple = TRUE,
                    choices = na.omit(ds_dframe$Metadata_labels), options = list(placeholder = "Choose metadata tags"))
-  })
-  
-  output$ds_info <- renderUI({
-    tableOutput("ds_info_table")
   })
   
   # Handles the query to the database
@@ -34,6 +35,7 @@ shinyServer(function(input,output){
     associations_list_query()
   })
   
+  # Filters for loaded data
   output$filters <- renderUI({
     if(is.null(standard_filters())){
       return(NULL)
@@ -47,6 +49,7 @@ shinyServer(function(input,output){
     )
   })
   
+  # Filters for associations, always visible
   standard_filters <- reactive({
     if(is.null(associations_list_query())){
       return(NULL)
@@ -80,7 +83,7 @@ shinyServer(function(input,output){
     )
   })
   
-  # Generate filters for metavariables
+  # Generate filters for possible metavariables
   extra_filters <- reactive({
     if(is.null(associations_list_query())){
       return(NULL)
@@ -95,6 +98,10 @@ shinyServer(function(input,output){
     if(ncol(dframe) == col_limit){
       return(NULL)
     }
+    # If the number of columns exceeds the number of standard columns, there are metavariables
+    # Generate filters for these metavariables:
+    # min & max if numeric
+    # keyword search if character
     out <- tagList()
     for(i in (col_limit+1):ncol(dframe)){
       if(class(dframe[,i]) == "numeric"){
@@ -119,6 +126,7 @@ shinyServer(function(input,output){
     out
   })
   
+  # Filters for filtering loaded data by variable
   variable_filters <- reactive({
     if(is.null(associations_list_query())){
       return(NULL)
@@ -151,14 +159,15 @@ shinyServer(function(input,output){
     )
   })
   
+  # Filter the associations dataframe
   # Returns a list with following objects:
+  # - datasets: table of the datasets
   # - dframe: a data frame with the associations
   # - varnum: the number of variables in the dataset
   # - effect_type
-  # Filter the associations dataframe
   associations_list <- eventReactive(input$submit,{
     
-    associations_list <- associations_list_db()
+    associations_list <- associations_list_query()
     dframe <- as.data.frame(associations_list$dframe)
     #Variable filters:
     
@@ -236,7 +245,7 @@ shinyServer(function(input,output){
       }
     }
     
-    # Filters for extra metavariables
+    # Filters for metavariables
     if(!is.null(extra_filters())){
       if(associations_list$varnum == 2){
         col_limit <- 11
@@ -278,7 +287,12 @@ shinyServer(function(input,output){
     return(associations_list)
   })
   
-  # Table showing information of the chosen dataset
+  # Contains information about the loaded data
+  output$ds_info <- renderUI({
+    tableOutput("ds_info_table")
+  })
+  
+  # Table showing information of the loaded data
   output$ds_info_table <- renderTable({
     if(is.null(associations_list())){
       return(NULL)
@@ -305,10 +319,14 @@ shinyServer(function(input,output){
     data.frame(string,values)
   },include.rownames=FALSE, include.colnames = FALSE)
   
+  # --------------- Main ------------------
+  
   # Shows all the datasets in database
   output$dstable <- DT::renderDataTable({
     datatable(ds_dframe, selection = "none")
   })
+  
+  # -------------- Data Table --------------
   
   # Associations data table
   output$tabular <- DT::renderDataTable({
@@ -321,6 +339,7 @@ shinyServer(function(input,output){
     datatable(dframe, selection = "none")
   })
   
+  # Download button for association data
   output$download <- renderUI({
     if (nrow(associations_list()$dframe) > 0){
       downloadButton("download_button")
@@ -340,7 +359,7 @@ shinyServer(function(input,output){
   # All the visualizations can be interactive plotly figures,
   # or static figures, if dataset has more than 10 000 associations
   
-  
+  # -------------- Heat map --------------------
   
   output$heatmap <- renderUI({
     if (associations_list()$effect_type == "Multiple"){
@@ -365,9 +384,6 @@ shinyServer(function(input,output){
       n_plotted <- nrow(associations_list()$dframe) - n_not_plotted
       out <- tagList(out, h5(paste("Only associations with 2 variables will be plotted in the heat map. Removed ",n_not_plotted," associations, plotted ", n_plotted, " associations.", sep="")))
     }
-    # Calculate size for the plot
-    n_variables <- c(associations_list()$dframe$Variable1, associations_list()$dframe$Variable2) %>%
-      unique() %>% length()
     if (nrow(associations_list()$dframe) > 10000){
       out <- tagList(out,
                      h5("Wow, your data is BIG! Plotting static figure."),
@@ -387,6 +403,8 @@ shinyServer(function(input,output){
     get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = FALSE)
   })
   
+  # ------------------- Volcano plot ---------------
+  
   output$volcano <- renderUI({
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
@@ -396,7 +414,6 @@ shinyServer(function(input,output){
               plotOutput("volcano_static", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
     else{
-      #plotOutput("volcano_static", height = "700")
       plotlyOutput("volcanoly", height = paste(input$window_size[2] - 100,"px",sep=""))
     }
   })
@@ -411,6 +428,8 @@ shinyServer(function(input,output){
                          as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, interactive = TRUE)
     
   })
+  
+  # ---------------- Q-Q plot -------------------------
   
   output$qq_plot <-renderUI({
     if (associations_list()$effect_type == "Multiple"){
@@ -455,6 +474,10 @@ shinyServer(function(input,output){
               associations_list()$varnum)
   })
   
+  # ------------------ Lady Manhattan plot ---------------------
+  
+  # Toggle coloring by column
+  # Choose discrete or continuous color scale (only relevant for numeric values)
   output$lady_manhattan_plot_choices <- renderUI({
     tagList(
       checkboxInput("lady_coloring","Coloring according to column"),

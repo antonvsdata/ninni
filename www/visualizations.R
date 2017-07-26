@@ -1,4 +1,12 @@
 
+### COMMON INFORMATION FOR ALL THE VISUALIZATION FUNCTIONS ####
+# -------------------------------------------------------------------------------------------------------
+# interactive argument is used to toggle between interactive plotly plots and normal static ggplots
+# the information showed in the tooltip box on mouse hover is included as dummy aesthetics label1, label2 ..
+# the above causes new versions of ggplot2 to throw warnings, which can be ignored
+# shiny also displays warnings about excplicit widget IDs when working with plotly, but these can be ignored as well
+#-------------------------------------------------------------------------------------------------------
+
 # Combines two matrices
 coalesce<-function(...) {
   x<-lapply(list(...), function(z) {if (is.factor(z)) as.character(z) else z})
@@ -18,6 +26,9 @@ coalesce<-function(...) {
   return(x[[1]])
 }
 
+# Transform a data frame to lower triangular from for heat map
+# Possibility for hierarchical clustering
+# Both input and output in long format
 transform_to_lowertri <- function(dframe,effect_type,clustering){
   dat <- dframe %>% select(Variable1,Variable2,Effect)
   dat$Variable1 <- as.character(dat$Variable1)
@@ -46,6 +57,7 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   dat_w_t <- data.frame(t(dat_w))
   dat_w_whole <- coalesce(dat_w,dat_w_t)
   
+  # Order rows and columns by hierarchical clustering
   if (clustering){
     dat_w_whole_zeros <- dat_w_whole
     if (effect_type %in% c("OR","FC")){
@@ -104,10 +116,12 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   dat_l
 }
 
+# Get a lower triangular heat map
+# clustering = TRUE orders rows and columns by hierarchical clustering
 get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   # Remove missing variable labels
   dframe <- dframe %>% filter(!is.na(Variable1), !is.na(Variable2))
-  
+  # Transform to lower triangular and cluster if clustering is TRUE
   dframe_lowertri <- transform_to_lowertri(dframe,effect_type,clustering)
   
   # Creating the ggplot object
@@ -118,7 +132,7 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   else{
     p <- ggplot(dframe_lowertri, aes(x = Variable1, y = Variable2))
   }
-  
+  # OR and FC use log2 effect
   if (effect_type %in% c("OR","FC")){
     p <- p + geom_tile(aes(fill = log2(Effect)))
   }
@@ -135,8 +149,6 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
     xlab("") + ylab("")
   
   if (interactive){
-    
-    #!!!!Add other information HERE !!!!#
     ggplotly(p,tooltip = paste("label",1:8, sep = ""))
   }
   else{
@@ -152,9 +164,11 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
 # Input:  data frame with effect, p_fdr and point labels
 #         string containing the effect type
 #         varnum
-#         boolean telling if double filtering is enabled (TRUE or FALSE)
-#         limits for double filtering, p-value first
+#         double_filter: boolean telling if double filtering is enabled (TRUE or FALSE)
+#         df_p_lim: double filtering limit for p-value
 #         fdr: boolean, TRUE: p-limit is for P_FDR FALSE: p-limit is for P
+#         df_effect_lim: double filtering limit for effect
+#         eff_limit_log2: boolean, TRUE: limit is for log2(effect), FALSE, limit is for raw effect
 volcanoplot <- function(dframe,effect_type,varnum,double_filter,
                              df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL, eff_limit_log2 = NULL,
                              interactive = FALSE){
@@ -162,7 +176,6 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
   # so they are replaced with 1e-300
   dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   # Create column for double filtering coloring
-  # The log2 checkbox of effect filtering is handled in server.R
   if (double_filter){
     if (eff_limit_log2){
       df_effect_lim <- as.numeric(df_effect_lim)
@@ -193,9 +206,7 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
     x_label <- effect_type
     x_lims <- c(-max(abs(dframe$Effect)),max(abs(dframe$Effect)))
   }
-  # The variable label(s) are added to tooltip info
-  # Other tooltip info is included in dummy aesthetics label*
-  # For varnum == 1, start from 3 to get matching last number
+  
   if (varnum == 1){
     p <- ggplot(dframe, aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
                             label4 = Effect, label5 = P_FDR, label6 = N))
@@ -222,6 +233,7 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
   p
 }
 
+# Normal Q_Q plot with confidence bands
 # This function is a modified version of the one presented in
 # https://gist.github.com/rentrop/d39a8406ad8af2a1066c
 qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
@@ -281,18 +293,21 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
   p
 }
 
+# Q-Q plot of p-values versus expected p-values with confidence bands
 qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   dframe <- dframe %>% arrange(P)
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
   dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
   
-
+  # Calculate expected p-values
   n <- nrow(dframe)
   dframe$observed <- -log10(dframe$P)
   dframe$expected <- -log10(1:n/n)
   dframe$cupper <- -log10(qbeta(ci,     1:n, n - 1:n + 1))
   dframe$clower <- -log10(qbeta(1- ci,  1:n, n - 1:n + 1))
+  
+  # Create ggplot object
   p <- ggplot(dframe, aes(x=expected, y=observed)) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
@@ -319,6 +334,9 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   p
 }
 
+# Lady Manhattan plot
+# The y-axis of a traditional Manhattan plot, -log10(p) is multiplied by the sign of the effect
+# The plot can be colored by chosen column
 lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,color_col = NULL, color_type = NULL){
   # For OR and FC, use log2 effect
   if(effect_type %in% c("OR","FC")){
@@ -348,14 +366,7 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,col
     }
   }
   
-  
-  if(!is.null(color_col)){
-    p <- ggplot(dframe, aes_string(x = x_axis,y = "Y", color = color_col))
-  }
-  else{
-    p <- ggplot(dframe, aes_string(x = x_axis,y = "Y"))
-  }
-  p <- p +
+  p <- ggplot(dframe, aes_string(x = x_axis,y = "Y", color = color_col)) +
     scale_x_discrete(breaks = x_breaks) +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),

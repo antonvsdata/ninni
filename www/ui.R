@@ -21,6 +21,8 @@ shinyUI( fluidPage(
   titlePanel("Ninni"),
   
   sidebarLayout(
+    # Sidebar contains inputs for searching Ninni's database for information
+    # and filters for loaded datasets
     sidebarPanel(
       h4("Dataset"),
       uiOutput("ds_choice"),
@@ -59,6 +61,7 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Heat Map",
+                 # Toggle hierarchical clustering for heat map
                  radioButtons("clustering",
                               label = "Order",
                               choices = c("Alphabetical" = FALSE,"Clustering" = TRUE),
@@ -67,6 +70,9 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Volcano plot",
+                 # Choices for double filtering the volcano plot i.e. filtering by p-value and/or effect size
+                 
+                 # Toggle double filtering
                  radioButtons("double_filter",
                               label = "Visual filters",
                               choices = c("Yes" = TRUE, "No" = FALSE),
@@ -74,11 +80,11 @@ shinyUI( fluidPage(
                               inline = TRUE),
                  
                  fluidRow(
-                   column(4,
+                   column(4, # Set p-value limit
                           textInput("df_p_limit",
                                     label = "P-value <",
                                     value = "0.05")),
-                   column(5,
+                   column(5, # Filter by unadjusted or FDR adjusted p-value
                           radioButtons("df_p_limit_fdr",label = NULL,
                                        choices = c("Unadjusted" = FALSE,
                                                    "FDR" = TRUE),
@@ -87,17 +93,18 @@ shinyUI( fluidPage(
                    
                  ),
                  fluidRow(
-                   column(4,
+                   column(4, # Set limit for the effect
                           textInput("df_effect_limit",
                                     label = "Effect >",
                                     value = 3)),
-                   column(5,
+                   column(5, # Filter by raw or log2 effect
                           radioButtons("df_eff_limit_log2",label = NULL,
                                        choices = c("Original" = FALSE,
                                                    "log2" = TRUE),
                                        selected = FALSE,
                                        inline = TRUE))
                  ),
+                 # The actual volcano plot
                  uiOutput("volcano")
         ),
         
