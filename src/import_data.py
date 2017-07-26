@@ -63,10 +63,10 @@ def executeSQLFromFile(filename):
 
 
 # Import dataset metadata from file
-def import_metadata(file):
+def import_metadata(filename):
     global datasetMetaDataID
     print( "\n")
-    with open(file,'r') as metafile:
+    with open(filename,'r') as metafile:
         rdr = csv.DictReader(metafile, delimiter = ",")
         print("Inserting metadata...")
         for row in rdr:
@@ -104,8 +104,8 @@ def import_datatometa(dsid, tagstr):
 
 
 # Update description of variables
-def update_variables(file):
-    with open(file,'r') as varfile:
+def update_variables(filename):
+    with open(filename,'r') as varfile:
         rdr = csv.DictReader(varfile, delimiter = ",")
         print("Updating variables...")
         count = 0
@@ -155,77 +155,107 @@ def isfloat(value):
         return True
     except ValueError:
         return False
+        
+def isfloat_vector(v):
+    all_float = True
+    for value in v:
+        if not isfloat(value):
+            all_float = False
+            break
+    return all_float
+   
+# Read csv file into dict     
+def read_to_dict(filename, maxlines):
+        header = ''
+        data = {}
+        with open(filename) as f:
+            rdr = csv.reader(f)
+            header = next(rdr)
+            for i in range(0,len(header)):
+                data[header[i]] = []
+            rowcount = 0
+            for row in rdr:
+                rowcount += 1
+                if rowcount > maxlines:
+                    break
+                for i in range(0,len(row)):
+                    data[header[i]].append(row[i])
+        return data
     
 # Adds associations to the database, checks if the dataset has one or two variables and acts accordingly
-def import_associations(file, dsid, varnum, maxlines):
+def import_associations(filename, dsid, varnum, maxlines):
     global metavariableID, associationID, strvalID, numvalID
-    with open(file, 'rt') as csvfile:
-        print("Importing associations...")
-        rdr = csv.DictReader(csvfile,delimiter=',')
-        # Save first row separately to check the number of columns
-        first_row = next(rdr)
-        csvfile.seek(0)
-        next(rdr) 
-        ncol = len(first_row)
-        if varnum == 1:
-            col_limit = 7
-        else:
-            col_limit = 8  
-        # Check if there are extra columns (metavariables)
-        # If yes, populate metavariables table and save info about metavariables to a 2D-table
+    
+    associations = read_to_dict(filename, maxlines)
+    
+    ncol = len(associations.keys())
+    if varnum == 1:
+        normal_columns = ["VARIABLE1", "EFFECT","EFFECT_L95","EFFECT_U95","N","P","P_FDR"]
+    else:
+        normal_columns = ["VARIABLE1_LABEL","VARIABLE2_LABEL", "EFFECT","EFFECT_L95","EFFECT_U95","N","P","P_FDR"]
+    col_limit = len(normal_columns)
+    
+    # Check if there are extra columns (metavariables)
+    # If yes, populate metavariables table and save info about metavariables to a 2D-table
+    # First column: metavariable names, second column: type of variable, "num" or "str"
+    if ncol > col_limit:
+        # Get the names of metavariables
+        metavar_names = list(set(associations.keys()) - set(normal_columns))
+        metavarnum = ncol - col_limit
+        metavars = [None] * metavarnum
+        for i in range(0,metavarnum):
+            metavars[i] = [None] * 3
+            metavar_label = metavar_names[i]
+            metavars[i][0] = metavar_label
+            # If metavariable already exists in the database, get its ID
+            cursor.execute(metavarquery, (metavar_label,))
+            metavar_row = cursor.fetchone()
+            if metavar_row is not None:
+                metavars[i][1] = metavar_row[0]
+            # If metavariable does not exist in the database, import it and save ID
+            else:
+                metavars[i][1] = metavariableID
+                cursor.execute(add_metavar, (metavariableID, metavar_label))
+                metavariableID +=1
+            if isfloat_vector(associations[metavar_label]):
+                metavars[i][2] = "num"
+            else:
+                metavars[i][2] = "str"
+        dbconn.commit()
+        
+    rowcount = 0
+    nrow = len(associations["EFFECT"])
+    for i in range(0,nrow):
+        data_assoc = (associationID, dsid, associations["EFFECT"][i],associations["EFFECT_L95"][i], associations["EFFECT_U95"][i], associations["N"][i], associations["P"][i], associations["P_FDR"][i])
+        cursor.execute(add_assoc, data_assoc)
+        import_assoctovar(associationID,associations["VARIABLE1_LABEL"][i])
+        if varnum == 2:
+            import_assoctovar(associationID, associations["VARIABLE2_LABEL"][i])
         if ncol > col_limit:
-            metavarnum = ncol - col_limit
-            metavars = [None] * metavarnum
-            for i in range(0,metavarnum):
-                metavars[i] = [None] * 3
-                metavars[i][0] = rdr.fieldnames[i+col_limit]
-                # If metavariable already exists in the database, get its ID
-                cursor.execute(metavarquery, (rdr.fieldnames[i+col_limit],))
-                metavar_row = cursor.fetchone()
-                if metavar_row is not None:
-                    metavars[i][1] = metavar_row[0]
-                # If metavariable does not exist in the database, import it and save ID
-                else:
-                    metavars[i][1] = metavariableID
-                    cursor.execute(add_metavar, (metavariableID, rdr.fieldnames[i+col_limit]))
-                    metavariableID +=1
-                if isfloat(first_row[metavars[i][0]]):
-                    metavars[i][2] = "num"
-                else:
-                    metavars[i][2] = "str"
+            for j in range(0,metavarnum):
+                if metavars[j][2] == "num":
+                    cursor.execute(add_numval,(numvalID, associations[metavars[j][0]][i],associationID,metavars[j][1]))
+                    numvalID += 1
+                if metavars[j][2] == "str":
+                    cursor.execute(add_strval,(strvalID, associations[metavars[j][0]][i],associationID,metavars[j][1]))
+                    strvalID += 1
+        rowcount += 1
+        associationID += 1
+        if(maxlines > 0 and rowcount >= maxlines):
+            break
+        if(rowcount % 1000 == 0):
             dbconn.commit()
-        rowcount = 0
-        for row in rdr:
-            data_assoc = (associationID, dsid, row["EFFECT"],row["EFFECT_L95"], row["EFFECT_U95"],row["N"],row["P"],row["P_FDR"])
-            cursor.execute(add_assoc, data_assoc)
-            import_assoctovar(associationID,row["VARIABLE1_LABEL"])
-            if (int(varnum) == 2):
-                import_assoctovar(associationID, row["VARIABLE2_LABEL"])
-            if ncol > col_limit:
-                for i in range(0,metavarnum):
-                    if metavars[i][2] == "num":
-                        cursor.execute(add_numval,(numvalID, row[metavars[i][0]],associationID,metavars[i][1]))
-                        numvalID += 1
-                    if metavars[i][2] == "str":
-                        cursor.execute(add_strval,(strvalID, row[metavars[i][0]],associationID,metavars[i][1]))
-                        strvalID += 1
-            rowcount += 1
-            associationID += 1
-            if(maxlines > 0 and rowcount >= maxlines):
-                break
-            if(rowcount % 1000 == 0):
-                dbconn.commit()
-                print("{0} rows imported".format(rowcount))
+            print("{0} rows imported".format(rowcount))
 
-        cursor.execute(add_rowcount, (rowcount, dsid))
-        print("{0} rows imported".format(rowcount))
+    cursor.execute(add_rowcount, (rowcount, dsid))
+    print("{0} rows imported".format(rowcount))
 
 
 # Read the datasets file, populate the Datasets table and calls other functions to populate
 # the other tables
-def import_datasets(file, maxlines):
+def import_datasets(filename, maxlines):
     global datasetID
-    with open(file,'r') as dataset_file:
+    with open(filename,'r') as dataset_file:
         rdr = csv.DictReader(dataset_file, delimiter = ",")
         for row in rdr:
             print("\n")
@@ -233,7 +263,7 @@ def import_datasets(file, maxlines):
             print("Importing dataset ", row["DATASET_FILENAME"], "...")
             cursor.execute(add_dataset, dataset)
             print("Dataset information inserted")
-            import_associations(row["DATASET_FILENAME"], datasetID, row["VARNUM"], maxlines)
+            import_associations(row["DATASET_FILENAME"], datasetID, int(row["VARNUM"]), maxlines)
             import_datatometa(datasetID, row["METADATA_LABELS"])
             if (row["VARIABLES_FILENAME"] is not None and row["VARIABLES_FILENAME"] != ""):
                 update_variables(row["VARIABLES_FILENAME"])
@@ -241,8 +271,8 @@ def import_datasets(file, maxlines):
 
 
 class FileNotFoundError(Exception):
-    def __init__(self,file):
-        self.file = file
+    def __init__(self,filename):
+        self.file = filename
 
 # Check that all the files containing the associations and variables exist
 # If not, throw a FileNotFoundError
@@ -300,8 +330,6 @@ def datasets_exist(datasetfile):
             
             
 def main():
-    #file = None
-    #maxlines = None
     parser = argparse.ArgumentParser()
     parser.add_argument("-dsf", "--dataset_file", help="The file containing information on the datasets to import")
     parser.add_argument("-mdf","--meta_data_file", help="The file containing the metadata for the datasets")
