@@ -177,7 +177,7 @@ def read_to_dict(filename, maxlines):
             for row in rdr:
                 for i in range(0,len(row)):
                     data[header[i]].append(row[i])
-                    rowcount += 1
+                rowcount += 1
                 if (maxlines > 0 and rowcount >= maxlines):
                     break
         return data
