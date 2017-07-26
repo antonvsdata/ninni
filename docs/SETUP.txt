@@ -1,0 +1,22 @@
+PREREQUISITE SOFTWARE
+
+PostgreSQL
+To set up Ninni's database you need to install PostgreSQL (we are using version 9.2.18 for Red Hat family Linux).
+
+
+Python
+
+The import script to Ninni's database was written in Python 3.5.3 and requires the psycopg2 library (v2.7.1) to connect to a postgreSQL database.
+You can install these prerequisites manually or use the conda environment file in the src folder.
+If you dont have conda installed, you can get it from here: https://conda.io/docs/install/quick.html.
+Once you have conda, you can install the ninni environment using src/ninni_env.json:
+$ conda env create -n ninni_env –f ninni_env.json
+The correct versions of all libraries used by Ninni will be installed.
+
+
+R
+
+The Shiny web app uses R 3.3.3. You can install all the required R packages with src/install.packages.R script.
+Unfortunately it is not possible to install R 3.3.3 nor these packages through conda.
+
+
