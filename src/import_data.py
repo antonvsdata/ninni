@@ -175,11 +175,11 @@ def read_to_dict(filename, maxlines):
                 data[header[i]] = []
             rowcount = 0
             for row in rdr:
-                rowcount += 1
-                if rowcount > maxlines:
-                    break
                 for i in range(0,len(row)):
                     data[header[i]].append(row[i])
+                    rowcount += 1
+                if (maxlines > 0 and rowcount >= maxlines):
+                    break
         return data
     
 # Adds associations to the database, checks if the dataset has one or two variables and acts accordingly
