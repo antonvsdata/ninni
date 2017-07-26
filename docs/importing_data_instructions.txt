@@ -22,6 +22,7 @@ Example: study1.csv
 VARIABLE1_LABEL,VARIABLE2_LABEL,EFFECT,EFFECT_L95,EFFECT_U95,N,P,P_FDR,CLASS
 ABCD,TP53,8,5,10,100,0.01,1,A
 
+NOTE: Any additional columns will be imported as numeric values if they look like numeric values
 
 
 2: VARIABLE FILES

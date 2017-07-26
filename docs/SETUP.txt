@@ -20,3 +20,15 @@ The Shiny web app uses R 3.3.3. You can install all the required R packages with
 Unfortunately it is not possible to install R 3.3.3 nor these packages through conda.
 
 
+SETUP
+
+Set up a PostgreSQL database on your server and add the connection information to a following files:
+src/database_import.config
+www/database_www.config
+
+You can see the correct form from example files src/database_import.config-TEMPLATE and www/database_www.config-TEMPLATE
+
+The reason for having two files is that in our case we have two users for the database. One has both reading and writing permissions
+and is used by the import script. The other has only reading permissions and is used by the Shiny application.
+
+

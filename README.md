@@ -14,14 +14,16 @@ Ninni uses [Shiny](https://shiny.rstudio.com). Ninni's data is stored in a [Post
 
 #### Installation and set up
 
-1. Download git repo
-`git init
-git remote add origin https://github.com/antonmattsson/ninni
-git pull origin master`
+1. Download git repo  
+```
+git init  
+git remote add origin https://github.com/antonmattsson/ninni  
+git pull origin master
+```
 
 2. Install required software, see `docs/SETUP.txt`
 
-3. Setup PostgreSQL databse for Ninni
+3. Setup a PostgreSQL database for Ninni
 
 4. See information about the database structure and importing data in `docs` folder: `database_structure.txt`, `db_schema.pdf` and `importing_data_instructions.txt`
 
