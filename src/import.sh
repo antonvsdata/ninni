@@ -4,7 +4,7 @@ source activate ninni_env
 printf 'Environment activated \n'
 
 printf 'Importing data \n \n'
-python import_data.py -dsf ../data/datasets.csv -mdf ../data/metadata.csv -ml 1000
+python import_data.py -dsf ../data/datasets.csv -mdf ../data/metadata.csv
 
 printf '\n \nDeactivating conda environment\n'
 source deactivate ninni_env
