@@ -142,6 +142,7 @@ get_datasets <- function(pool){
   ds_tbl <- pool %>% tbl("datasets") %>%
     collect() %>%
     left_join(ds_to_meta_tbl,by=c("id" = "dataset_id")) %>%
+    dplyr::select(-id) %>%
     rename(Label = label, Description = description, Number_of_variables = varnum,
            Effect_type = effect_type, Number_of_associations = rowcount)
   ds_tbl

@@ -44,7 +44,7 @@ shinyServer(function(input,output){
       standard_filters(),
       extra_filters(),
       variable_filters(),
-      actionButton("submit",
+      actionButton("filter",
                    label = "Filter")
     )
   })
@@ -165,7 +165,7 @@ shinyServer(function(input,output){
   # - dframe: a data frame with the associations
   # - varnum: the number of variables in the dataset
   # - effect_type
-  associations_list <- eventReactive(input$submit,{
+  associations_list <- eventReactive(input$filter,{
     
     associations_list <- associations_list_query()
     dframe <- as.data.frame(associations_list$dframe)
