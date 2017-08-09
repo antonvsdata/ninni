@@ -41,6 +41,7 @@ shinyServer(function(input,output){
       return(NULL)
     }
     tagList(
+      br(),
       standard_filters(),
       extra_filters(),
       variable_filters(),
@@ -55,6 +56,7 @@ shinyServer(function(input,output){
       return(NULL)
     }
     tagList(
+      h4("Association filters"),
       strong("Variable"),
       textInput("var_labels","Keywords, comma separated"),
       

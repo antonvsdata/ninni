@@ -283,7 +283,7 @@ make_pretty <- function(dframe,varnums){
   dframe
 }
 
-# Filter a data frame by keywords on a column
+# Filter a data frame by keywords on columns
 # keywords that start with a '-' are exclusions from the search
 # keywords that end with a '*' are wildcards
 filter_by_keyword <- function(dframe, cols, keywords){

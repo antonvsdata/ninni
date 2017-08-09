@@ -26,5 +26,4 @@ if(!exists("pool")){
   )
 }
 
-
 ds_dframe <- get_datasets(pool)
