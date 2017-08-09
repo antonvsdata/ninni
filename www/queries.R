@@ -217,6 +217,8 @@ join_variables <- function(pool,assocs_tbl,ds_df){
   dataset_ids <- sort(unique(assocs_df$dataset_id))
   
   assocs_df_edited <- data.frame()
+  # Join variables separately for each original dataset
+  # Joining method depends on varnum
   for(ds_id in dataset_ids){
     assocs_df_tmp <- assocs_df %>% filter(dataset_id == ds_id)
     varnum <- ds_df[ds_df$id == ds_id, "varnum"]$varnum
@@ -227,7 +229,7 @@ join_variables <- function(pool,assocs_tbl,ds_df){
       assocs_df_tmp <- assocs_df_tmp %>%
         select(-id.x,-id.y, -dataset_id) %>%
         collect() %>%
-        make_pretty(varnum)
+        rename(Variable1 = label, Description1 = description)
     }
     # Removes unnecessary columns and combines the rows of same association
     # (Before this the table had two rows with the same association information, but only one variable each)
@@ -241,9 +243,8 @@ join_variables <- function(pool,assocs_tbl,ds_df){
         dplyr::ungroup() %>%
         dplyr::select(-description,-label) %>%
         dplyr::distinct() %>% 
-        tidyr::separate(var_labels, c("var_label1","var_label2"),sep = ";") %>%
-        tidyr::separate(var_descriptions, c("var_description1","var_description2"), sep = ";") %>%
-        make_pretty(varnum)
+        tidyr::separate(var_labels, c("Variable1","Variable2"),sep = ";") %>%
+        tidyr::separate(var_descriptions, c("Description1","Description2"), sep = ";")  
     }
     # Join metavariables
     if(!is.null(metavar_tbl)){
@@ -251,7 +252,8 @@ join_variables <- function(pool,assocs_tbl,ds_df){
     }
     assocs_df_edited <- bind_rows(assocs_df_edited, assocs_df_tmp)
   }
-  assocs_df <- assocs_df_edited
+  assocs_df <- make_pretty(assocs_df_edited, ds_df$varnum) 
+  
   
   incProgress(0.2)
   assocs_df <- select(assocs_df,-association_id)
@@ -259,18 +261,25 @@ join_variables <- function(pool,assocs_tbl,ds_df){
   return (assocs_df)
 }
 # Reorganise and rename columns
-make_pretty <- function(dframe,varnum){
-  if (varnum == 1){
-    dframe <- dframe %>% select(dataset_label,label,effect_l95,effect_u95,effect,n,p,p_fdr,description,everything()) %>%
-      rename(Dataset = dataset_label, Variable1 = label, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95, Effect = effect,
-             N = n, P = p, P_FDR = p_fdr,Description1 = description)
+make_pretty <- function(dframe,varnums){
+  dframe <- dframe %>%
+    rename(Dataset = dataset_label, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
+           Effect = effect, N = n, P = p, P_FDR = p_fdr)
+  
+  # The default columns should be the first columns of the data frame in this order
+  if(any(varnums == 2)){
+    first.cols <- c("Dataset", "Variable1", "Variable2", "Effect_CIL95", "Effect_CIU95", "Effect", "N",
+                    "P", "P_FDR", "Description1", "Description2")
   }
-  if (varnum == 2){
-    dframe <- dframe %>% select(dataset_label, var_label1,var_label2,effect_l95,effect_u95,effect,n,
-                                p,p_fdr,var_description1,var_description2,everything()) %>%
-      rename(Dataset = dataset_label, Variable1 = var_label1, Variable2 = var_label2, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
-             Effect = effect, N = n, P = p, P_FDR = p_fdr,Description1 = var_description1, Description2 = var_description2)
+  else{
+    first.cols <- c("Dataset", "Variable1", "Effect_CIL95", "Effect_CIU95", "Effect", "N",
+                    "P", "P_FDR", "Description1")
   }
+  # The rest of the columns in alphabetical order
+  last.cols <- sort(setdiff(colnames(dframe),first.cols))
+  # Reorganise columns
+  dframe <- dframe[,c(first.cols,last.cols)]
+  
   dframe
 }
 
