@@ -8,8 +8,8 @@ library(pool)
 library(ggplot2)
 library(plotly)
 
-source("visualizations.R")
-source("queries.R")
+source("/home/users/antom/Projects/ninni/www/visualizations.R")
+source("/home/users/antom/Projects/ninni/www/queries.R")
 
 db_info <- read_db_info("/home/users/antom/Projects/ninni/src/database_import.config")
 
