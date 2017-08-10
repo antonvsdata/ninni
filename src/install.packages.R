@@ -17,6 +17,6 @@ for(package.name in names(packages)){
 }
 
 # Dev versions of certain packages are required for Ninni to work
-devtools::install_github("rstudio/pool")
-devtools::install_github("hadley/ggplot2")
-devtools::install_github("tidyverse/dplyr")
+devtools::install_github("rstudio/pool") # 0.1.0.9000
+devtools::install_github("hadley/ggplot2") # 2.2.1.9000
+devtools::install_github("tidyverse/dplyr")# 0.7.1.9000

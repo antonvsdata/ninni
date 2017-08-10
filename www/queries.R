@@ -288,8 +288,8 @@ make_pretty <- function(dframe,varnums){
 # keywords that end with a '*' are wildcards
 filter_by_keyword <- function(dframe, cols, keywords){
   
-  # Split at ',' and remove space from beginning
-  keywords <- keywords  %>% strsplit(split=",") %>% unlist() %>% gsub("^ ", "",.)
+  # Split at ',' and remove leading and trailing whitespace
+  keywords <- keywords  %>% strsplit(split=",") %>% unlist() %>% trimws()
   
   # Separate exclusions and iclusions
   inclusions <- keywords[!grepl("^-",keywords)]
