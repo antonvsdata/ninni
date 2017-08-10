@@ -1,0 +1,5 @@
+LABEL,DESCRIPTION
+DRUG_INTERACTION,Interaction of drugs
+DRUG,Drugs
+ARRHYTMIA,Arrhytmia
+METABO,Metabolomics
