@@ -305,7 +305,7 @@ shinyServer(function(input,output){
                 associations_list()$datasets$effect_type %>% unique() %>% paste(collapse=","),
                 nrow(associations_list()$dframe))
     if (associations_list()$varnum ==2){
-      values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframeVariable2) %>%
+      values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframe$Variable2) %>%
                     unique() %>% length())
     }
     else{
