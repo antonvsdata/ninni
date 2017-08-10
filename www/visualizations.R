@@ -134,10 +134,12 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   }
   # OR and FC use log2 effect
   if (effect_type %in% c("OR","FC")){
-    p <- p + geom_tile(aes(fill = log2(Effect)))
+    p <- p + geom_tile(aes(fill = log2(Effect))) +
+      scale_fill_gradient2(name = paste("log2(",effect_type,")",sep=""), low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab") 
   }
-  else{
-    p <- p + geom_tile(aes(fill = Effect))
+  else if(effect_type == "CORR"){
+    p <- p + geom_tile(aes(fill = Effect)) +
+      scale_fill_gradient2(name = effect_type, low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab", limits = c(-1,1))
   }
   
   p <- p +
@@ -145,7 +147,6 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
           axis.text.x = element_text(angle = 90)) +
-    scale_fill_gradient2(low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab", na.value = "green") +
     xlab("") + ylab("")
   
   if (interactive){
@@ -216,10 +217,11 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
                             label5 = Description2, label6 = Effect, label7 = P_FDR, label8 = N))
   }
   p <- p +
-    geom_point(aes_string(x = "log2(Effect)", y = "-log10(P)",color = coloring)) +
+    geom_point(aes_string(x = x_axis, y = "-log10(P)",color = coloring)) +
     scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
                         guide = guide_legend(title = NULL)) +
     xlim(x_lims[1],x_lims[2]) +
+    xlab(x_label) +
     theme_minimal()
   # Add labels to plotly tooltip
   if(interactive){
@@ -341,11 +343,11 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,col
   # For OR and FC, use log2 effect
   if(effect_type %in% c("OR","FC")){
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(log2(Effect)))
-    y_label <- "-log10(P) * sign(log2(Effect))"
+    y_label <- paste("-log10(P) * sign(log2(", effect_type ,"))",sep="")
   }
   else{
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(Effect))
-    y_label <- "-log10(P) * sign(Effect)"
+    y_label <- paste("-log10(P) * sign(", effect_type ,")",sep="")
   }
   # For datasets with interactions, the combinations of variables are used as x-axis
   if(varnum == 1){
