@@ -48,7 +48,7 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   dat_w <- dat %>% spread(Variable2,Effect) %>% filter(!is.na(Variable1))
   rownames(dat_w) <- dat_w$Variable1
   dat_w <- dat_w %>% select(-Variable1)
-  dat_w <- dat_w[rownames(dat_w)!="NA",colnames(dat_w)!="NA"] #one of the columns or rows is named NA
+  dat_w <- dat_w[rownames(dat_w)!="NA",! colnames(dat_w) %in% c("NA","<NA>")] #one of the columns or rows is named NA
   dat_w <- dat_w[rev(order(names(dat_w))),rev(order(names(dat_w)))] #this makes the image lie on the lower triangular
   
   # dat_w only has one-directional interactions
@@ -73,7 +73,6 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   # Only half of the associations are needed for plotting
   dat_w_whole[upper.tri(dat_w_whole)] <- NA
   # Diagonal should be included in the plot
-  diag(dat_w_whole) <- 1
   
   # Melt back to long format for ggplot2
   dat_w_whole$Variable1 <- rownames(dat_w_whole)
@@ -82,6 +81,7 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   # Joining other columns from original dframe
   dat_l$Variable2 <- as.character(dat_l$Variable2)
   dat_l_orig <- dat_l
+  # The order of Variable1 and 2 has changed for some associations, so two joins are required
   combined1 <- inner_join(dat_l, dframe, by = c("Variable1","Variable2","Effect"))
   combined2 <- inner_join(dat_l,dframe,by = c("Variable1" = "Variable2","Variable2" = "Variable1","Effect"))
   dat_l <- rbind(combined1,combined2)
@@ -100,11 +100,7 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
     append_df$Variable1[index] <- append_df$Variable2[index]
     index <- which(is.na(append_df$Variable2))
     append_df$Variable2[index] <- append_df$Variable1[index]
-    
-    fill_df <- as.data.frame(matrix(nrow=nrow(append_df),ncol = ncol(dat_l)-3))
-    colnames(fill_df) <- colnames(dat_l)[-(1:3)]
-    append_df <- cbind(append_df,fill_df)
-    dat_l <- rbind(dat_l,append_df)
+    dat_l <- bind_rows(dat_l,append_df)
   }
   # Setting the factor levels to correctly draw the heatmap
   # This ensures the tiles are plotted in correct order to make a lower triangular heat map
@@ -135,11 +131,11 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   # OR and FC use log2 effect
   if (effect_type %in% c("OR","FC")){
     p <- p + geom_tile(aes(fill = log2(Effect))) +
-      scale_fill_gradient2(name = paste("log2(",effect_type,")",sep=""), low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab") 
+      scale_fill_gradient2(name = paste("log2(",effect_type,")",sep=""), low = "steelblue", mid = "grey80", high = "red", midpoint = 0, space = "Lab", na.value = "white") 
   }
   else if(effect_type == "CORR"){
     p <- p + geom_tile(aes(fill = Effect)) +
-      scale_fill_gradient2(name = effect_type, low = "steelblue", mid = "white", high = "red", midpoint = 0, space = "Lab", limits = c(-1,1))
+      scale_fill_gradient2(name = effect_type, low = "steelblue", mid = "grey80", high = "red", midpoint = 0, space = "Lab", limits = c(-1,1), na.value = "white")
   }
   
   p <- p +
@@ -154,9 +150,11 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   }
   else{
     vars <- dframe_lowertri$Variable1 %>% unique() %>% sort()
-    p <- p +
-      scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 40)]) +
-      scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 40)])
+    if(length(vars) > 80){
+      p <- p +
+        scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 40)]) +
+        scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 40)])
+    }
     p
   }
 }
@@ -339,7 +337,7 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
 # Lady Manhattan plot
 # The y-axis of a traditional Manhattan plot, -log10(p) is multiplied by the sign of the effect
 # The plot can be colored by chosen column
-lady_manhattan_plot <- function(dframe,effect_type,varnum,interactive = TRUE,color_col = NULL, color_type = NULL){
+lady_manhattan_plot <- function(dframe,effect_type,varnum, interactive = TRUE, color_col = NULL, color_type = NULL){
   # For OR and FC, use log2 effect
   if(effect_type %in% c("OR","FC")){
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(log2(Effect)))

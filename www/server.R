@@ -350,11 +350,11 @@ shinyServer(function(input,output){
   
   output$download_button <- downloadHandler(
     filename = function(){
-      "Ninni_data_output.csv"
+      "ninni_data_output.csv"
     },
     
     content = function(file){
-      write.csv(associations_list()$dframe,file, quote = F, row.names = F)
+      write.csv(associations_list()$dframe,file, row.names = F)
     }
   )
   
@@ -395,6 +395,9 @@ shinyServer(function(input,output){
       out <- tagList(out,
                      plotlyOutput("heatmaply", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
+    out <- tagList(out,
+                   uiOutput("heatmap_download"))
+    out
   })
   
   output$heatmaply <- renderPlotly({
@@ -405,6 +408,30 @@ shinyServer(function(input,output){
     get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = FALSE)
   })
   
+  output$heatmap_download <- renderUI({
+    tagList(
+      br(),
+      fluidRow(
+        column(1,
+               downloadButton("heatmap_download_button")),
+        column(2,
+               radioButtons("heatmap_download_format",label=NULL,
+                            choices = c("png","pdf")))
+      )
+    )
+  })
+  
+  output$heatmap_download_button <- downloadHandler(
+    filename = function(){
+      paste("ninni_heatmap",input$heatmap_download_format,sep=".")
+    },
+    
+    content = function(file){
+      p <- get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = FALSE)
+      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in")
+    }
+  )
+  
   # ------------------- Volcano plot ---------------
   
   output$volcano <- renderUI({
@@ -412,12 +439,14 @@ shinyServer(function(input,output){
       return(h5("Multiple different effect types can't be plotted together"))
     }
     if (nrow(associations_list()$dframe) > 10000){
-      tagList(h5("Wow, your data is BIG! Plotting static figure."),
+      out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
               plotOutput("volcano_static", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
     else{
-      plotlyOutput("volcanoly", height = paste(input$window_size[2] - 100,"px",sep=""))
+      out <- plotlyOutput("volcanoly", height = paste(input$window_size[2] - 100,"px",sep=""))
     }
+    out <- tagList(out,
+                   uiOutput("volcano_download"))
   })
   
   output$volcano_static <- renderPlot({
@@ -431,6 +460,31 @@ shinyServer(function(input,output){
     
   })
   
+  output$volcano_download <- renderUI({
+    tagList(
+      br(),
+      fluidRow(
+        column(1,
+               downloadButton("volcano_download_button")),
+        column(2,
+               radioButtons("volcano_download_format",label=NULL,
+                            choices = c("png","pdf")))
+      )
+    )
+  })
+  
+  output$volcano_download_button <- downloadHandler(
+    filename = function(){
+      paste("ninni_volcano_plot",input$volcano_download_format,sep=".")
+    },
+    
+    content = function(file){
+      p <- volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
+                       as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, interactive = FALSE)
+      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in")
+    }
+  )
+  
   # ---------------- Q-Q plot -------------------------
   
   output$qq_plot <-renderUI({
@@ -439,23 +493,25 @@ shinyServer(function(input,output){
     }
     if (input$qq_choice == "p-values"){
       if (nrow(associations_list()$dframe) > 10000){
-        t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
+        out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
                      plotOutput("qq_plot_static_ps", height = paste(input$window_size[2] - 100,"px",sep="")))
       }
       else{
-        t <- plotlyOutput("qq_plotly_ps",height = paste(input$window_size[2] - 100,"px",sep=""))
+        out <- plotlyOutput("qq_plotly_ps",height = paste(input$window_size[2] - 100,"px",sep=""))
       }
     }
     if (input$qq_choice == "norm"){
       if (nrow(associations_list()$dframe) > 10000){
-        t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
+        out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
                      plotOutput("qq_plot_static_norm", height = paste(input$window_size[2] - 100,"px",sep="")))
       }
       else{
-        t <- plotlyOutput("qq_plotly_norm", height = paste(input$window_size[2] - 100,"px",sep=""))
+        out <- plotlyOutput("qq_plotly_norm", height = paste(input$window_size[2] - 100,"px",sep=""))
       }
     }
-    t
+    out <- tagList(out,
+                   uiOutput("qq_plot_download"))
+    out
   })
   
   output$qq_plot_static_ps <- renderPlot({
@@ -475,6 +531,36 @@ shinyServer(function(input,output){
     qq_normal(associations_list()$dframe, associations_list()$effect_type,
               associations_list()$varnum)
   })
+  
+  output$qq_plot_download <- renderUI({
+    tagList(
+      br(),
+      fluidRow(
+        column(1,
+               downloadButton("qq_plot_download_button")),
+        column(2,
+               radioButtons("qq_plot_download_format",label=NULL,
+                            choices = c("png","pdf")))
+      )
+    )
+  })
+  
+  output$qq_plot_download_button <- downloadHandler(
+    filename = function(){
+      paste("ninni_qq_plot",input$qq_plot_download_format,sep=".")
+    },
+    
+    content = function(file){
+      if (input$qq_choice == "p-values"){
+        p <- qq_pvalues(associations_list()$dframe,associations_list()$varnum, interactive = FALSE)
+      }
+      if (input$qq_choice == "norm"){
+        p <- qq_normal(associations_list()$dframe, associations_list()$effect_type,
+                       associations_list()$varnum, interactive = FALSE)
+      }
+      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in")
+    }
+  )
   
   # ------------------ Lady Manhattan plot ---------------------
   
@@ -499,14 +585,15 @@ shinyServer(function(input,output){
       return(h5("Multiple different effect types can't be plotted together"))
     }
     if (nrow(associations_list()$dframe) > 10000){
-      t <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
+      out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
                    plotOutput("lady_manhattan_plot_static", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
     else{
-      t <- plotlyOutput("lady_manhattan_plotly", height = paste(input$window_size[2] - 100,"px",sep=""))
+      out <- plotlyOutput("lady_manhattan_plotly", height = paste(input$window_size[2] - 100,"px",sep=""))
     }
-    
-    t
+    out <- tagList(out,
+                   uiOutput("lady_manhattan_download"))
+    out
   })
   
   output$lady_manhattan_plot_static <- renderPlot({
@@ -526,5 +613,34 @@ shinyServer(function(input,output){
       lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = TRUE)
     }
   })
+  
+  output$lady_manhattan_download <- renderUI({
+    tagList(
+      br(),
+      fluidRow(
+        column(1,
+               downloadButton("lady_manhattan_download_button")),
+        column(2,
+               radioButtons("lady_manhattan_download_format",label=NULL,
+                            choices = c("png","pdf")))
+      )
+    )
+  })
+  
+  output$lady_manhattan_download_button <- downloadHandler(
+    filename = function(){
+      paste("ninni_lady_manhattan_plot",input$lady_manhattan_download_format,sep=".")
+    },
+    
+    content = function(file){
+      if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring_column != ""){
+        p <- lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE, input$lady_coloring_column,input$lady_coloring_type)
+      }
+      else{
+        p <- lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE)
+      }
+      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in")
+    }
+  )
   
 })
