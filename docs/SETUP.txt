@@ -38,6 +38,8 @@ and is used by the import script. The other has only reading permissions and is 
 By default, the import script drops and recreates the database schema in the beginning of every import. Thus, there is no need to create any
 tables prior to import of data, but the schema will be created automatically.
 
+To import data to the database, see importing_data_instructions.txt
+
 Shiny app
 
 Once you have imported data into your database and added connection information you can run the Shiny application from R console with the command:

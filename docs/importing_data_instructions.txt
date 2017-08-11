@@ -94,19 +94,19 @@ The script has 4 command line parameters:
 If you wish to append datasets to the database without deleting existing data, you can use -a or --append flag.
 -a will append any NEW datasets to the database and fail if there already exists a dataset with the same label
 
-Example:
+Example data is the example_data folder:
 
-- The datasets are stored in data folder as .csv files
+- The datasets are stored as .csv files
 - The .csv files are listed in datasets.csv file
-- The data folder also contains the metadata.csv file
+- The example_data folder also contains the metadata.csv file
 
 - Now, running the following command in the src imports the datasets into Ninni's database:
 
-$ python import_data.py -dsf ../data/datasets.csv -mdf ../data/metadata.csv
+$ python import_data.py -dsf ../example_data/datasets.csv -mdf ../example_data/metadata.csv
 
 NOTE: you need to have the proper version of python and psycopg2 library installes, see SETUP.txt for more information.
 
-If you are using conda and have the conda environment installed, you can use the import.sh bash script located in the src folder for facilitated import.
+If you are using conda and have the conda environment installed, you can use the import_example_data.sh bash script located in the src folder for facilitated import.
 The import.sh script activates the conda environment, imports the data and then deactivates the conda environment, making sure that everything runs smoothly.
 All you need to do is to make sure that the dataset and metadata file names are correct.
 
