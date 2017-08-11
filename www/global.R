@@ -11,7 +11,7 @@ library(plotly)
 source("visualizations.R")
 source("queries.R")
 
-db_info <- read_db_info("database_www.config")
+db_info <- read_db_info("../src/database_import.config")
 
 if(!exists("pool")){
   pool <- dbPool(
