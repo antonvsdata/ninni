@@ -428,7 +428,12 @@ shinyServer(function(input,output){
     
     content = function(file){
       p <- get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = FALSE)
-      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in")
+      if(nrow(associations_list()$dframe) > 10000){
+        scale <- 1.5
+      } else{
+        scale <- 1
+      }
+      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
   
@@ -481,7 +486,12 @@ shinyServer(function(input,output){
     content = function(file){
       p <- volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
                        as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, interactive = FALSE)
-      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in")
+      if(nrow(associations_list()$dframe) > 10000){
+        scale <- 1.5
+      } else{
+        scale <- 1
+      }
+      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
   
@@ -558,7 +568,12 @@ shinyServer(function(input,output){
         p <- qq_normal(associations_list()$dframe, associations_list()$effect_type,
                        associations_list()$varnum, interactive = FALSE)
       }
-      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in")
+      if(nrow(associations_list()$dframe) > 10000){
+        scale <- 1.5
+      } else{
+        scale <- 1
+      }
+      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
   
@@ -639,7 +654,12 @@ shinyServer(function(input,output){
       else{
         p <- lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE)
       }
-      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in")
+      if(nrow(associations_list()$dframe) > 10000){
+        scale <- 1.5
+      } else{
+        scale <- 1
+      }
+      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
   
