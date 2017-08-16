@@ -22,6 +22,8 @@ Currently, Ninni provides the following visualizations:
 
 Ninni is powered by [Shiny](https://shiny.rstudio.com).
 
+*Ninni is licensed under the terms of the MIT license*
+
 ## Installation and set up
 
 #### 1.  Download git repo
@@ -186,4 +188,3 @@ of the Shiny application from R console with the command:
 If you want to deploy the Shiny app publicly to the web use Shiny Server. Instructions are available online.
 
 
-*Ninni is licensed under the terms of the MIT license*
