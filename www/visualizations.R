@@ -26,7 +26,7 @@ coalesce<-function(...) {
   return(x[[1]])
 }
 
-# Transform a data frame to lower triangular from for heat map
+# Transform a data frame to lower triangular form for heat map
 # Possibility for hierarchical clustering
 # Both input and output in long format
 transform_to_lowertri <- function(dframe,effect_type,clustering){
@@ -84,32 +84,64 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   # The order of Variable1 and 2 has changed for some associations, so two joins are required
   combined1 <- inner_join(dat_l, dframe, by = c("Variable1","Variable2","Effect"))
   combined2 <- inner_join(dat_l,dframe,by = c("Variable1" = "Variable2","Variable2" = "Variable1","Effect"))
-  dat_l <- rbind(combined1,combined2)
+  dat_l <- rbind(combined1,combined2)%>%
+    dplyr::distinct() # Remove duplicated associations with same Variable1 and Variable2
   
-  vars <- c(dat_l$Variable1,dat_l$Variable2) %>% unique()
-  x <- setdiff(vars,dat_l$Variable1)
-  y <- setdiff(vars,dat_l$Variable2)
-  if(length(x) | length(y)){
-    append_len <- max(length(x),length(y))
-    append_df <- data.frame(Variable1 = c(x,rep(NA, append_len - length(x))),
-                            Variable2 = c(y,rep(NA, append_len - length(y))),
-                            Effect = NA)
-    append_df$Variable1 <- as.character(append_df$Variable1)
-    append_df$Variable2 <- as.character(append_df$Variable2)
-    index <- which(is.na(append_df$Variable1))
-    append_df$Variable1[index] <- append_df$Variable2[index]
-    index <- which(is.na(append_df$Variable2))
-    append_df$Variable2[index] <- append_df$Variable1[index]
-    dat_l <- bind_rows(dat_l,append_df)
-  }
+  # vars <- c(dat_l$Variable1,dat_l$Variable2) %>% unique()
+  # x <- setdiff(vars,dat_l$Variable1)
+  # y <- setdiff(vars,dat_l$Variable2)
+  # if(length(x) | length(y)){
+  #   append_len <- max(length(x),length(y))
+  #   append_df <- data.frame(Variable1 = c(x,rep(NA, append_len - length(x))),
+  #                           Variable2 = c(y,rep(NA, append_len - length(y))),
+  #                           Effect = NA)
+  #   append_df$Variable1 <- as.character(append_df$Variable1)
+  #   append_df$Variable2 <- as.character(append_df$Variable2)
+  #   index <- which(is.na(append_df$Variable1))
+  #   append_df$Variable1[index] <- append_df$Variable2[index]
+  #   index <- which(is.na(append_df$Variable2))
+  #   append_df$Variable2[index] <- append_df$Variable1[index]
+  #   dat_l <- bind_rows(dat_l,append_df)
+  # }
   # Setting the factor levels to correctly draw the heatmap
   # This ensures the tiles are plotted in correct order to make a lower triangular heat map
   dat_l$Variable1 <- dat_l$Variable1 %>% 
-    factor(levels = rev(colnames(dat_w_whole)))
+    factor(levels = rev(rownames(dat_w_whole)))
   dat_l$Variable2 <- dat_l$Variable2 %>%
     factor(levels = rownames(dat_w_whole))
   
   dat_l
+}
+
+# Return a categorical variable based on Effects
+# This can be used for discrete color scale with 5 colours
+# Levels are low, semi-low, zero, semi_high and high
+to_levels <- function(effect, type){
+  if(type %in% c("OR","FC")){
+    effect <- log2(effect)
+  }
+  level <- rep(NA, length(effect))
+  min_ <- min(effect)
+  max_ <- max(effect)
+  if(min_ < 0 & max_ > 0){
+    zero_limit <- 0.2* min(abs(min_), abs(max_))
+  }
+  if(max_ < 0){
+    zero_limit <- 0.2*abs(min_)
+  }
+  if(min_ > 0){
+    zero_limit <- 0.2*max_
+  }
+  level[effect >= -zero_limit & effect <= zero_limit] <- "zero"
+  min_half <- (min_ - zero_limit)/2
+  level[effect >= min_half & effect < -zero_limit] <- "semi_low"
+  level[effect < min_half] <- "low"
+  max_half <- (max_ + zero_limit)/2
+  level[effect > zero_limit & effect <= max_half] <- "semi_high"
+  level[effect > max_half] <- "high"
+  
+  list(levels = level,
+       breakpoints = signif(c(min_half,zero_limit,max_half),digits = 2))
 }
 
 # Get a lower triangular heat map
@@ -119,6 +151,15 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   dframe <- dframe %>% filter(!is.na(Variable1), !is.na(Variable2))
   # Transform to lower triangular and cluster if clustering is TRUE
   dframe_lowertri <- transform_to_lowertri(dframe,effect_type,clustering)
+  effect_levels <- to_levels(dframe_lowertri$Effect, effect_type)
+  breakpoints <- effect_levels$breakpoints
+  dframe_lowertri$effect_level <- effect_levels$levels
+  
+  fill_labels <- c("high" = paste(">",breakpoints[3]),
+                   "semi_high" = paste(breakpoints[2],"...",breakpoints[3]),
+                   "zero" = paste(-breakpoints[2],"...",breakpoints[2]),
+                   "semi_low" = paste(breakpoints[1],"...",-breakpoints[2]),
+                   "low" = paste("<", breakpoints[1]))
   
   # Creating the ggplot object
   if(interactive){
@@ -128,32 +169,37 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   else{
     p <- ggplot(dframe_lowertri, aes(x = Variable1, y = Variable2))
   }
-  # OR and FC use log2 effect
-  if (effect_type %in% c("OR","FC")){
-    p <- p + geom_tile(aes(fill = log2(Effect))) +
-      scale_fill_gradient2(name = paste("log2(",effect_type,")",sep=""), low = "steelblue", mid = "grey80", high = "red", midpoint = 0, space = "Lab", na.value = "white") 
+  if(effect_type %in% c("OR","FC")){
+    legend_label <- paste("log2(",effect_type,")", sep = "")
   }
-  else if(effect_type == "CORR"){
-    p <- p + geom_tile(aes(fill = Effect)) +
-      scale_fill_gradient2(name = effect_type, low = "steelblue", mid = "grey80", high = "red", midpoint = 0, space = "Lab", limits = c(-1,1), na.value = "white")
+  else{
+    legend_label <- effect_type
   }
-  
   p <- p +
+    geom_tile(aes(fill = effect_level)) +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
+          #panel.background = element_rect(fill = "grey95", color = "white"),
           axis.text.x = element_text(angle = 90)) +
+    scale_fill_manual(name = legend_label,
+                      values = c("high" = "#CA0020","semi_high" = "#F4A582", "zero" = "#F0F0F0", "semi_low" = "#92C5DE", "low" = "#0571B0"),
+                      breaks = c("high","semi_high","zero","semi_low","low"),
+                      labels = fill_labels) +
     xlab("") + ylab("")
   
   if (interactive){
+    p <- p +
+      scale_x_discrete(drop = FALSE) +
+      scale_y_discrete(drop = FALSE) +
     ggplotly(p,tooltip = paste("label",1:8, sep = ""))
   }
   else{
-    vars <- dframe_lowertri$Variable1 %>% unique() %>% sort()
+    vars <- levels(dframe_lowertri$Variable1)
     if(length(vars) > 80){
       p <- p +
-        scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 40)]) +
-        scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 40)])
+        scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 40)], drop=FALSE) +
+        scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 40)], drop=FALSE)
     }
     p
   }
