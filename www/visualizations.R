@@ -87,22 +87,6 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   dat_l <- rbind(combined1,combined2)%>%
     dplyr::distinct() # Remove duplicated associations with same Variable1 and Variable2
   
-  # vars <- c(dat_l$Variable1,dat_l$Variable2) %>% unique()
-  # x <- setdiff(vars,dat_l$Variable1)
-  # y <- setdiff(vars,dat_l$Variable2)
-  # if(length(x) | length(y)){
-  #   append_len <- max(length(x),length(y))
-  #   append_df <- data.frame(Variable1 = c(x,rep(NA, append_len - length(x))),
-  #                           Variable2 = c(y,rep(NA, append_len - length(y))),
-  #                           Effect = NA)
-  #   append_df$Variable1 <- as.character(append_df$Variable1)
-  #   append_df$Variable2 <- as.character(append_df$Variable2)
-  #   index <- which(is.na(append_df$Variable1))
-  #   append_df$Variable1[index] <- append_df$Variable2[index]
-  #   index <- which(is.na(append_df$Variable2))
-  #   append_df$Variable2[index] <- append_df$Variable1[index]
-  #   dat_l <- bind_rows(dat_l,append_df)
-  # }
   # Setting the factor levels to correctly draw the heatmap
   # This ensures the tiles are plotted in correct order to make a lower triangular heat map
   dat_l$Variable1 <- dat_l$Variable1 %>% 
@@ -132,13 +116,19 @@ to_levels <- function(effect, type){
   if(min_ > 0){
     zero_limit <- 0.2*max_
   }
-  level[effect >= -zero_limit & effect <= zero_limit] <- "zero"
+  level[effect >= -zero_limit & effect <= zero_limit] <- paste(signif(-zero_limit, digits = 2),"...",signif(zero_limit, digits = 2))
   min_half <- (min_ - zero_limit)/2
-  level[effect >= min_half & effect < -zero_limit] <- "semi_low"
-  level[effect < min_half] <- "low"
+  level[effect >= min_half & effect < -zero_limit] <- paste(signif(min_half, digits = 2),"...",signif(zero_limit, digits = 2))
+  level[effect < min_half] <- paste("<", signif(min_half, digits = 2))
   max_half <- (max_ + zero_limit)/2
-  level[effect > zero_limit & effect <= max_half] <- "semi_high"
-  level[effect > max_half] <- "high"
+  level[effect > zero_limit & effect <= max_half] <- paste(signif(zero_limit, digits = 2),"...",signif(max_half, digits = 2))
+  level[effect > max_half] <- paste(">", signif(max_half, digits = 2))
+  
+  level <- factor(level, levels = c(paste(">", signif(max_half, digits = 2)),
+                                    paste(signif(zero_limit, digits = 2),"...",signif(max_half, digits = 2)),
+                                    paste(signif(-zero_limit, digits = 2),"...",signif(zero_limit, digits = 2)),
+                                    paste(signif(min_half, digits = 2),"...",signif(zero_limit, digits = 2)),
+                                    paste("<", signif(min_half, digits = 2))))
   
   list(levels = level,
        breakpoints = signif(c(min_half,zero_limit,max_half),digits = 2))
@@ -153,13 +143,13 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   dframe_lowertri <- transform_to_lowertri(dframe,effect_type,clustering)
   effect_levels <- to_levels(dframe_lowertri$Effect, effect_type)
   breakpoints <- effect_levels$breakpoints
-  dframe_lowertri$effect_level <- effect_levels$levels
+  dframe_lowertri$effect_level <- effect_levels$levels#, levels = c("high","semi_high","zero","semi_low","low"))
   
-  fill_labels <- c("high" = paste(">",breakpoints[3]),
-                   "semi_high" = paste(breakpoints[2],"...",breakpoints[3]),
-                   "zero" = paste(-breakpoints[2],"...",breakpoints[2]),
-                   "semi_low" = paste(breakpoints[1],"...",-breakpoints[2]),
-                   "low" = paste("<", breakpoints[1]))
+  # fill_labels <- c(paste(">",breakpoints[3]),
+  #                  paste(breakpoints[2],"...",breakpoints[3]),
+  #                  paste(-breakpoints[2],"...",breakpoints[2]),
+  #                  paste(breakpoints[1],"...",-breakpoints[2]),
+  #                  paste("<", breakpoints[1]))
   
   # Creating the ggplot object
   if(interactive){
@@ -183,15 +173,14 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
           #panel.background = element_rect(fill = "grey95", color = "white"),
           axis.text.x = element_text(angle = 90)) +
     scale_fill_manual(name = legend_label,
-                      values = c("high" = "#CA0020","semi_high" = "#F4A582", "zero" = "#F0F0F0", "semi_low" = "#92C5DE", "low" = "#0571B0"),
-                      breaks = c("high","semi_high","zero","semi_low","low"),
-                      labels = fill_labels) +
+                      values = c("#CA0020","#F4A582","#F0F0F0","#92C5DE","#0571B0"),
+                      breaks = levels(dframe_lowertri$effect_level)) +
     xlab("") + ylab("")
   
   if (interactive){
     p <- p +
       scale_x_discrete(drop = FALSE) +
-      scale_y_discrete(drop = FALSE) +
+      scale_y_discrete(drop = FALSE)
     ggplotly(p,tooltip = paste("label",1:8, sep = ""))
   }
   else{
