@@ -370,13 +370,6 @@ shinyServer(function(input,output){
     if (associations_list()$varnum == 1){
       return(h5("Heat map requires associations with 2 variables"))
     }
-    # Check if the same variables have multiple different associations
-    n_copies <- associations_list()$dframe %>%
-      group_by(Variable1, Variable2) %>%
-      summarise(n = n())
-    if (any(n_copies$n > 1)){
-      return(h5("Dataset contains multiple copies of the same association: heat map can't be plotted"))
-    }
     
     out <- tagList()
     # Check if there are associations with only one variable

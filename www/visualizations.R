@@ -26,28 +26,38 @@ coalesce<-function(...) {
   return(x[[1]])
 }
 
+# Strip dataset names from variables
+strip_ds <- function(ds_var, datasets){
+  ds_var <- as.character(ds_var)
+  datasets <- as.character(unique(datasets))
+  for(dataset in datasets){
+    ds_var <- gsub(dataset, "", ds_var)
+  }
+  ds_var
+}
+
 # Transform a data frame to lower triangular form for heat map
 # Possibility for hierarchical clustering
 # Both input and output in long format
 transform_to_lowertri <- function(dframe,effect_type,clustering){
-  dat <- dframe %>% select(Variable1,Variable2,Effect)
-  dat$Variable1 <- as.character(dat$Variable1)
-  dat$Variable2 <- as.character(dat$Variable2)
+  dat <- dframe %>% select(DS_Variable1,DS_Variable2,Effect)
+  dat$DS_Variable1 <- as.character(dat$DS_Variable1)
+  dat$DS_Variable2 <- as.character(dat$DS_Variable2)
   
   # This makes sure all the variables will be included in both axes
-  vars <- c(dat$Variable1,dat$Variable2) %>% unique()
-  x <- setdiff(vars,dat$Variable1)
-  y <- setdiff(vars,dat$Variable2)
+  vars <- c(dat$DS_Variable1,dat$DS_Variable2) %>% unique()
+  x <- setdiff(vars,dat$DS_Variable1)
+  y <- setdiff(vars,dat$DS_Variable2)
   append_len <- max(length(x),length(y))
-  append_df <- data.frame(Variable1 = c(x,rep(NA, append_len - length(x))),
-                          Variable2 = c(y,rep(NA, append_len - length(y))),
+  append_df <- data.frame(DS_Variable1 = c(x,rep(NA, append_len - length(x))),
+                          DS_Variable2 = c(y,rep(NA, append_len - length(y))),
                           Effect = NA)
   dat <- rbind(dat,append_df)
   
   # Converting data into wide format and tidying data
-  dat_w <- dat %>% spread(Variable2,Effect) %>% filter(!is.na(Variable1))
-  rownames(dat_w) <- dat_w$Variable1
-  dat_w <- dat_w %>% select(-Variable1)
+  dat_w <- dat %>% spread(DS_Variable2,Effect) %>% filter(!is.na(DS_Variable1))
+  rownames(dat_w) <- dat_w$DS_Variable1
+  dat_w <- dat_w %>% select(-DS_Variable1)
   dat_w <- dat_w[rownames(dat_w)!="NA",! colnames(dat_w) %in% c("NA","<NA>")] #one of the columns or rows is named NA
   dat_w <- dat_w[rev(order(names(dat_w))),rev(order(names(dat_w)))] #this makes the image lie on the lower triangular
   
@@ -75,23 +85,27 @@ transform_to_lowertri <- function(dframe,effect_type,clustering){
   # Diagonal should be included in the plot
   
   # Melt back to long format for ggplot2
-  dat_w_whole$Variable1 <- rownames(dat_w_whole)
-  dat_l <- gather(dat_w_whole,Variable2, Effect, -Variable1)
+  dat_w_whole$DS_Variable1 <- rownames(dat_w_whole)
+  dat_l <- gather(dat_w_whole,DS_Variable2, Effect, -DS_Variable1)
   
   # Joining other columns from original dframe
-  dat_l$Variable2 <- as.character(dat_l$Variable2)
+  dat_l$DS_Variable2 <- as.character(dat_l$DS_Variable2)
   dat_l_orig <- dat_l
   # The order of Variable1 and 2 has changed for some associations, so two joins are required
-  combined1 <- inner_join(dat_l, dframe, by = c("Variable1","Variable2","Effect"))
-  combined2 <- inner_join(dat_l,dframe,by = c("Variable1" = "Variable2","Variable2" = "Variable1","Effect"))
+  combined1 <- inner_join(dat_l, dframe, by = c("DS_Variable1","DS_Variable2","Effect"))
+  combined2 <- inner_join(dat_l,dframe,by = c("DS_Variable1" = "DS_Variable2","DS_Variable2" = "DS_Variable1","Effect"))
   dat_l <- rbind(combined1,combined2)%>%
-    dplyr::distinct() # Remove duplicated associations with same Variable1 and Variable2
+    dplyr::distinct() # Remove duplicated associations with same DS_Variable1 and DS_Variable2
+  
+  # Fix the order of variable1 and 2
+  dat_l$Variable1 <- strip_ds(dat_l$DS_Variable1, dat_l$Dataset)
+  dat_l$Variable2 <- strip_ds(dat_l$DS_Variable2, dat_l$Dataset)
   
   # Setting the factor levels to correctly draw the heatmap
   # This ensures the tiles are plotted in correct order to make a lower triangular heat map
-  dat_l$Variable1 <- dat_l$Variable1 %>% 
+  dat_l$DS_Variable1 <- dat_l$DS_Variable1 %>% 
     factor(levels = rev(rownames(dat_w_whole)))
-  dat_l$Variable2 <- dat_l$Variable2 %>%
+  dat_l$DS_Variable2 <- dat_l$DS_Variable2 %>%
     factor(levels = rownames(dat_w_whole))
   
   dat_l
@@ -118,7 +132,7 @@ to_levels <- function(effect, type){
   }
   level[effect >= -zero_limit & effect <= zero_limit] <- paste(signif(-zero_limit, digits = 2),"...",signif(zero_limit, digits = 2))
   min_half <- (min_ - zero_limit)/2
-  level[effect >= min_half & effect < -zero_limit] <- paste(signif(min_half, digits = 2),"...",signif(zero_limit, digits = 2))
+  level[effect >= min_half & effect < -zero_limit] <- paste(signif(min_half, digits = 2),"...",signif(-zero_limit, digits = 2))
   level[effect < min_half] <- paste("<", signif(min_half, digits = 2))
   max_half <- (max_ + zero_limit)/2
   level[effect > zero_limit & effect <= max_half] <- paste(signif(zero_limit, digits = 2),"...",signif(max_half, digits = 2))
@@ -127,7 +141,7 @@ to_levels <- function(effect, type){
   level <- factor(level, levels = c(paste(">", signif(max_half, digits = 2)),
                                     paste(signif(zero_limit, digits = 2),"...",signif(max_half, digits = 2)),
                                     paste(signif(-zero_limit, digits = 2),"...",signif(zero_limit, digits = 2)),
-                                    paste(signif(min_half, digits = 2),"...",signif(zero_limit, digits = 2)),
+                                    paste(signif(min_half, digits = 2),"...",signif(-zero_limit, digits = 2)),
                                     paste("<", signif(min_half, digits = 2))))
   
   list(levels = level,
@@ -138,26 +152,22 @@ to_levels <- function(effect, type){
 # clustering = TRUE orders rows and columns by hierarchical clustering
 get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   # Remove missing variable labels
-  dframe <- dframe %>% filter(!is.na(Variable1), !is.na(Variable2))
+  dframe <- dframe %>% 
+    filter(!is.na(Variable1), !is.na(Variable2)) %>%
+    mutate(DS_Variable1 = paste(Dataset, Variable1, sep = ""), DS_Variable2 = paste(Dataset, Variable2, sep = ""))
   # Transform to lower triangular and cluster if clustering is TRUE
   dframe_lowertri <- transform_to_lowertri(dframe,effect_type,clustering)
   effect_levels <- to_levels(dframe_lowertri$Effect, effect_type)
   breakpoints <- effect_levels$breakpoints
-  dframe_lowertri$effect_level <- effect_levels$levels#, levels = c("high","semi_high","zero","semi_low","low"))
-  
-  # fill_labels <- c(paste(">",breakpoints[3]),
-  #                  paste(breakpoints[2],"...",breakpoints[3]),
-  #                  paste(-breakpoints[2],"...",breakpoints[2]),
-  #                  paste(breakpoints[1],"...",-breakpoints[2]),
-  #                  paste("<", breakpoints[1]))
+  dframe_lowertri$effect_level <- effect_levels$levels
   
   # Creating the ggplot object
   if(interactive){
-    p <- ggplot(dframe_lowertri,aes(x = Variable1, y = Variable2, label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1, label5 = Description2,
+    p <- ggplot(dframe_lowertri,aes(x = DS_Variable1, y = DS_Variable2, label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1, label5 = Description2,
                           label6 = Effect, label7 = P_FDR, label8 = N))
   }
   else{
-    p <- ggplot(dframe_lowertri, aes(x = Variable1, y = Variable2))
+    p <- ggplot(dframe_lowertri, aes(x = DS_Variable1, y = DS_Variable2))
   }
   if(effect_type %in% c("OR","FC")){
     legend_label <- paste("log2(",effect_type,")", sep = "")
@@ -165,30 +175,33 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
   else{
     legend_label <- effect_type
   }
+  x_labels <- strip_ds(levels(dframe_lowertri$DS_Variable1), dframe_lowertri$Dataset)
+  y_labels <- strip_ds(levels(dframe_lowertri$DS_Variable2), dframe_lowertri$Dataset)
+  
   p <- p +
     geom_tile(aes(fill = effect_level)) +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank(),
-          #panel.background = element_rect(fill = "grey95", color = "white"),
           axis.text.x = element_text(angle = 90)) +
     scale_fill_manual(name = legend_label,
                       values = c("#CA0020","#F4A582","#F0F0F0","#92C5DE","#0571B0"),
                       breaks = levels(dframe_lowertri$effect_level)) +
+    scale_x_discrete(drop = FALSE, labels = x_labels) +
+    scale_y_discrete(drop = FALSE, labels = y_labels) +
     xlab("") + ylab("")
   
   if (interactive){
-    p <- p +
-      scale_x_discrete(drop = FALSE) +
-      scale_y_discrete(drop = FALSE)
     ggplotly(p,tooltip = paste("label",1:8, sep = ""))
   }
   else{
-    vars <- levels(dframe_lowertri$Variable1)
+    vars1 <- levels(dframe_lowertri$DS_Variable1)
+    vars2 <- levels(dframe_lowertri$DS_Variable2)
+    indx <- seq(1,length(vars1),length.out = 40)
     if(length(vars) > 80){
       p <- p +
-        scale_x_discrete(breaks = vars[seq(1,length(vars),length.out = 40)], drop=FALSE) +
-        scale_y_discrete(breaks = vars[seq(1,length(vars),length.out = 40)], drop=FALSE)
+        scale_x_discrete(breaks = vars1[indx], labels = x_labels[indx], drop=FALSE) +
+        scale_y_discrete(breaks = vars2[indx], labels = y_labels[indx], drop=FALSE)
     }
     p
   }
