@@ -26,9 +26,15 @@ shinyUI( fluidPage(
       uiOutput("ds_choice"),
       uiOutput("metadata_tags_ui"),
       textInput("var_keywords","Variable keywords"),
-      actionButton("query","Query"),
+      #actionButton("query","Query"),
       
-      uiOutput("filters"),
+      uiOutput("standard_filters"),
+      checkboxInput("toggle_extra_filters","Show extra filters"),
+      conditionalPanel("input.toggle_extra_filters == true",
+                       uiOutput("extra_filters")),
+      uiOutput("variable_filters"),
+      actionButton("filter",
+                   label = "Filter"),
       
       br(),
       br(),
@@ -63,7 +69,8 @@ shinyUI( fluidPage(
                  radioButtons("clustering",
                               label = "Order",
                               choices = c("Alphabetical" = FALSE,"Clustering" = TRUE),
-                              selected = FALSE),
+                              selected = FALSE,
+                              inline = TRUE),
                  uiOutput("heatmap")
         ),
         
@@ -71,37 +78,37 @@ shinyUI( fluidPage(
                  # Choices for double filtering the volcano plot i.e. filtering by p-value and/or effect size
                  
                  # Toggle double filtering
-                 radioButtons("double_filter",
-                              label = "Visual filters",
-                              choices = c("Yes" = TRUE, "No" = FALSE),
-                              selected = FALSE,
-                              inline = TRUE),
+                 checkboxInput("double_filter",
+                              label = "Apply visual filters"),
+                 conditionalPanel("input.double_filter == true",
+                                  fluidRow(
+                                    column(4, # Set p-value limit
+                                           textInput("df_p_limit",
+                                                     label = "P-value <",
+                                                     value = "0.05")),
+                                    column(5, # Filter by unadjusted or FDR adjusted p-value
+                                           radioButtons("df_p_limit_fdr",label = NULL,
+                                                        choices = c("Unadjusted" = FALSE,
+                                                                    "FDR" = TRUE),
+                                                        selected = FALSE,
+                                                        inline = TRUE))
+                                    
+                                  ),
+                                  fluidRow(
+                                    column(4, # Set limit for the effect
+                                           textInput("df_effect_limit",
+                                                     label = "Absolute effect >",
+                                                     value = 3)),
+                                    column(5, # Filter by raw or log2 effect
+                                           radioButtons("df_eff_limit_log2",label = NULL,
+                                                        choices = c("Original" = FALSE,
+                                                                    "log2" = TRUE),
+                                                        selected = FALSE,
+                                                        inline = TRUE))
+                                  )),
+                 checkboxInput("volcano_shape","Shape by dataset"),
                  
-                 fluidRow(
-                   column(4, # Set p-value limit
-                          textInput("df_p_limit",
-                                    label = "P-value <",
-                                    value = "0.05")),
-                   column(5, # Filter by unadjusted or FDR adjusted p-value
-                          radioButtons("df_p_limit_fdr",label = NULL,
-                                       choices = c("Unadjusted" = FALSE,
-                                                   "FDR" = TRUE),
-                                       selected = FALSE,
-                                       inline = TRUE))
-                   
-                 ),
-                 fluidRow(
-                   column(4, # Set limit for the effect
-                          textInput("df_effect_limit",
-                                    label = "Absolute effect >",
-                                    value = 3)),
-                   column(5, # Filter by raw or log2 effect
-                          radioButtons("df_eff_limit_log2",label = NULL,
-                                       choices = c("Original" = FALSE,
-                                                   "log2" = TRUE),
-                                       selected = FALSE,
-                                       inline = TRUE))
-                 ),
+                 
                  # The actual volcano plot
                  uiOutput("volcano")
         ),
@@ -109,9 +116,10 @@ shinyUI( fluidPage(
         tabPanel("Q-Q plot",
                  radioButtons("qq_choice",
                                          label = "Choose the type of Q-Q plot",
-                                         choices = c("p-values",
-                                                     "norm"),
+                                         choices = c("P-values" = "p-values",
+                                                     "Effect" = "norm"),
                                          inline = TRUE),
+                 uiOutput("qq_plot_choices"),
                  uiOutput("qq_plot")
         ),
         

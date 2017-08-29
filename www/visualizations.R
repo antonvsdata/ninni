@@ -198,7 +198,7 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
     vars1 <- levels(dframe_lowertri$DS_Variable1)
     vars2 <- levels(dframe_lowertri$DS_Variable2)
     indx <- seq(1,length(vars1),length.out = 40)
-    if(length(vars) > 80){
+    if(length(vars1) > 80){
       p <- p +
         scale_x_discrete(breaks = vars1[indx], labels = x_labels[indx], drop=FALSE) +
         scale_y_discrete(breaks = vars2[indx], labels = y_labels[indx], drop=FALSE)
@@ -218,7 +218,7 @@ get_heatmap_lowertri <- function(dframe,effect_type,clustering, interactive){
 #         eff_limit_log2: boolean, TRUE: limit is for log2(effect), FALSE, limit is for raw effect
 volcanoplot <- function(dframe,effect_type,varnum,double_filter,
                              df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL, eff_limit_log2 = NULL,
-                             interactive = FALSE){
+                             shape, interactive = FALSE){
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
   dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
@@ -231,10 +231,10 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
       df_effect_lim <- log2(as.numeric(df_effect_lim))
     }
     if (fdr){
-      dframe <- dframe %>% mutate(df = as.factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim))
+      dframe <- dframe %>% mutate(df = factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim, levels = c(TRUE, FALSE)))
     }
     else{
-      dframe <- dframe %>% mutate(df = as.factor(P < df_p_lim & abs(log2(Effect)) > df_effect_lim))
+      dframe <- dframe %>% mutate(df = factor(P < df_p_lim & abs(log2(Effect)) > df_effect_lim, levels = c(TRUE, FALSE)))
     }
     coloring <- "df"
   }
@@ -262,8 +262,14 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
     p <- ggplot(dframe, aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
                             label5 = Description2, label6 = Effect, label7 = P_FDR, label8 = N))
   }
+  if(shape){
+    point_shape <- "Dataset"
+  }
+  else{
+    point_shape <- NULL
+  }
   p <- p +
-    geom_point(aes_string(x = x_axis, y = "-log10(P)",color = coloring)) +
+    geom_point(aes_string(x = x_axis, y = "-log10(P)", color = coloring, shape = point_shape)) +
     scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
                         guide = guide_legend(title = NULL)) +
     xlim(x_lims[1],x_lims[2]) +
@@ -284,7 +290,7 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
 # Normal Q_Q plot with confidence bands
 # This function is a modified version of the one presented in
 # https://gist.github.com/rentrop/d39a8406ad8af2a1066c
-qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
+qq_normal <- function(dframe,effect_type,varnum,ci = 0.95, color_col = NULL, color_type = NULL, interactive = TRUE){
   
   x <- dframe$Effect
   dframe <- dframe %>% arrange(Effect)
@@ -315,6 +321,11 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
   dframe$lower <- fit.value - zz * SE
   # Grid and background color is omited to boost performance,
   # the line and the confidence band is added
+  if(!is.null(color_col)){
+    if(color_type == "Discrete"){
+      dframe[,color_col] <- as.factor(dframe[,color_col])
+    }
+  }
   p <- ggplot(dframe, aes(x=z, y=ord.x)) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
@@ -322,16 +333,21 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
     geom_abline(intercept = coef[1], slope = coef[2], color = "red") +
     geom_ribbon(aes(ymin = lower, ymax = upper), alpha=0.2) +
     scale_fill_gradient(low = "grey40", high = "grey40")
+  
+  if(!is.null(color_col) & class(dframe[, color_col]) %in% c("character", "factor") & length(unique(dframe[, color_col])) <= 12){
+    p <- p +
+      scale_color_brewer(type = "qual", palette = "Paired")
+  }
   # Interactivity can be disabled
   if (interactive){
     if (varnum == 1){
-      p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
-                              label4 = Effect, label5 = P_FDR, label6 = N))
+      p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1", label3 = "Description1",
+                              label4 = "Effect", label5 = "P_FDR", label6 = "N"))
       p <- ggplotly(p, tooltip = paste("label",1:6,sep=""))
     }
     if(varnum == 2){
-      p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
-                              label5 = Description2, label6 = Effect, label7 = P_FDR, label8 = N))
+      p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1", label3 = "Variable2", label4 = "Description1",
+                              label5 = "Description2", label6 = "Effect", label7 = "P_FDR", label8 = "N"))
       p <- ggplotly(p, tooltip = paste("label",1:8,sep=""))
     } 
   }
@@ -342,7 +358,7 @@ qq_normal <- function(dframe,effect_type,varnum,ci = 0.95,interactive = TRUE){
 }
 
 # Q-Q plot of p-values versus expected p-values with confidence bands
-qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
+qq_pvalues <- function(dframe, varnum, ci = 0.95, color_col = NULL, color_type = NULL, interactive = TRUE){
   dframe <- dframe %>% arrange(P)
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
@@ -355,6 +371,12 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
   dframe$cupper <- -log10(qbeta(ci,     1:n, n - 1:n + 1))
   dframe$clower <- -log10(qbeta(1- ci,  1:n, n - 1:n + 1))
   
+  if(!is.null(color_col)){
+    if(color_type == "Discrete"){
+      dframe[,color_col] <- as.factor(dframe[,color_col])
+    }
+  }
+  
   # Create ggplot object
   p <- ggplot(dframe, aes(x=expected, y=observed)) +
     theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
@@ -364,15 +386,20 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, interactive = TRUE){
     xlab("Expected - log10(P)") +
     ylab("Observed - log10(P)")
   
+  if(!is.null(color_col) & class(dframe[, color_col]) %in% c("character", "factor") & length(unique(dframe[, color_col])) <= 12){
+    p <- p +
+      scale_color_brewer(type = "qual", palette = "Paired")
+  }
+  
   if (interactive){
     if (varnum == 1){
-      p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
-                              label4 = Effect, label5 = P_FDR, label6 = N))
+      p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1", label3 = "Description1",
+                                     label4 = "Effect", label5 = "P_FDR", label6 = "N"))
       p <- ggplotly(p, tooltip = paste("label",1:6,sep=""))
     }
     if(varnum == 2){
-      p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
-                              label5 = Description2, label6 = Effect, label7 = P_FDR, label8 = N))
+      p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1", label3 = "Variable2", label4 = "Description1",
+                                     label5 = "Description2", label6 = "Effect", label7 = "P_FDR", label8 = "N"))
       p <- ggplotly(p, tooltip = paste("label",1:8,sep=""))
     } 
   }
@@ -421,6 +448,12 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum, interactive = TRUE, c
           panel.grid.minor = element_blank(),
           axis.text.x = element_text(angle = 90)) +
     labs(x = x_label, y = y_label)
+  
+  # Use color scale from colorbrewer when possible
+  if(!is.null(color_col) & class(dframe[, color_col]) %in% c("character", "factor") & length(unique(dframe[, color_col])) <= 12){
+    p <- p +
+      scale_color_brewer(type = "qual", palette = "Paired")
+  }
   
   if (interactive){
     if (varnum == 1){

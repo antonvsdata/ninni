@@ -18,7 +18,7 @@ shinyServer(function(input,output){
   # Handles the query to the database
   # Reactive expressions cache their value, so filtering the same dataset multiple times
   # does not provoke a new database query
-  associations_list_query <- eventReactive(input$query,{
+  associations_list_query_ <-  reactive({
     if (!length(input$ds_label) & input$var_keywords == "" & !length(input$metadata_tags)){
       return (NULL)
     }
@@ -31,19 +31,18 @@ shinyServer(function(input,output){
     return (associations_list)
   })
   
-  associations_list_db <- eventReactive(input$submit,{
-    associations_list_query()
+  associations_list_query <- eventReactive(input$filter,{
+    associations_list_query_()
   })
   
   # Filters for loaded data
   output$filters <- renderUI({
-    if(is.null(standard_filters())){
-      return(NULL)
-    }
+    # if(is.null(standard_filters())){
+    #   return(NULL)
+    # }
     tagList(
-      br(),
       standard_filters(),
-      extra_filters(),
+      #extra_filters(),
       variable_filters(),
       actionButton("filter",
                    label = "Filter")
@@ -51,54 +50,56 @@ shinyServer(function(input,output){
   })
   
   # Filters for associations, always visible
-  standard_filters <- reactive({
-    if(is.null(associations_list_query())){
-      return(NULL)
-    }
+  output$standard_filters <- renderUI({
+    # if(is.null(associations_list_query())){
+    #   return(NULL)
+    # }
     tagList(
-      h4("Association filters"),
-      strong("Variable"),
-      textInput("var_labels","Keywords, comma separated"),
+      checkboxInput("toggle_standard_filters","Show standard filters"),
+      conditionalPanel("input.toggle_standard_filters == true",
+                       h4("Association filters"),
+                       strong("Variable"),
+                       textInput("var_labels","Keywords, comma separated"),
+                       
+                       fluidRow(
+                         column(6,
+                                textInput("p_limit",label = "P-value <")),
+                         column(4,
+                                radioButtons("p_limit_fdr",label = NULL,
+                                             choices = c("Unadjusted" = FALSE,
+                                                         "FDR" = TRUE),
+                                             selected = FALSE))),
+                       fluidRow(
+                         column(7,
+                                textInput("n_limit",
+                                          label = "Minimum n"))
+                       ),
+                       strong("Effect:"),
+                       fluidRow(
+                         column(5,
+                                textInput("eff_min",label="min")
+                         ),
+                         column(5,
+                                textInput("eff_max", label = "max"))),
+                       strong("Description"),
+                       textInput("description_labels","Keywords, comma separated"))
       
-      fluidRow(
-        column(6,
-               textInput("p_limit",label = "P-value <")),
-        column(4,
-               radioButtons("p_limit_fdr",label = NULL,
-                            choices = c("Unadjusted" = FALSE,
-                                        "FDR" = TRUE),
-                            selected = FALSE))),
-      fluidRow(
-        column(7,
-               textInput("n_limit",
-                         label = "Minimum n"))
-      ),
-      strong("Effect:"),
-      fluidRow(
-        column(5,
-               textInput("eff_min",label="min")
-        ),
-        column(5,
-               textInput("eff_max", label = "max"))),
-      strong("Description"),
-      textInput("description_labels","Keywords, comma separated")
     )
   })
   
-  # Generate filters for possible metavariables
-  extra_filters <- reactive({
+  extra_filters_react <- reactive({
     if(is.null(associations_list_query())){
-      return(NULL)
+      return(p("No data"))
     }
     if(associations_list_query()$varnum == 2){
-      col_limit <- 11
+      col_limit <- 12
     }
     else{ #all datasets have varnum == 1
-      col_limit <- 9
+      col_limit <- 10
     }
     dframe <- associations_list_query()$dframe %>% as.data.frame()
     if(ncol(dframe) == col_limit){
-      return(NULL)
+      return(p("No extra columns"))
     }
     # If the number of columns exceeds the number of standard columns, there are metavariables
     # Generate filters for these metavariables:
@@ -128,14 +129,20 @@ shinyServer(function(input,output){
     out
   })
   
+  # Generate filters for possible metavariables
+  output$extra_filters <- renderUI({
+    extra_filters_react()
+  })
+  
+  
   # Filters for filtering loaded data by variable
-  variable_filters <- reactive({
-    if(is.null(associations_list_query())){
-      return(NULL)
-    }
+  output$variable_filters <- renderUI({
+    # if(is.null(associations_list_query())){
+    #   return(NULL)
+    # }
     tagList(
-      checkboxInput("var_filters","Variable filters"),
-      conditionalPanel("input.var_filters == true",
+      checkboxInput("toggle_variable_filters","Show variable filters"),
+      conditionalPanel("input.toggle_variable_filters == true",
                        h4("Variable filters"),
                        h5("At least one association with"),
                        
@@ -168,122 +175,133 @@ shinyServer(function(input,output){
   # - varnum: the number of variables in the dataset
   # - effect_type
   associations_list <- eventReactive(input$filter,{
+    if(is.null(associations_list_query())){
+      return(NULL)
+    }
     
     associations_list <- associations_list_query()
     dframe <- as.data.frame(associations_list$dframe)
     #Variable filters:
     
     # P-value <
-    if (input$var_filters & input$var_p_limit != ""){
-      dframe <- dframe %>%
-        varfilter_p( as.numeric(input$var_p_limit),associations_list$varnum,input$var_p_limit_fdr)
+    if(input$toggle_variable_filters){
+      if (input$var_p_limit != ""){
+        dframe <- dframe %>%
+          varfilter_p( as.numeric(input$var_p_limit),associations_list$varnum,input$var_p_limit_fdr)
+      }
+      
+      # Effect: min max
+      if ((input$var_eff_min != "" | input$var_eff_max != "")){
+        if (input$var_eff_min == ""){
+          dframe <- varfilter_eff(dframe, eff_max = as.numeric(input$var_eff_max), varnum = associations_list$varnum)
+        }
+        else if (input$var_eff_max == ""){
+          dframe <- varfilter_eff(dframe, eff_min = as.numeric(input$var_eff_min), varnum = associations_list$varnum)
+        }
+        else{
+          dframe <- varfilter_eff(dframe, as.numeric(input$var_eff_min), as.numeric(input$var_eff_max), associations_list$varnum)
+        }
+      }
     }
-
-    # Effect: min max
-    if (input$var_filters & (input$var_eff_min != "" | input$var_eff_max != "")){
-      if (input$var_eff_min == ""){
-        dframe <- varfilter_eff(dframe, eff_max = as.numeric(input$var_eff_max), varnum = associations_list$varnum)
-      }
-      else if (input$var_eff_max == ""){
-        dframe <- varfilter_eff(dframe, eff_min = as.numeric(input$var_eff_min), varnum = associations_list$varnum)
-      }
-      else{
-        dframe <- varfilter_eff(dframe, as.numeric(input$var_eff_min), as.numeric(input$var_eff_max), associations_list$varnum)
-      }
-    }
+    
     # Association filters:
     
-    # Variable
-    # Keywords, comma separated
-    if (input$var_labels != ""){
-      if(associations_list$varnum == 2){
-        cols <- c("Variable1", "Variable2")
+    if(input$toggle_standard_filters){
+      # Variable
+      # Keywords, comma separated
+      if (input$var_labels != ""){
+        if(associations_list$varnum == 2){
+          cols <- c("Variable1", "Variable2")
+        }
+        else{
+          cols <- "Variable1"
+        }
+        dframe <- filter_by_keyword(dframe,cols,input$var_labels)
       }
-      else{
-        cols <- "Variable1"
+      # Description
+      # Keywords, comma separated
+      if (input$description_labels != ""){
+        if(associations_list$varnum == 2){
+          cols <- c("Description1","Description2")
+        }
+        else{
+          cols <- "Description1"
+        }
+        dframe <- filter_by_keyword(dframe,cols,input$description_labels)
       }
-      dframe <- filter_by_keyword(dframe,cols,input$var_labels)
-    }
-    # Description
-    # Keywords, comma separated
-    if (input$description_labels != ""){
-      if(associations_list$varnum == 2){
-        cols <- c("Description1","Description2")
+      # P-value <
+      if(input$p_limit != ""){
+        if (input$p_limit_fdr){
+          dframe <- dframe %>%
+            filter(P_FDR < as.numeric(input$p_limit))
+        }
+        else{
+          dframe <- dframe %>%
+            filter(P < as.numeric(input$p_limit))
+        }
       }
-      else{
-        cols <- "Description1"
-      }
-      dframe <- filter_by_keyword(dframe,cols,input$description_labels)
-    }
-    # P-value <
-    if(input$p_limit != ""){
-      if (input$p_limit_fdr){
+      # Minimum N
+      if (input$n_limit != ""){
         dframe <- dframe %>%
-          filter(P_FDR < as.numeric(input$p_limit))
+          filter(N >= as.numeric(input$n_limit))
       }
-      else{
-        dframe <- dframe %>%
-          filter(P < as.numeric(input$p_limit))
-      }
-    }
-    # Minimum N
-    if (input$n_limit != ""){
-      dframe <- dframe %>%
-        filter(N >= as.numeric(input$n_limit))
-    }
-    # Effect size: min max
-    if (input$eff_min != "" | input$eff_max != ""){
-      if (input$eff_min == ""){
-        dframe <- dframe %>%
-          filter(Effect < as.numeric(input$eff_max))
-      }
-      else if (input$eff_max == ""){
-        dframe <- dframe %>%
-          filter(Effect > as.numeric(input$eff_min))
-      }
-      else{
-        dframe <- dframe %>%
-          filter(Effect > as.numeric(input$eff_min) & Effect < as.numeric(input$eff_max))
+      # Effect size: min max
+      if (input$eff_min != "" | input$eff_max != ""){
+        if (input$eff_min == ""){
+          dframe <- dframe %>%
+            filter(Effect < as.numeric(input$eff_max))
+        }
+        else if (input$eff_max == ""){
+          dframe <- dframe %>%
+            filter(Effect > as.numeric(input$eff_min))
+        }
+        else{
+          dframe <- dframe %>%
+            filter(Effect > as.numeric(input$eff_min) & Effect < as.numeric(input$eff_max))
+        }
       }
     }
     
     # Filters for metavariables
-    if(!is.null(extra_filters())){
+    if(input$toggle_extra_filters){
       if(associations_list$varnum == 2){
-        col_limit <- 11
+        col_limit <- 12
       }
       else{ # each varnum == 1
-        col_limit <- 9
+        col_limit <- 10
       }
-      for(i in (col_limit+1):ncol(dframe)){
-        if(class(dframe[,i]) == "numeric"){
-          inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"min",sep="_"))]
-          expr <- paste("input",inputid,sep="$")
-          limit_min <- eval(parse(text = expr))
-          inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"max",sep="_"))]
-          expr <- paste("input",inputid,sep="$")
-          limit_max <- eval(parse(text = expr))
-          if (limit_min != "" | limit_max != ""){
-            if (limit_min == ""){
-              dframe <- dframe[dframe[,i] < as.numeric(limit_max),]
+      if(ncol(dframe) > col_limit){
+        for(i in (col_limit+1):ncol(dframe)){
+          if(class(dframe[,i]) == "numeric"){
+            inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"min",sep="_"))]
+            expr <- paste("input",inputid,sep="$")
+            limit_min <- eval(parse(text = expr))
+            inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"max",sep="_"))]
+            expr <- paste("input",inputid,sep="$")
+            limit_max <- eval(parse(text = expr))
+            if (limit_min != "" | limit_max != ""){
+              if (limit_min == ""){
+                dframe <- dframe[dframe[,i] < as.numeric(limit_max),]
+              }
+              else if (limit_max == ""){
+                dframe <- dframe[dframe[,i] > as.numeric(limit_min),]
+              }
+              else{
+                dframe <- dframe[dframe[,i] < as.numeric(limit_max) & dframe[,i] > as.numeric(limit_min),]
+              }
             }
-            else if (limit_max == ""){
-              dframe <- dframe[dframe[,i] > as.numeric(limit_min),]
-            }
-            else{
-              dframe <- dframe[dframe[,i] < as.numeric(limit_max) & dframe[,i] > as.numeric(limit_min),]
+          }
+          else if(class(dframe[,i]) == "character"){
+            #inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"label",sep="_"))]
+            expr <- paste("input$",colnames(dframe)[i],"_label",sep="")
+            keywords <- eval(parse(text = expr))
+            if(keywords != ""){
+              dframe <- filter_by_keyword(dframe,colnames(dframe)[i], keywords)
             }
           }
         }
-        else if(class(dframe[,i]) == "character"){
-          inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"label",sep="_"))]
-          expr <- paste("input",inputid,sep="$")
-          keywords <- eval(parse(text = expr))
-          if(keywords != ""){
-            dframe <- filter_by_keyword(dframe,colnames(dframe)[i], keywords)
-          }
-        }
       }
+      
     }
     associations_list$dframe <- dframe
     return(associations_list)
@@ -449,12 +467,12 @@ shinyServer(function(input,output){
   
   output$volcano_static <- renderPlot({
     volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                       as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, interactive = FALSE)
+                       as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, input$volcano_shape, interactive = FALSE)
   })
   
   output$volcanoly <- renderPlotly({
     volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                         as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, interactive = TRUE)
+                         as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, input$volcano_shape, interactive = TRUE)
     
   })
   
@@ -490,6 +508,20 @@ shinyServer(function(input,output){
   
   # ---------------- Q-Q plot -------------------------
   
+  output$qq_plot_choices <- renderUI({
+    tagList(
+      checkboxInput("qq_coloring","Coloring according to column"),
+      conditionalPanel("input.qq_coloring == true",
+                       radioButtons("qq_coloring_type",NULL,
+                                    choices = c("Continuous", "Discrete"), inline = TRUE),
+                       selectizeInput("qq_coloring_column","Column",
+                                      choices = colnames(associations_list()$dframe),
+                                      options = list(maxItems = 1,
+                                                     placeholder = 'Choose a column',
+                                                     onInitialize = I('function() { this.setValue(""); }'))))
+    )
+  })
+  
   output$qq_plot <-renderUI({
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
@@ -518,21 +550,51 @@ shinyServer(function(input,output){
   })
   
   output$qq_plot_static_ps <- renderPlot({
-    qq_pvalues(associations_list()$dframe,associations_list()$varnum, interactive = FALSE)
+    if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
+      qq_pvalues(associations_list()$dframe,associations_list()$varnum,
+                 input$qq_coloring_column, input$qq_coloring_type, interactive = FALSE)
+    }
+    else{
+      qq_pvalues(associations_list()$dframe,associations_list()$varnum, interactive = FALSE)
+    }
   })
   
   output$qq_plotly_ps <- renderPlotly({
-    qq_pvalues(associations_list()$dframe,associations_list()$varnum)
+    if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
+      qq_pvalues(associations_list()$dframe,associations_list()$varnum,
+                 color_col =  input$qq_coloring_column,
+                 color_type = input$qq_coloring_type)
+    }
+    else{
+      qq_pvalues(associations_list()$dframe,associations_list()$varnum)
+    }
+    
   })
   
   output$qq_plot_static_norm <- renderPlot({
-    qq_normal(associations_list()$dframe, associations_list()$effect_type,
-              associations_list()$varnum, interactive = FALSE)
+    if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
+      qq_normal(associations_list()$dframe, associations_list()$effect_type,
+                associations_list()$varnum, color_col =  input$qq_coloring_column,
+                color_type = input$qq_coloring_type, interactive = FALSE)
+    }
+    else{
+      qq_normal(associations_list()$dframe, associations_list()$effect_type,
+                associations_list()$varnum, interactive = FALSE)
+    }
+   
   })
   
   output$qq_plotly_norm <- renderPlotly({
-    qq_normal(associations_list()$dframe, associations_list()$effect_type,
-              associations_list()$varnum)
+    if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
+      qq_normal(associations_list()$dframe, associations_list()$effect_type,
+                associations_list()$varnum, color_col = input$qq_coloring_column,
+                color_type = input$qq_coloring_type)
+    }
+    else{
+      qq_normal(associations_list()$dframe, associations_list()$effect_type,
+                associations_list()$varnum)
+    }
+    
   })
   
   output$qq_plot_download <- renderUI({
