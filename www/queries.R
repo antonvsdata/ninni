@@ -223,6 +223,7 @@ join_variables <- function(pool,assocs_tbl,ds_df){
     assocs_df_tmp <- assocs_df %>% filter(dataset_id == ds_id)
     varnum <- ds_df[ds_df$id == ds_id, "varnum"]$varnum
     assocs_df_tmp$dataset_label <- as.character(ds_df[ds_df$id == ds_id, "label"])
+    assocs_df_tmp$effect_type <- as.character(ds_df[ds_df$id == ds_id, "effect_type"])
     
     # Removes unnecessary columns
     if (varnum == 1){
@@ -263,16 +264,16 @@ join_variables <- function(pool,assocs_tbl,ds_df){
 # Reorganise and rename columns
 make_pretty <- function(dframe,varnums){
   dframe <- dframe %>%
-    rename(Dataset = dataset_label, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
+    rename(Dataset = dataset_label, Effect_type = effect_type, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
            Effect = effect, N = n, P = p, P_FDR = p_fdr)
   
   # The default columns should be the first columns of the data frame in this order
   if(any(varnums == 2)){
-    first.cols <- c("Dataset", "Variable1", "Variable2", "Effect_CIL95", "Effect_CIU95", "Effect", "N",
+    first.cols <- c("Dataset", "Effect_type", "Variable1", "Variable2", "Effect_CIL95", "Effect_CIU95", "Effect", "N",
                     "P", "P_FDR", "Description1", "Description2")
   }
   else{
-    first.cols <- c("Dataset", "Variable1", "Effect_CIL95", "Effect_CIU95", "Effect", "N",
+    first.cols <- c("Dataset", "Effect_type", "Variable1", "Effect_CIL95", "Effect_CIU95", "Effect", "N",
                     "P", "P_FDR", "Description1")
   }
   # The rest of the columns in alphabetical order
