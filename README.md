@@ -179,11 +179,13 @@ Running the following command from the `src` folder imports the datasets into Ni
 If you are using conda and have the conda environment installed, you can use the `import_example_data.sh` bash script located in the `src` folder for facilitated import.  
 The bash script activates the conda environment, imports the data and then deactivates the conda environment, making sure that everything runs smoothly.
 
-##### Shiny app
+#### 5. Shiny app
 
 Once you have imported data into your database and added connection information you can run a local version
 of the Shiny application from R console with the command:  
 `shiny::runApp("path/to/ninni/www")`
+
+*NOTE Ninni currently displays warnings related to plotly widget IDs and ggplot aesthetics. These warnings can be ignored*
 
 If you want to deploy the Shiny app publicly to the web use Shiny Server. Instructions are available online.
 
