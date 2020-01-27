@@ -11,66 +11,67 @@ import os.path
 config_file = 'database_import.config'
 infos = []
 with open(config_file) as tsv:
-    for line in csv.reader(tsv, delimiter = '\t'):
+    for line in csv.reader(tsv, delimiter='\t'):
         infos.append(line[1])
-conn_string = "host = '" + infos[0] + "' port = '" + infos[1] + "' dbname = '" + infos[2] + "' user = '" + infos[3] + "' password = '" + infos[4] + "'"
 
 # Opening the connection to the database
-dbconn = psycopg2.connect(conn_string)
+dbconn = psycopg2.connect(host=infos[0], port=infos[1], database=infos[2],
+                          user=infos[3], password=infos[4])
 cursor = dbconn.cursor()
 
-#SQL statements used in the script:
+# SQL statements used in the script:
 add_assoc = ("INSERT INTO associations "
              "(ID, dataset_id, effect, effect_l95, effect_u95, n, p, p_fdr)"
              "VALUES(%s, %s, %s, %s, %s, %s, %s, %s)")
 
-add_var = ("INSERT INTO variables (ID, label, description) VALUES(%s, %s, %s)")
-update_var = ("UPDATE variables SET description = %s WHERE label = %s")
-varquery = ("SELECT * FROM variables WHERE label=%s")
+add_var = "INSERT INTO variables (ID, label, description) VALUES(%s, %s, %s)"
+update_var = "UPDATE variables SET description = %s WHERE label = %s"
+varquery = "SELECT * FROM variables WHERE label=%s"
 
-add_meta = ("INSERT INTO datasetmetadata (ID, label, description) VALUES (%s, %s, %s)")
-metaquery = ("SELECT * FROM datasetmetadata WHERE label = %s")
+add_meta = "INSERT INTO datasetmetadata (ID, label, description) VALUES (%s, %s, %s)"
+metaquery = "SELECT * FROM datasetmetadata WHERE label = %s"
 
-add_metatodata = ("INSERT INTO datasettometadata (ID, dataset_id, datasetmetadata_id) VALUES (%s, %s, %s)")
+add_metatodata = "INSERT INTO datasettometadata (ID, dataset_id, datasetmetadata_id) VALUES (%s, %s, %s)"
 
-add_assoctovar = ("INSERT INTO associationtovariable (ID, association_id, variable_id) VALUES (%s, %s, %s)")
+add_assoctovar = "INSERT INTO associationtovariable (ID, association_id, variable_id) VALUES (%s, %s, %s)"
 
-add_dataset = ("INSERT INTO Datasets (ID, label, description, varnum, effect_type) VALUES (%s, %s, %s, %s, %s)")
-add_rowcount = ("UPDATE Datasets SET rowcount = %s WHERE id = %s")
-datasetquery = ("SELECT * FROM datasets WHERE label=%s")
+add_dataset = "INSERT INTO Datasets (ID, label, description, varnum, effect_type) VALUES (%s, %s, %s, %s, %s)"
+add_rowcount = "UPDATE Datasets SET rowcount = %s WHERE id = %s"
+datasetquery = "SELECT * FROM datasets WHERE label=%s"
 
-add_metavar = ("INSERT INTO metavariables (ID, label) VALUES (%s, %s)")
-metavarquery = ("SELECT * FROM metavariables WHERE label = %s")
-add_numval = ("INSERT INTO numval (ID, value, association_id, metavariable_id) VALUES (%s, %s, %s, %s)")
-add_strval = ("INSERT INTO strval (ID, value, association_id, metavariable_id) VALUES (%s, %s, %s, %s)")
+add_metavar = "INSERT INTO metavariables (ID, label) VALUES (%s, %s)"
+metavarquery = "SELECT * FROM metavariables WHERE label = %s"
+add_numval = "INSERT INTO numval (ID, value, association_id, metavariable_id) VALUES (%s, %s, %s, %s)"
+add_strval = "INSERT INTO strval (ID, value, association_id, metavariable_id) VALUES (%s, %s, %s, %s)"
 
 # Set all IDs to 1
-datasetID = associationID = datasetToMetaDataID = datasetMetaDataID = associationToVariableID = variableID = numvalID = strvalID = metavariableID = 1
+datasetID = associationID = datasetToMetaDataID = datasetMetaDataID = associationToVariableID \
+    = variableID = numvalID = strvalID = metavariableID = 1
 
 
-def executeSQLFromFile(filename):
+def execute_sql_file(filename):
     # Open and read the file as a single buffer
     fd = open(filename, 'r')
-    sqlFile = fd.read()
+    sql_file = fd.read()
     fd.close()
 
     # all SQL commands (split on ';')
-    sqlCommands =  filter(None, sqlFile.strip('\n').split(';'))
+    sql_commands = filter(None, sql_file.strip('\n').split(';'))
 
     # Execute every command from the input file
-    for command in sqlCommands:
+    for command in sql_commands:
         cursor.execute(command)
 
 
 # Import dataset metadata from file
 def import_metadata(filename):
     global datasetMetaDataID
-    print( "\n")
-    with open(filename,'r') as metafile:
-        rdr = csv.DictReader(metafile, delimiter = ",")
+    print("\n")
+    with open(filename, 'r') as metafile:
+        rdr = csv.DictReader(metafile, delimiter=",")
         print("Inserting metadata...")
         for row in rdr:
-            metadata = (datasetMetaDataID, row["LABEL"],row["DESCRIPTION"])
+            metadata = (datasetMetaDataID, row["LABEL"], row["DESCRIPTION"])
             cursor.execute(add_meta, metadata)
             datasetMetaDataID += 1
 
@@ -79,9 +80,9 @@ def import_metadata(filename):
 
 # Get ID of dataset metadata with know label
 def get_metaid(meta_label):
-    cursor.execute(metaquery, (meta_label,))
+    cursor.execute(metaquery, (meta_label, ))
     meta_row = cursor.fetchone()
-    if(meta_row is not None):
+    if meta_row is not None:
         return meta_row[0]
     else:
         return None
@@ -96,7 +97,7 @@ def import_datatometa(dsid, tagstr):
     count = 0
     for tag in tags:
         metaid = get_metaid(tag)
-        if (metaid is not None):
+        if metaid is not None:
             cursor.execute(add_metatodata, (datasetToMetaDataID, dsid, metaid))
             datasetToMetaDataID += 1
             count += 1
@@ -105,8 +106,8 @@ def import_datatometa(dsid, tagstr):
 
 # Update description of variables
 def update_variables(filename):
-    with open(filename,'r') as varfile:
-        rdr = csv.DictReader(varfile, delimiter = ",")
+    with open(filename, 'r') as varfile:
+        rdr = csv.DictReader(varfile, delimiter=",")
         print("Updating variables...")
         count = 0
         for row in rdr:
@@ -124,13 +125,13 @@ def create_varid(var_label):
     cursor.execute(varquery, (var_label,))
     var_row = cursor.fetchone()
     if var_row is not None:
-        varID = var_row[0]
+        var_id = var_row[0]
     else:
-        cursor.execute(add_var, (variableID, var_label,var_label))
+        cursor.execute(add_var, (variableID, var_label, var_label))
         dbconn.commit()
-        varID = variableID
+        var_id = variableID
         variableID += 1
-    return varID
+    return var_id
 
 
 # Populates the AssociationToVariable table
@@ -138,16 +139,18 @@ def create_varid(var_label):
 def import_assoctovar(assoc_id, var_label):
     global associationToVariableID
     varid = create_varid(var_label)
-    if (varid is not None):
+    if varid is not None:
         cursor.execute(add_assoctovar, (associationToVariableID, assoc_id, varid))
         associationToVariableID += 1
-        
+
+
 def import_metavariable(label):
     global metavariableID
     
     if metavar_row is None:
         cursor.execute(add_metavar, (metavariableID, label))
-        metavariableID +=1
+        metavariableID += 1
+
 
 def isfloat(value):
     try:
@@ -155,7 +158,8 @@ def isfloat(value):
         return True
     except ValueError:
         return False
-        
+
+
 def isfloat_vector(v):
     all_float = True
     for value in v:
@@ -163,25 +167,26 @@ def isfloat_vector(v):
             all_float = False
             break
     return all_float
-   
+
+
 # Read csv file into dict     
 def read_to_dict(filename, maxlines):
-        header = ''
-        data = {}
-        with open(filename) as f:
-            rdr = csv.reader(f)
-            header = next(rdr)
-            for i in range(0,len(header)):
-                data[header[i]] = []
-            rowcount = 0
-            for row in rdr:
-                for i in range(0,len(row)):
-                    data[header[i]].append(row[i])
-                rowcount += 1
-                if (maxlines > 0 and rowcount >= maxlines):
-                    break
-        return data
-    
+    data = {}
+    with open(filename) as f:
+        rdr = csv.reader(f)
+        header = next(rdr)
+        for i in range(0, len(header)):
+            data[header[i]] = []
+        rowcount = 0
+        for row in rdr:
+            for i in range(0, len(row)):
+                data[header[i]].append(row[i])
+            rowcount += 1
+            if 0 < maxlines <= rowcount:
+                break
+    return data
+
+
 # Adds associations to the database, checks if the dataset has one or two variables and acts accordingly
 def import_associations(filename, dsid, varnum, maxlines):
     global metavariableID, associationID, strvalID, numvalID
@@ -190,20 +195,22 @@ def import_associations(filename, dsid, varnum, maxlines):
     
     ncol = len(associations.keys())
     if varnum == 1:
-        normal_columns = ["VARIABLE1", "EFFECT","EFFECT_L95","EFFECT_U95","N","P","P_FDR"]
+        normal_columns = ["VARIABLE1", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_FDR"]
     else:
-        normal_columns = ["VARIABLE1_LABEL","VARIABLE2_LABEL", "EFFECT","EFFECT_L95","EFFECT_U95","N","P","P_FDR"]
+        normal_columns = ["VARIABLE1_LABEL", "VARIABLE2_LABEL", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_FDR"]
     col_limit = len(normal_columns)
     
     # Check if there are extra columns (metavariables)
     # If yes, populate metavariables table and save info about metavariables to a 2D-table
     # First column: metavariable names, second column: type of variable, "num" or "str"
+    metavarnum = 0
+    metavars = [None]
     if ncol > col_limit:
         # Get the names of metavariables
         metavar_names = list(set(associations.keys()) - set(normal_columns))
         metavarnum = ncol - col_limit
         metavars = [None] * metavarnum
-        for i in range(0,metavarnum):
+        for i in range(0, metavarnum):
             metavars[i] = [None] * 3
             metavar_label = metavar_names[i]
             metavars[i][0] = metavar_label
@@ -216,7 +223,7 @@ def import_associations(filename, dsid, varnum, maxlines):
             else:
                 metavars[i][1] = metavariableID
                 cursor.execute(add_metavar, (metavariableID, metavar_label))
-                metavariableID +=1
+                metavariableID += 1
             if isfloat_vector(associations[metavar_label]):
                 metavars[i][2] = "num"
             else:
@@ -225,25 +232,29 @@ def import_associations(filename, dsid, varnum, maxlines):
         
     rowcount = 0
     nrow = len(associations["EFFECT"])
-    for i in range(0,nrow):
-        data_assoc = (associationID, dsid, associations["EFFECT"][i],associations["EFFECT_L95"][i], associations["EFFECT_U95"][i], associations["N"][i], associations["P"][i], associations["P_FDR"][i])
+    for i in range(0, nrow):
+        data_assoc = (associationID, dsid, associations["EFFECT"][i], associations["EFFECT_L95"][i],
+                      associations["EFFECT_U95"][i], associations["N"][i], associations["P"][i],
+                      associations["P_FDR"][i])
         cursor.execute(add_assoc, data_assoc)
-        import_assoctovar(associationID,associations["VARIABLE1_LABEL"][i])
+        import_assoctovar(associationID, associations["VARIABLE1_LABEL"][i])
         if varnum == 2:
             import_assoctovar(associationID, associations["VARIABLE2_LABEL"][i])
         if ncol > col_limit:
-            for j in range(0,metavarnum):
+            for j in range(0, metavarnum):
                 if metavars[j][2] == "num":
-                    cursor.execute(add_numval,(numvalID, associations[metavars[j][0]][i],associationID,metavars[j][1]))
+                    cursor.execute(add_numval, (numvalID, associations[metavars[j][0]][i],
+                                                associationID, metavars[j][1]))
                     numvalID += 1
                 if metavars[j][2] == "str":
-                    cursor.execute(add_strval,(strvalID, associations[metavars[j][0]][i],associationID,metavars[j][1]))
+                    cursor.execute(add_strval, (strvalID, associations[metavars[j][0]][i],
+                                                associationID, metavars[j][1]))
                     strvalID += 1
         rowcount += 1
         associationID += 1
-        if(maxlines > 0 and rowcount >= maxlines):
+        if 0 < maxlines <= rowcount:
             break
-        if(rowcount % 1000 == 0):
+        if rowcount % 1000 == 0:
             dbconn.commit()
             print("{0} rows imported".format(rowcount))
 
@@ -255,36 +266,37 @@ def import_associations(filename, dsid, varnum, maxlines):
 # the other tables
 def import_datasets(filename, maxlines):
     global datasetID
-    with open(filename,'r') as dataset_file:
-        rdr = csv.DictReader(dataset_file, delimiter = ",")
+    with open(filename, 'r') as dataset_file:
+        rdr = csv.DictReader(dataset_file, delimiter=",")
         for row in rdr:
             print("\n")
-            dataset = (datasetID, row["LABEL"],row["DESCRIPTION"],row["VARNUM"],row["EFFECT_TYPE"])
+            dataset = (datasetID, row["LABEL"], row["DESCRIPTION"], row["VARNUM"], row["EFFECT_TYPE"])
             print("Importing dataset ", row["DATASET_FILENAME"], "...")
             cursor.execute(add_dataset, dataset)
             print("Dataset information inserted")
             import_associations(row["DATASET_FILENAME"], datasetID, int(row["VARNUM"]), maxlines)
             import_datatometa(datasetID, row["METADATA_LABELS"])
-            if (row["VARIABLES_FILENAME"] is not None and row["VARIABLES_FILENAME"] != ""):
+            if row["VARIABLES_FILENAME"] is not None and row["VARIABLES_FILENAME"] != "":
                 update_variables(row["VARIABLES_FILENAME"])
             datasetID += 1
 
 
 class FileNotFoundError(Exception):
-    def __init__(self,filename):
+    def __init__(self, filename):
         self.file = filename
+
 
 # Check that all the files containing the associations and variables exist
 # If not, throw a FileNotFoundError
 def check_files_exist(dsfile):
-    with open(dsfile,'r') as dataset_file:
-        rdr = csv.DictReader(dataset_file, delimiter = ",")
+    with open(dsfile, 'r') as dataset_file:
+        rdr = csv.DictReader(dataset_file, delimiter=",")
         for row in rdr:
             df = row["DATASET_FILENAME"]
             if not os.path.isfile(df):
                 raise FileNotFoundError(df)
             vf = row["VARIABLES_FILENAME"]
-            if (row["VARIABLES_FILENAME"] is not None and row["VARIABLES_FILENAME"] != ""):
+            if row["VARIABLES_FILENAME"] is not None and row["VARIABLES_FILENAME"] != "":
                 if not os.path.isfile(vf):
                     raise FileNotFoundError(vf)
                     
@@ -301,14 +313,16 @@ def get_next_id(table):
         last_id = 0
     return last_id + 1
 
+
 # Set IDs for all tables to the next ID
 def set_table_ids():
-    global datasetID, associationID, datasetToMetaDataID, datasetMetaDataID, associationToVariableID, variableID, numvalID, strvalID, metavariableID
+    global datasetID, associationID, datasetToMetaDataID, datasetMetaDataID, associationToVariableID, variableID,\
+        numvalID, strvalID, metavariableID
     datasetID = get_next_id("datasets")
-    associationID =  get_next_id("associations")
+    associationID = get_next_id("associations")
     datasetToMetaDataID = get_next_id("datasettometadata")
     datasetMetaDataID = get_next_id("datasetmetadata")
-    associationToVariableID = get_next_id( "associationtovariable")
+    associationToVariableID = get_next_id("associationtovariable")
     variableID = get_next_id("variables")
     numvalID = get_next_id("numval")
     strvalID = get_next_id("strval")
@@ -318,8 +332,8 @@ def set_table_ids():
 # Get labels of all datasets to be imported that already exist in the database
 def datasets_exist(datasetfile):
     exist = []
-    with open(datasetfile,'r') as dataset_file:
-        rdr = csv.DictReader(dataset_file, delimiter = ",")
+    with open(datasetfile, 'r') as dataset_file:
+        rdr = csv.DictReader(dataset_file, delimiter=",")
         for row in rdr:
             label = row["LABEL"]
             cursor.execute(datasetquery, (label,))
@@ -332,27 +346,30 @@ def datasets_exist(datasetfile):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-dsf", "--dataset_file", help="The file containing information on the datasets to import")
-    parser.add_argument("-mdf","--meta_data_file", help="The file containing the metadata for the datasets")
-    parser.add_argument("-a","--append", action = 'store_true', help="Add dataset to the databse instead of clearing the database before import")
-    parser.add_argument("-ml","--maxlines", default = -1, help = "Maximum number of lines imported per dataset (mainly for testing, defaults to unlimited)")
+    parser.add_argument("-mdf", "--meta_data_file", help="The file containing the metadata for the datasets")
+    parser.add_argument("-a", "--append", action='store_true',
+                        help="Add dataset to the databse instead of clearing the database before import")
+    parser.add_argument("-ml", "--maxlines", default=-1, help="Maximum number of lines imported per dataset"
+                                                              " (mainly for testing, defaults to unlimited)")
     
     args = parser.parse_args()
     
-    if not args.append: # Database is cleared before import
+    if not args.append:  # Database is cleared before import
         # Drop and recreate the database schema
-        executeSQLFromFile("drop_schema.sql")
+        execute_sql_file("drop_schema.sql")
         print("Database schema dropped")
-        executeSQLFromFile("create_schema.sql")
+        execute_sql_file("create_schema.sql")
         print("Database schema recreated")
         
-    if args.append: # New datasets will be appended to the database
+    if args.append:  # New datasets will be appended to the database
         # If any of the datasets to be appended already exist in the database, stop the script
         existing_datasets = datasets_exist(args.dataset_file)
         if len(existing_datasets) > 0:
             print("Error: Following datasets already exist in the database:")
             for e in existing_datasets:
                 print(e)
-            print("Please only apend datasets that are not found in the database or remove --append to clear database before import")
+            print("Please only append datasets that are not found in the"
+                  " database or remove --append to clear database before import")
             dbconn.commit()
             cursor.close()
             dbconn.close()
@@ -376,6 +393,7 @@ def main():
     dbconn.commit()
     cursor.close()
     dbconn.close()
+
 
 if __name__ == "__main__":
     main()
