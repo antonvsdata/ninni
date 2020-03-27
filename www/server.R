@@ -381,6 +381,7 @@ shinyServer(function(input,output){
   
   # -------------- Heat map --------------------
   
+  
   output$heatmap <- renderUI({
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
@@ -411,12 +412,21 @@ shinyServer(function(input,output){
     out
   })
   
+  heatmap <- reactive({
+    plot_effect_heatmap(associations_list()$dframe,
+                        log2_effect = input$heatmap_log2, color_scale = input$heatmap_color_scale,
+                        midpoint = input$heatmap_midpoint,
+                        discretize_effect = input$heatmap_discrete, breaks = input$heatmap_breaks,
+                        clustering = input$clustering, lower_tri = TRUE)
+  })
+  
   output$heatmaply <- renderPlotly({
-    get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = TRUE)
+    ggp <- heatmap()
+    ggplotly(ggp, tooltip = paste0("label", 1:9))
   })
   
   output$heatmap_static <- renderPlot({
-    get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = FALSE)
+    heatmap()
   })
   
   output$heatmap_download <- renderUI({
@@ -438,7 +448,7 @@ shinyServer(function(input,output){
     },
     
     content = function(file){
-      p <- get_heatmap_lowertri(associations_list()$dframe, associations_list()$effect_type,input$clustering,interactive = FALSE)
+      p <- heatmap()
       if(nrow(associations_list()$dframe) > 10000){
         scale <- 1.5
       } else{

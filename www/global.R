@@ -10,6 +10,7 @@ library(plotly)
 
 source("visualizations.R")
 source("queries.R")
+source("effect_heatmap.R")
 
 db_info <- read_db_info("../src/database_import.config")
 
