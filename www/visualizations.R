@@ -222,9 +222,9 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, color_col = NULL, color_type =
 # Lady Manhattan plot
 # The y-axis of a traditional Manhattan plot, -log10(p) is multiplied by the sign of the effect
 # The plot can be colored by chosen column
-lady_manhattan_plot <- function(dframe,effect_type,varnum, interactive = TRUE, color_col = NULL, color_type = NULL){
+lady_manhattan_plot <- function(dframe, log2_effect, effect_type,varnum, color_col = NULL, color_type = NULL){
   # For OR and FC, use log2 effect
-  if(effect_type %in% c("OR","FC")){
+  if(log2_effect){
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(log2(Effect)))
     y_label <- paste("-log10(P) * sign(log2(", effect_type ,"))",sep="")
   }
@@ -265,20 +265,14 @@ lady_manhattan_plot <- function(dframe,effect_type,varnum, interactive = TRUE, c
       scale_color_brewer(type = "qual", palette = "Paired")
   }
   
-  if (interactive){
-    if (varnum == 1){
-      p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
-                              label4 = Effect, label5 = P_FDR, label6 = N))
-      p <- ggplotly(p, tooltip = paste("label",1:6,sep=""))
-    }
-    if(varnum == 2){
-      p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
-                              label5 = Description2, label6 = Effect, label7 = P_FDR, label8 = N))
-      p <- ggplotly(p, tooltip = paste("label",1:8,sep=""))
-    } 
+  if (varnum == 1){
+    p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
+                            label4 = Effect, label5 = P_FDR, label6 = N))
   }
-  else{
-    p <- p + geom_point()
-  }
+  if(varnum == 2){
+    p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
+                            label5 = Description2, label6 = Effect, label7 = P_FDR, label8 = N))
+  } 
+
   p
 }

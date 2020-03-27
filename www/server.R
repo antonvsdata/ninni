@@ -683,22 +683,25 @@ shinyServer(function(input,output){
     out
   })
   
-  output$lady_manhattan_plot_static <- renderPlot({
+  ladyplot <- reactive({
     if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring_column != ""){
-      lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE, input$lady_coloring_column,input$lady_coloring_type)
+      lady_manhattan_plot(associations_list()$dframe, input$lady_log2,
+                          associations_list()$effect_type, associations_list()$varnum,
+                          input$lady_coloring_column,input$lady_coloring_type)
     }
     else{
-      lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE)
+      lady_manhattan_plot(associations_list()$dframe, input$lady_log2,
+                          associations_list()$effect_type,associations_list()$varnum)
     }
   })
   
+  output$lady_manhattan_plot_static <- renderPlot({
+    ladyplot()
+  })
+  
   output$lady_manhattan_plotly <- renderPlotly({
-    if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring_column != ""){
-      lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = TRUE, input$lady_coloring_column,input$lady_coloring_type)
-    }
-    else{
-      lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = TRUE)
-    }
+    ggp <- ladyplot()
+    ggplotly(ggp, tooltip = paste("label",1:8,sep=""))
   })
   
   output$lady_manhattan_download <- renderUI({
@@ -720,12 +723,7 @@ shinyServer(function(input,output){
     },
     
     content = function(file){
-      if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring_column != ""){
-        p <- lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE, input$lady_coloring_column,input$lady_coloring_type)
-      }
-      else{
-        p <- lady_manhattan_plot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum, interactive = FALSE)
-      }
+      ladyplot()
       if(nrow(associations_list()$dframe) > 10000){
         scale <- 1.5
       } else{
