@@ -96,8 +96,10 @@ shinyUI( fluidPage(
         ),
         
         tabPanel("Volcano plot",
+                 # Log2 scale effect?
+                 checkboxInput("volcano_log2",
+                               label = "log2 transform"),
                  # Choices for double filtering the volcano plot i.e. filtering by p-value and/or effect size
-                 
                  # Toggle double filtering
                  checkboxInput("double_filter",
                               label = "Apply visual filters"),
@@ -120,13 +122,16 @@ shinyUI( fluidPage(
                                            textInput("df_effect_limit",
                                                      label = "Absolute effect >",
                                                      value = 3)),
-                                    column(5, # Filter by raw or log2 effect
-                                           radioButtons("df_eff_limit_log2",label = NULL,
-                                                        choices = c("Original" = FALSE,
-                                                                    "log2" = TRUE),
-                                                        selected = FALSE,
-                                                        inline = TRUE))
-                                  )),
+                                    conditionalPanel("input.volcano_log2 == true",
+                                                     column(5, # Filter by raw or log2 effect
+                                                            radioButtons("df_eff_limit_log2",label = NULL,
+                                                                         choices = c("Original" = FALSE,
+                                                                                     "log2" = TRUE),
+                                                                         selected = FALSE,
+                                                                         inline = TRUE)))
+                                    
+                                  )
+                 ),
                  checkboxInput("volcano_shape","Shape by dataset"),
                  
                  

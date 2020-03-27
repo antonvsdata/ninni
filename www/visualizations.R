@@ -15,10 +15,9 @@
 #         df_p_lim: double filtering limit for p-value
 #         fdr: boolean, TRUE: p-limit is for P_FDR FALSE: p-limit is for P
 #         df_effect_lim: double filtering limit for effect
-#         eff_limit_log2: boolean, TRUE: limit is for log2(effect), FALSE, limit is for raw effect
-volcanoplot <- function(dframe,effect_type,varnum,double_filter,
-                             df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL, eff_limit_log2 = NULL,
-                             shape, interactive = FALSE){
+plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter,
+                             df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE,
+                             shape){
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
   dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
@@ -30,12 +29,23 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
     else{
       df_effect_lim <- log2(as.numeric(df_effect_lim))
     }
-    if (fdr){
-      dframe <- dframe %>% mutate(df = factor(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim, levels = c(TRUE, FALSE)))
+    if (log2_effect) {
+      
+      if (fdr){
+        dframe <- dframe %>% mutate(df = ifelse(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim, "Pass", "Fail"))
+      }
+      else{
+        dframe <- dframe %>% mutate(df = ifelse(P < df_p_lim & abs(log2(Effect)) > df_effect_lim, "Pass", "Fail"))
+      }
+    } else {
+      if (fdr){
+        dframe <- dframe %>% mutate(df = ifelse(P_FDR < df_p_lim & abs(Effect) > df_effect_lim, "Pass", "Fail"))
+      }
+      else{
+        dframe <- dframe %>% mutate(df = ifelse(P < df_p_lim & abs(Effect) > df_effect_lim, "Pass", "Fail"))
+      }
     }
-    else{
-      dframe <- dframe %>% mutate(df = factor(P < df_p_lim & abs(log2(Effect)) > df_effect_lim, levels = c(TRUE, FALSE)))
-    }
+    dframe$df <- factor(dframe$df, levels = c("Pass", "Fail"))
     coloring <- "df"
   }
   else{
@@ -43,7 +53,7 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
   }
   # OR and FC require log2 transformation before plotting
   # Set x axis labels and limits for symmetrical plot in terms of zero
-  if (effect_type %in% c("OR","FC")){
+  if (log2_effect) {
     x_axis <- "log2(Effect)"
     x_label <- paste("log2(",effect_type,")",sep = "")
     x_lims <- c(-max(abs(log2(dframe$Effect))),max(abs(log2(dframe$Effect))))
@@ -70,20 +80,12 @@ volcanoplot <- function(dframe,effect_type,varnum,double_filter,
   }
   p <- p +
     geom_point(aes_string(x = x_axis, y = "-log10(P)", color = coloring, shape = point_shape)) +
-    scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("TRUE" = "red", "FALSE" = "grey"),
+    scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("Pass" = "red", "Fail" = "grey"),
                         guide = guide_legend(title = NULL)) +
     xlim(x_lims[1],x_lims[2]) +
     xlab(x_label) +
     theme_minimal()
-  # Add labels to plotly tooltip
-  if(interactive){
-    if (varnum == 1){
-      p <- ggplotly(p, tooltip = paste("label",1:6,sep=""))
-    }
-    if(varnum == 2){
-      p <- ggplotly(p, tooltip = paste("label",1:8,sep=""))
-    }
-  }
+  
   p
 }
 

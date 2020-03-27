@@ -475,15 +475,22 @@ shinyServer(function(input,output){
                    uiOutput("volcano_download"))
   })
   
+  volcanoplot <- reactive({
+    plot_volcano(dframe = associations_list()$dframe, log2_effect = input$volcano_log2,
+                 effect_type = associations_list()$effect_type,
+                 varnum = associations_list()$varnum, double_filter = input$double_filter,
+                 df_p_lim = as.numeric(input$df_p_limit), fdr = input$df_p_limit_fdr,
+                 df_effect_lim = input$df_effect_limit, eff_limit_log2 = input$df_eff_limit_log2,
+                 shape = input$volcano_shape)
+  })
+  
   output$volcano_static <- renderPlot({
-    volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                       as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, input$volcano_shape, interactive = FALSE)
+    volcanoplot()
   })
   
   output$volcanoly <- renderPlotly({
-    volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                         as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, input$volcano_shape, interactive = TRUE)
-    
+    ggp <- volcanoplot()
+    ggplotly(ggp, tooltip = paste0("label", 1:9))
   })
   
   output$volcano_download <- renderUI({
