@@ -590,12 +590,12 @@ shinyServer(function(input,output){
   
   output$qq_plot_static_norm <- renderPlot({
     if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
-      qq_normal(associations_list()$dframe, associations_list()$effect_type,
+      qq_normal(associations_list()$dframe, input$qq_log2, associations_list()$effect_type,
                 associations_list()$varnum, color_col =  input$qq_coloring_column,
                 color_type = input$qq_coloring_type, interactive = FALSE)
     }
     else{
-      qq_normal(associations_list()$dframe, associations_list()$effect_type,
+      qq_normal(associations_list()$dframe, input$qq_log2, associations_list()$effect_type,
                 associations_list()$varnum, interactive = FALSE)
     }
    
@@ -603,12 +603,12 @@ shinyServer(function(input,output){
   
   output$qq_plotly_norm <- renderPlotly({
     if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
-      qq_normal(associations_list()$dframe, associations_list()$effect_type,
+      qq_normal(associations_list()$dframe, input$qq_log2, associations_list()$effect_type,
                 associations_list()$varnum, color_col = input$qq_coloring_column,
                 color_type = input$qq_coloring_type)
     }
     else{
-      qq_normal(associations_list()$dframe, associations_list()$effect_type,
+      qq_normal(associations_list()$dframe, input$qq_log2, associations_list()$effect_type,
                 associations_list()$varnum)
     }
     

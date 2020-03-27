@@ -145,6 +145,9 @@ shinyUI( fluidPage(
                                          choices = c("P-values" = "p-values",
                                                      "Effect" = "norm"),
                                          inline = TRUE),
+                 conditionalPanel("input.qq_choice == 'norm'",
+                                   checkboxInput("qq_log2",
+                                                 label = "log2 transform")),
                  uiOutput("qq_plot_choices"),
                  uiOutput("qq_plot")
         ),

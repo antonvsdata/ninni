@@ -18,6 +18,10 @@
 plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter,
                              df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE,
                              shape){
+  
+  if (log2_effect && any(dframe$Effect < 0)) {
+    stop("Negative values can't be log-transformed")
+  }
   # The points with p_fdr = 0 would not be plotted,
   # so they are replaced with 1e-300
   dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
@@ -54,6 +58,7 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
   # OR and FC require log2 transformation before plotting
   # Set x axis labels and limits for symmetrical plot in terms of zero
   if (log2_effect) {
+    
     x_axis <- "log2(Effect)"
     x_label <- paste("log2(",effect_type,")",sep = "")
     x_lims <- c(-max(abs(log2(dframe$Effect))),max(abs(log2(dframe$Effect))))
@@ -92,12 +97,15 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
 # Normal Q_Q plot with confidence bands
 # This function is a modified version of the one presented in
 # https://gist.github.com/rentrop/d39a8406ad8af2a1066c
-qq_normal <- function(dframe,effect_type,varnum,ci = 0.95, color_col = NULL, color_type = NULL, interactive = TRUE){
+qq_normal <- function(dframe, log2_effect, effect_type,varnum,ci = 0.95, color_col = NULL, color_type = NULL, interactive = TRUE){
   
   x <- dframe$Effect
   dframe <- dframe %>% arrange(Effect)
   
-  if (effect_type %in% c("OR","FC")){
+  if (log2_effect){
+    if (any(x < 0)) {
+      stop("Negative values can't be log-transformed")
+    }
     x <- log2(x)
     ylabel <- paste("log2(",effect_type,")",sep = "")
   }
@@ -185,7 +193,7 @@ qq_pvalues <- function(dframe, varnum, ci = 0.95, color_col = NULL, color_type =
           panel.background = element_blank(), axis.line = element_line(colour = "black")) +
     geom_abline(intercept = 0, slope = 1, color = "red") +
     geom_ribbon(aes(x = expected, ymin = clower, ymax = cupper), alpha = 0.2) +
-    xlab("Expected - log10(P)") +
+    xlab("Expected - log10(P) from uniform distribution") +
     ylab("Observed - log10(P)")
   
   if(!is.null(color_col) & class(dframe[, color_col]) %in% c("character", "factor") & length(unique(dframe[, color_col])) <= 12){
