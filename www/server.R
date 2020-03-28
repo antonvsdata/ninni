@@ -512,8 +512,7 @@ shinyServer(function(input,output){
     },
     
     content = function(file){
-      p <- volcanoplot(associations_list()$dframe,associations_list()$effect_type,associations_list()$varnum,input$double_filter,
-                       as.numeric(input$df_p_limit),input$df_p_limit_fdr, input$df_effect_limit, input$df_eff_limit_log2, interactive = FALSE)
+      p <- volcanoplot()
       if(nrow(associations_list()$dframe) > 10000){
         scale <- 1.5
       } else{
@@ -678,7 +677,7 @@ shinyServer(function(input,output){
     },
     
     content = function(file){
-      ladyplot()
+      p <- ladyplot()
       if(nrow(associations_list()$dframe) > 10000){
         scale <- 1.5
       } else{
