@@ -543,76 +543,38 @@ shinyServer(function(input,output){
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
     }
-    if (input$qq_choice == "p-values"){
-      if (nrow(associations_list()$dframe) > 10000){
-        out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("qq_plot_static_ps", height = paste(input$window_size[2] - 100,"px",sep="")))
-      }
-      else{
-        out <- plotlyOutput("qq_plotly_ps",height = paste(input$window_size[2] - 100,"px",sep=""))
-      }
+    
+    if (nrow(associations_list()$dframe) > 10000){
+      out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
+                     plotOutput("qq_plot_static", height = paste(input$window_size[2] - 100,"px",sep="")))
     }
-    if (input$qq_choice == "norm"){
-      if (nrow(associations_list()$dframe) > 10000){
-        out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("qq_plot_static_norm", height = paste(input$window_size[2] - 100,"px",sep="")))
-      }
-      else{
-        out <- plotlyOutput("qq_plotly_norm", height = paste(input$window_size[2] - 100,"px",sep=""))
-      }
+    else{
+      out <- plotlyOutput("qq_plotly", height = paste(input$window_size[2] - 100, "px", sep=""))
     }
+    
     out <- tagList(out,
                    uiOutput("qq_plot_download"))
     out
   })
   
-  output$qq_plot_static_ps <- renderPlot({
-    if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
-      qq_pvalues(associations_list()$dframe,associations_list()$varnum,
-                 input$qq_coloring_column, input$qq_coloring_type, interactive = FALSE)
-    }
-    else{
-      qq_pvalues(associations_list()$dframe,associations_list()$varnum, interactive = FALSE)
-    }
+  qq_plot <- reactive({
+    ggp <- gg_qq(dframe = associations_list()$dframe, variable = input$qq_choice,
+          log2_effect = input$qq_log2, effect_type = associations_list()$effect_type,
+          varnum = associations_list()$varnum, color_col = input$qq_coloring_column,
+          color_type = input$qq_coloring_type)
+    ggp
   })
   
-  output$qq_plotly_ps <- renderPlotly({
-    if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
-      qq_pvalues(associations_list()$dframe,associations_list()$varnum,
-                 color_col =  input$qq_coloring_column,
-                 color_type = input$qq_coloring_type)
-    }
-    else{
-      qq_pvalues(associations_list()$dframe,associations_list()$varnum)
-    }
-    
+  output$qq_plot_static <- renderPlot({
+    qq_plot()
   })
   
-  output$qq_plot_static_norm <- renderPlot({
-    if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
-      qq_normal(associations_list()$dframe, input$qq_log2, associations_list()$effect_type,
-                associations_list()$varnum, color_col =  input$qq_coloring_column,
-                color_type = input$qq_coloring_type, interactive = FALSE)
-    }
-    else{
-      qq_normal(associations_list()$dframe, input$qq_log2, associations_list()$effect_type,
-                associations_list()$varnum, interactive = FALSE)
-    }
-   
+  output$qq_plotly <- renderPlotly({
+    ggp <- qq_plot()
+    ggplotly(ggp, tooltip = paste("label",1:8,sep=""))
   })
   
-  output$qq_plotly_norm <- renderPlotly({
-    if(input$qq_coloring & !is.null(input$qq_coloring_column) & input$qq_coloring_column != ""){
-      qq_normal(associations_list()$dframe, input$qq_log2, associations_list()$effect_type,
-                associations_list()$varnum, color_col = input$qq_coloring_column,
-                color_type = input$qq_coloring_type)
-    }
-    else{
-      qq_normal(associations_list()$dframe, input$qq_log2, associations_list()$effect_type,
-                associations_list()$varnum)
-    }
-    
-  })
+  
   
   output$qq_plot_download <- renderUI({
     tagList(
@@ -633,19 +595,12 @@ shinyServer(function(input,output){
     },
     
     content = function(file){
-      if (input$qq_choice == "p-values"){
-        p <- qq_pvalues(associations_list()$dframe,associations_list()$varnum, interactive = FALSE)
-      }
-      if (input$qq_choice == "norm"){
-        p <- qq_normal(associations_list()$dframe, associations_list()$effect_type,
-                       associations_list()$varnum, interactive = FALSE)
-      }
       if(nrow(associations_list()$dframe) > 10000){
         scale <- 1.5
       } else{
         scale <- 1
       }
-      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+      ggsave(file, qq_plot(), width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
   
