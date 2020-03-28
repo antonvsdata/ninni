@@ -23,8 +23,8 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
     stop("Negative values can't be log-transformed")
   }
   # The points with p_fdr = 0 would not be plotted,
-  # so they are replaced with 1e-300
-  dframe$P <- lapply(dframe$P, function(x){if(x == 0) x = 1e-300 else x}) %>% unlist()
+  # so they are replaced with minimum observed p-value
+  dframe$P <- zero_to_min(dframe$P)
   # Create column for double filtering coloring
   if (double_filter){
     if (eff_limit_log2){
@@ -94,6 +94,7 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
   p
 }
 
+# helper function for dealing with zero p-values
 zero_to_min <- function(x) {
   ifelse(x == 0, min(x[x != 0], na.rm = TRUE), x)
 }
@@ -206,6 +207,8 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
 # The y-axis of a traditional Manhattan plot, -log10(p) is multiplied by the sign of the effect
 # The plot can be colored by chosen column
 lady_manhattan_plot <- function(dframe, log2_effect, effect_type,varnum, color_col = NULL, color_type = NULL){
+  
+  dframe$P <- zero_to_min(dframe$P)
   # For OR and FC, use log2 effect
   if(log2_effect){
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(log2(Effect)))
