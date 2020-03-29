@@ -1,10 +1,8 @@
 
 ### COMMON INFORMATION FOR ALL THE VISUALIZATION FUNCTIONS ####
 # -------------------------------------------------------------------------------------------------------
-# interactive argument is used to toggle between interactive plotly plots and normal static ggplots
 # the information showed in the tooltip box on mouse hover is included as dummy aesthetics label1, label2 ..
 # the above causes new versions of ggplot2 to throw warnings, which can be ignored
-# shiny also displays warnings about excplicit widget IDs when working with plotly, but these can be ignored as well
 #-------------------------------------------------------------------------------------------------------
 
 # Volcano plot with double filtering
@@ -15,9 +13,8 @@
 #         df_p_lim: double filtering limit for p-value
 #         fdr: boolean, TRUE: p-limit is for P_FDR FALSE: p-limit is for P
 #         df_effect_lim: double filtering limit for effect
-plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter,
-                             df_p_lim = NULL, fdr = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE,
-                             shape){
+plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter, df_p_lim = NULL,
+                         fdr = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE, shape){
   
   if (log2_effect && any(dframe$Effect < 0)) {
     stop("Negative values can't be log-transformed")
@@ -36,17 +33,21 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
     if (log2_effect) {
       
       if (fdr){
-        dframe <- dframe %>% mutate(df = ifelse(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim, "Pass", "Fail"))
+        dframe <- dframe %>% mutate(df = ifelse(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim,
+                                                "Pass", "Fail"))
       }
       else{
-        dframe <- dframe %>% mutate(df = ifelse(P < df_p_lim & abs(log2(Effect)) > df_effect_lim, "Pass", "Fail"))
+        dframe <- dframe %>% mutate(df = ifelse(P < df_p_lim & abs(log2(Effect)) > df_effect_lim,
+                                                "Pass", "Fail"))
       }
     } else {
       if (fdr){
-        dframe <- dframe %>% mutate(df = ifelse(P_FDR < df_p_lim & abs(Effect) > df_effect_lim, "Pass", "Fail"))
+        dframe <- dframe %>% mutate(df = ifelse(P_FDR < df_p_lim & abs(Effect) > df_effect_lim,
+                                                "Pass", "Fail"))
       }
       else{
-        dframe <- dframe %>% mutate(df = ifelse(P < df_p_lim & abs(Effect) > df_effect_lim, "Pass", "Fail"))
+        dframe <- dframe %>% mutate(df = ifelse(P < df_p_lim & abs(Effect) > df_effect_lim,
+                                                "Pass", "Fail"))
       }
     }
     dframe$df <- factor(dframe$df, levels = c("Pass", "Fail"))
@@ -60,7 +61,7 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
   if (log2_effect) {
     
     x_axis <- "log2(Effect)"
-    x_label <- paste("log2(",effect_type,")",sep = "")
+    x_label <- paste0("log2(", effect_type, ")")
     x_lims <- c(-max(abs(log2(dframe$Effect))),max(abs(log2(dframe$Effect))))
   }
   else{
@@ -85,7 +86,7 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
   }
   p <- p +
     geom_point(aes_string(x = x_axis, y = "-log10(P)", color = coloring, shape = point_shape)) +
-    scale_colour_manual(breaks = c("TRUE","FALSE"),values = c("Pass" = "red", "Fail" = "grey"),
+    scale_colour_manual(breaks = c("TRUE","FALSE"), values = c("Pass" = "red", "Fail" = "grey"),
                         guide = guide_legend(title = NULL)) +
     xlim(x_lims[1],x_lims[2]) +
     xlab(x_label) +
@@ -133,7 +134,7 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
         stop("Negative values can't be log-transformed")
       }
       dframe$observed <- log2(dframe$Effect)
-      ylabel <- paste("log2(",effect_type,")",sep = "")
+      ylabel <- paste0("log2(", effect_type, ")")
     }
     else{
       dframe$observed <- dframe$Effect
@@ -148,7 +149,7 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
     # The coefficients for the line
     Qx <- quantile(dframe$observed, c(0.25, 0.75))
     Qz <- qnorm(c(0.25, 0.75))
-    b <- diff(Qx)/diff(Qz)
+    b <- diff(Qx) / diff(Qz)
     coef <- c(Qx[1] - b * Qz[1], b)
     
     
@@ -166,7 +167,7 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
   
   if(!is.null(color_col)){
     if(color_type == "Discrete"){
-      dframe[,color_col] <- as.factor(dframe[,color_col])
+      dframe[,color_col] <- as.factor(dframe[, color_col])
     }
   }
   # Create ggplot object
@@ -190,15 +191,11 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
                                    label4 = "Effect", label5 = "P_FDR", label6 = "N"))
   }
   if(varnum == 2){
-    print("2 triggered")
-    print(colnames(dframe))
     p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1",
                                    label3 = "Variable2", label4 = "Description1",
                                    label5 = "Description2", label6 = "Effect",
                                    label7 = "P_FDR", label8 = "N"))
-    print("2 over")
-  } 
-  print("yep")
+  }
   p
 }
 
@@ -206,34 +203,35 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
 # Lady Manhattan plot
 # The y-axis of a traditional Manhattan plot, -log10(p) is multiplied by the sign of the effect
 # The plot can be colored by chosen column
-lady_manhattan_plot <- function(dframe, log2_effect, effect_type,varnum, color_col = NULL, color_type = NULL){
+lady_manhattan_plot <- function(dframe, log2_effect, effect_type, varnum,
+                                color_col = NULL, color_type = NULL){
   
   dframe$P <- zero_to_min(dframe$P)
   # For OR and FC, use log2 effect
   if(log2_effect){
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(log2(Effect)))
-    y_label <- paste("-log10(P) * sign(log2(", effect_type ,"))",sep="")
+    y_label <- paste0("-log10(P) * sign(log2(", effect_type, "))")
   }
   else{
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(Effect))
-    y_label <- paste("-log10(P) * sign(", effect_type ,")",sep="")
+    y_label <- paste0("-log10(P) * sign(", effect_type, ")")
   }
   # For datasets with interactions, the combinations of variables are used as x-axis
   if(varnum == 1){
     x_axis <- "Variable1"
     x_label <- "Variable"
-    x_breaks <- sort(dframe$Variable1)[seq(1,nrow(dframe),length.out = 40)]
+    x_breaks <- sort(dframe$Variable1)[seq(1, nrow(dframe), length.out = 40)]
   }
   if(varnum == 2){
-    dframe <- dframe %>% mutate(X = paste(Variable1,Variable2,sep="_x_"))
+    dframe <- dframe %>% mutate(X = paste(Variable1, Variable2, sep = "_x_"))
     x_axis <- "X"
     x_label <- "Variables"
-    x_breaks <- sort(dframe$X)[seq(1,nrow(dframe),length.out = 40)]
+    x_breaks <- sort(dframe$X)[seq(1, nrow(dframe), length.out = 40)]
   }
   # Color is discretised by changing the coloring column to factor
   if(!is.null(color_col)){
     if(color_type == "Discrete"){
-      dframe[,color_col] <- as.factor(dframe[,color_col])
+      dframe[, color_col] <- as.factor(dframe[, color_col])
     }
   }
   
@@ -246,7 +244,8 @@ lady_manhattan_plot <- function(dframe, log2_effect, effect_type,varnum, color_c
     labs(x = x_label, y = y_label)
   
   # Use color scale from colorbrewer when possible
-  if(!is.null(color_col) & class(dframe[, color_col]) %in% c("character", "factor") & length(unique(dframe[, color_col])) <= 12){
+  if(!is.null(color_col) && class(dframe[, color_col]) %in% c("character", "factor") &&
+     length(unique(dframe[, color_col])) <= 12){
     p <- p +
       scale_color_brewer(type = "qual", palette = "Paired")
   }

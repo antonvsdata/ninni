@@ -12,7 +12,8 @@ shinyServer(function(input,output){
   # Multiple choice dropdown: search database for datasets by metadata tags
   output$metadata_tags_ui <- renderUI({
     selectizeInput("metadata_tags","Metadata tags", width = "100%", multiple = TRUE,
-                   choices = na.omit(ds_dframe$Metadata_labels), options = list(placeholder = "Choose metadata tags"))
+                   choices = na.omit(ds_dframe$Metadata_labels),
+                   options = list(placeholder = "Choose metadata tags"))
   })
   
   # Handles the query to the database
@@ -23,49 +24,33 @@ shinyServer(function(input,output){
       return (NULL)
     }
     withProgress(message = "Retrieving dataset from database",{
-      associations_list <- get_associations(pool,input$ds_label, input$var_keywords, input$metadata_tags)
+      asso_list <- get_associations(pool,input$ds_label, input$var_keywords, input$metadata_tags)
       incProgress(0.3)
-      associations_list$dframe <- join_variables(pool,associations_list$dframe,associations_list$datasets)
+      asso_list$dframe <- join_variables(pool, asso_list$dframe, asso_list$datasets)
     })
     
-    return (associations_list)
+    return (asso_list)
   })
   
   associations_list_query <- eventReactive(input$filter,{
     associations_list_query_()
   })
   
-  # Filters for loaded data
-  output$filters <- renderUI({
-    # if(is.null(standard_filters())){
-    #   return(NULL)
-    # }
-    tagList(
-      standard_filters(),
-      #extra_filters(),
-      variable_filters(),
-      actionButton("filter",
-                   label = "Filter")
-    )
-  })
-  
   # Filters for associations, always visible
   output$standard_filters <- renderUI({
-    # if(is.null(associations_list_query())){
-    #   return(NULL)
-    # }
+    
     tagList(
-      checkboxInput("toggle_standard_filters","Show standard filters"),
+      checkboxInput("toggle_standard_filters", "Show standard filters"),
       conditionalPanel("input.toggle_standard_filters == true",
                        h4("Association filters"),
                        strong("Variable"),
-                       textInput("var_labels","Keywords, comma separated"),
+                       textInput("var_labels", "Keywords, comma separated"),
                        
                        fluidRow(
                          column(6,
-                                textInput("p_limit",label = "P-value <")),
+                                textInput("p_limit", label = "P-value <")),
                          column(4,
-                                radioButtons("p_limit_fdr",label = NULL,
+                                radioButtons("p_limit_fdr", label = NULL,
                                              choices = c("Unadjusted" = FALSE,
                                                          "FDR" = TRUE),
                                              selected = FALSE))),
@@ -77,7 +62,7 @@ shinyServer(function(input,output){
                        strong("Effect:"),
                        fluidRow(
                          column(5,
-                                textInput("eff_min",label="min")
+                                textInput("eff_min", label="min")
                          ),
                          column(5,
                                 textInput("eff_max", label = "max"))),
@@ -94,7 +79,7 @@ shinyServer(function(input,output){
     if(associations_list_query()$varnum == 2){
       col_limit <- 12
     }
-    else{ #all datasets have varnum == 1
+    else{ # all datasets have varnum == 1
       col_limit <- 10
     }
     dframe <- associations_list_query()$dframe %>% as.data.frame()
@@ -106,16 +91,16 @@ shinyServer(function(input,output){
     # min & max if numeric
     # keyword search if character
     out <- tagList()
-    for(i in (col_limit+1):ncol(dframe)){
-      if(class(dframe[,i]) == "numeric"){
+    for(i in seq(col_limit + 1, ncol(dframe))){
+      if(class(dframe[, i]) == "numeric"){
         out <- tagList(out,
                        strong(colnames(dframe)[i]),
                        fluidRow(
                          column(5,
-                                textInput(paste(colnames(dframe)[i],"min",sep="_"),label="min")
+                                textInput(paste(colnames(dframe)[i], "min", sep = "_"), label = "min")
                          ),
                          column(5,
-                                textInput(paste(colnames(dframe)[i],"max",sep="_"), label = "max")
+                                textInput(paste(colnames(dframe)[i], "max", sep = "_"), label = "max")
                          )
                        ))
         
@@ -123,7 +108,8 @@ shinyServer(function(input,output){
       if(class(dframe[,i]) == "character"){
         out <- tagList(out,
                        strong(colnames(dframe)[i]),
-                       textInput(paste(colnames(dframe)[i],"label",sep="_"),label = "Keywords, comma separated"))
+                       textInput(paste(colnames(dframe)[i],"label",sep="_"),
+                                 label = "Keywords, comma separated"))
       }
     }
     out
@@ -137,20 +123,18 @@ shinyServer(function(input,output){
   
   # Filters for filtering loaded data by variable
   output$variable_filters <- renderUI({
-    # if(is.null(associations_list_query())){
-    #   return(NULL)
-    # }
+    
     tagList(
-      checkboxInput("toggle_variable_filters","Show variable filters"),
+      checkboxInput("toggle_variable_filters", "Show variable filters"),
       conditionalPanel("input.toggle_variable_filters == true",
                        h4("Variable filters"),
                        h5("At least one association with"),
                        
                        fluidRow(
                          column(6,
-                                textInput("var_p_limit",label = "P-value <")),
+                                textInput("var_p_limit", label = "P-value <")),
                          column(4,
-                                radioButtons("var_p_limit_fdr",label = NULL,
+                                radioButtons("var_p_limit_fdr", label = NULL,
                                              choices = c("Unadjusted" = FALSE,
                                                          "FDR" = TRUE),
                                              selected = FALSE))
@@ -159,7 +143,7 @@ shinyServer(function(input,output){
                        strong("Effect size:"),
                        fluidRow(
                          column(5,
-                                textInput("var_eff_min",label="min")
+                                textInput("var_eff_min", label = "min")
                          ),
                          column(5,
                                 textInput("var_eff_max", label = "max"))
@@ -179,27 +163,28 @@ shinyServer(function(input,output){
       return(NULL)
     }
     
-    associations_list <- associations_list_query()
-    dframe <- as.data.frame(associations_list$dframe)
+    asso_list <- associations_list_query()
+    dframe <- as.data.frame(asso_list$dframe)
     #Variable filters:
     
     # P-value <
     if(input$toggle_variable_filters){
       if (input$var_p_limit != ""){
         dframe <- dframe %>%
-          varfilter_p( as.numeric(input$var_p_limit),associations_list$varnum,input$var_p_limit_fdr)
+          varfilter_p( as.numeric(input$var_p_limit), asso_list$varnum, input$var_p_limit_fdr)
       }
       
       # Effect: min max
       if ((input$var_eff_min != "" | input$var_eff_max != "")){
         if (input$var_eff_min == ""){
-          dframe <- varfilter_eff(dframe, eff_max = as.numeric(input$var_eff_max), varnum = associations_list$varnum)
+          dframe <- varfilter_eff(dframe, eff_max = as.numeric(input$var_eff_max), varnum = asso_list$varnum)
         }
         else if (input$var_eff_max == ""){
-          dframe <- varfilter_eff(dframe, eff_min = as.numeric(input$var_eff_min), varnum = associations_list$varnum)
+          dframe <- varfilter_eff(dframe, eff_min = as.numeric(input$var_eff_min), varnum = asso_list$varnum)
         }
         else{
-          dframe <- varfilter_eff(dframe, as.numeric(input$var_eff_min), as.numeric(input$var_eff_max), associations_list$varnum)
+          dframe <- varfilter_eff(dframe, as.numeric(input$var_eff_min), as.numeric(input$var_eff_max),
+                                  asso_list$varnum)
         }
       }
     }
@@ -210,24 +195,24 @@ shinyServer(function(input,output){
       # Variable
       # Keywords, comma separated
       if (input$var_labels != ""){
-        if(associations_list$varnum == 2){
+        if(asso_list$varnum == 2){
           cols <- c("Variable1", "Variable2")
         }
         else{
           cols <- "Variable1"
         }
-        dframe <- filter_by_keyword(dframe,cols,input$var_labels)
+        dframe <- filter_by_keyword(dframe, cols, input$var_labels)
       }
       # Description
       # Keywords, comma separated
       if (input$description_labels != ""){
-        if(associations_list$varnum == 2){
-          cols <- c("Description1","Description2")
+        if(asso_list$varnum == 2){
+          cols <- c("Description1", "Description2")
         }
         else{
           cols <- "Description1"
         }
-        dframe <- filter_by_keyword(dframe,cols,input$description_labels)
+        dframe <- filter_by_keyword(dframe, cols, input$description_labels)
       }
       # P-value <
       if(input$p_limit != ""){
@@ -246,7 +231,7 @@ shinyServer(function(input,output){
           filter(N >= as.numeric(input$n_limit))
       }
       # Effect size: min max
-      if (input$eff_min != "" | input$eff_max != ""){
+      if (input$eff_min != "" || input$eff_max != ""){
         if (input$eff_min == ""){
           dframe <- dframe %>%
             filter(Effect < as.numeric(input$eff_max))
@@ -264,47 +249,46 @@ shinyServer(function(input,output){
     
     # Filters for metavariables
     if(input$toggle_extra_filters){
-      if(associations_list$varnum == 2){
+      if(asso_list$varnum == 2){
         col_limit <- 12
       }
       else{ # each varnum == 1
         col_limit <- 10
       }
       if(ncol(dframe) > col_limit){
-        for(i in (col_limit+1):ncol(dframe)){
-          if(class(dframe[,i]) == "numeric"){
-            inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"min",sep="_"))]
+        for(i in seq(col_limit + 1, ncol(dframe))){
+          if(class(dframe[, i]) == "numeric"){
+            inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i], "min", sep = "_"))]
             expr <- paste("input",inputid,sep="$")
             limit_min <- eval(parse(text = expr))
-            inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"max",sep="_"))]
-            expr <- paste("input",inputid,sep="$")
+            inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i], "max", sep = "_"))]
+            expr <- paste("input", inputid, sep="$")
             limit_max <- eval(parse(text = expr))
-            if (limit_min != "" | limit_max != ""){
+            if (limit_min != "" || limit_max != ""){
               if (limit_min == ""){
-                dframe <- dframe[dframe[,i] < as.numeric(limit_max),]
+                dframe <- dframe[dframe[, i] < as.numeric(limit_max), ]
               }
               else if (limit_max == ""){
-                dframe <- dframe[dframe[,i] > as.numeric(limit_min),]
+                dframe <- dframe[dframe[, i] > as.numeric(limit_min), ]
               }
               else{
-                dframe <- dframe[dframe[,i] < as.numeric(limit_max) & dframe[,i] > as.numeric(limit_min),]
+                dframe <- dframe[dframe[, i] < as.numeric(limit_max) & dframe[, i] > as.numeric(limit_min), ]
               }
             }
           }
-          else if(class(dframe[,i]) == "character"){
-            #inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i],"label",sep="_"))]
-            expr <- paste("input$",colnames(dframe)[i],"_label",sep="")
+          else if(class(dframe[, i]) == "character"){
+            expr <- paste0("input$", colnames(dframe)[i], "_label")
             keywords <- eval(parse(text = expr))
             if(keywords != ""){
-              dframe <- filter_by_keyword(dframe,colnames(dframe)[i], keywords)
+              dframe <- filter_by_keyword(dframe, colnames(dframe)[i], keywords)
             }
           }
         }
       }
       
     }
-    associations_list$dframe <- dframe
-    return(associations_list)
+    asso_list$dframe <- dframe
+    return(asso_list)
   })
   
   # Contains information about the loaded data
@@ -317,25 +301,26 @@ shinyServer(function(input,output){
     if(is.null(associations_list())){
       return(NULL)
     }
-    string <- c("Number of datasets","Effect type(s)", "Number of associations:","Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
+    string <- c("Number of datasets","Effect type(s)", "Number of associations:",
+                "Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
              "P-value range:","Effect range:")
     values <- c(nrow(associations_list()$datasets),
                 associations_list()$datasets$effect_type %>% unique() %>% paste(collapse=","),
                 nrow(associations_list()$dframe))
-    if (associations_list()$varnum ==2){
-      values <- c(values, c(associations_list()$dframe$Variable1,associations_list()$dframe$Variable2) %>%
+    if (associations_list()$varnum == 2){
+      values <- c(values, c(associations_list()$dframe$Variable1, associations_list()$dframe$Variable2) %>%
                     unique() %>% length())
     }
     else{
       values <- c(values, associations_list()$dframe$Variable1 %>%
                     unique() %>% length())
     }
-    values <- c(values,associations_list()$dframe %>% filter(P < 0.05) %>% nrow(),
+    values <- c(values, associations_list()$dframe %>% filter(P < 0.05) %>% nrow(),
                 associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow(),
-                paste((associations_list()$dframe$P) %>% min() %>% signif(digits=3), "...",
-                      (associations_list()$dframe$P) %>% max() %>% signif(digits=3)),
-                paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits=3), "...",
-                      (associations_list()$dframe$Effect) %>% max() %>% signif(digits=3)))
+                paste((associations_list()$dframe$P) %>% min() %>% signif(digits = 3), "...",
+                      (associations_list()$dframe$P) %>% max() %>% signif(digits = 3)),
+                paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits = 3), "...",
+                      (associations_list()$dframe$Effect) %>% max() %>% signif(digits = 3)))
     data.frame(string,values)
   },include.rownames=FALSE, include.colnames = FALSE)
   
@@ -351,9 +336,9 @@ shinyServer(function(input,output){
   # Associations data table
   output$tabular <- DT::renderDataTable({
     dframe <- associations_list()$dframe
-    for(i in 1:ncol(dframe)){
-      if(class(dframe[,i]) == "numeric"){
-        dframe[,i] <- signif(dframe[,i],digits = 3)
+    for(i in seq_len(ncol(dframe))){
+      if(class(dframe[, i]) == "numeric"){
+        dframe[, i] <- signif(dframe[, i], digits = 3)
       }
     }
     datatable(dframe, selection = "none")
@@ -372,7 +357,7 @@ shinyServer(function(input,output){
     },
     
     content = function(file){
-      write.csv(associations_list()$dframe,file, row.names = F)
+      write.csv(associations_list()$dframe, file, row.names = FALSE)
     }
   )
   
@@ -393,19 +378,22 @@ shinyServer(function(input,output){
     out <- tagList()
     # Check if there are associations with only one variable
     # They will be removed before plotting the heatmap
-    n_not_plotted <- length(which(is.na(associations_list()$dframe$Variable1) | is.na(associations_list()$dframe$Variable2)))
+    n_not_plotted <- length(which(is.na(associations_list()$dframe$Variable1) |
+                                    is.na(associations_list()$dframe$Variable2)))
     if(n_not_plotted > 0){
       n_plotted <- nrow(associations_list()$dframe) - n_not_plotted
-      out <- tagList(out, h5(paste("Only associations with 2 variables will be plotted in the heat map. Removed ",n_not_plotted," associations, plotted ", n_plotted, " associations.", sep="")))
+      out <- tagList(out, h5(paste0("Only associations with 2 variables will be plotted in the heat map.
+                                   Removed ", n_not_plotted," associations, plotted ",
+                                   n_plotted, " associations.")))
     }
     if (nrow(associations_list()$dframe) > 10000){
       out <- tagList(out,
                      h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("heatmap_static", height = paste(input$window_size[2] - 100,"px",sep="")))
+                     plotOutput("heatmap_static", height = paste0(input$window_size[2] - 100, "px")))
     }
     else{
       out <- tagList(out,
-                     plotlyOutput("heatmaply", height = paste(input$window_size[2] - 100,"px",sep="")))
+                     plotlyOutput("heatmaply", height = paste0(input$window_size[2] - 100, "px")))
     }
     out <- tagList(out,
                    uiOutput("heatmap_download"))
@@ -413,9 +401,8 @@ shinyServer(function(input,output){
   })
   
   heatmap <- reactive({
-    plot_effect_heatmap(associations_list()$dframe,
-                        log2_effect = input$heatmap_log2, color_scale = input$heatmap_color_scale,
-                        midpoint = input$heatmap_midpoint,
+    plot_effect_heatmap(associations_list()$dframe, log2_effect = input$heatmap_log2,
+                        color_scale = input$heatmap_color_scale, midpoint = input$heatmap_midpoint,
                         discretize_effect = input$heatmap_discrete, breaks = input$heatmap_breaks,
                         clustering = input$clustering, lower_tri = TRUE)
   })
@@ -436,15 +423,15 @@ shinyServer(function(input,output){
         column(1,
                downloadButton("heatmap_download_button")),
         column(2,
-               radioButtons("heatmap_download_format",label=NULL,
-                            choices = c("png","pdf")))
+               radioButtons("heatmap_download_format", label=NULL,
+                            choices = c("png", "pdf")))
       )
     )
   })
   
   output$heatmap_download_button <- downloadHandler(
     filename = function(){
-      paste("ninni_heatmap",input$heatmap_download_format,sep=".")
+      paste("ninni_heatmap", input$heatmap_download_format, sep=".")
     },
     
     content = function(file){
@@ -454,7 +441,7 @@ shinyServer(function(input,output){
       } else{
         scale <- 1
       }
-      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
   
@@ -466,10 +453,10 @@ shinyServer(function(input,output){
     }
     if (nrow(associations_list()$dframe) > 10000){
       out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-              plotOutput("volcano_static", height = paste(input$window_size[2] - 100,"px",sep="")))
+              plotOutput("volcano_static", height = paste0(input$window_size[2] - 100, "px")))
     }
     else{
-      out <- plotlyOutput("volcanoly", height = paste(input$window_size[2] - 100,"px",sep=""))
+      out <- plotlyOutput("volcanoly", height = paste0(input$window_size[2] - 100, "px"))
     }
     out <- tagList(out,
                    uiOutput("volcano_download"))
@@ -508,7 +495,7 @@ shinyServer(function(input,output){
   
   output$volcano_download_button <- downloadHandler(
     filename = function(){
-      paste("ninni_volcano_plot",input$volcano_download_format,sep=".")
+      paste("ninni_volcano_plot", input$volcano_download_format, sep=".")
     },
     
     content = function(file){
@@ -518,7 +505,7 @@ shinyServer(function(input,output){
       } else{
         scale <- 1
       }
-      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
   
@@ -526,7 +513,7 @@ shinyServer(function(input,output){
   
   output$qq_plot_choices <- renderUI({
     tagList(
-      checkboxInput("qq_coloring","Coloring according to column"),
+      checkboxInput("qq_coloring", "Coloring according to column"),
       conditionalPanel("input.qq_coloring == true",
                        radioButtons("qq_coloring_type",NULL,
                                     choices = c("Continuous", "Discrete"), inline = TRUE),
@@ -545,10 +532,10 @@ shinyServer(function(input,output){
     
     if (nrow(associations_list()$dframe) > 10000){
       out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("qq_plot_static", height = paste(input$window_size[2] - 100,"px",sep="")))
+                     plotOutput("qq_plot_static", height = paste0(input$window_size[2] - 100, "px")))
     }
     else{
-      out <- plotlyOutput("qq_plotly", height = paste(input$window_size[2] - 100, "px", sep=""))
+      out <- plotlyOutput("qq_plotly", height = paste0(input$window_size[2] - 100, "px"))
     }
     
     out <- tagList(out,
@@ -570,10 +557,8 @@ shinyServer(function(input,output){
   
   output$qq_plotly <- renderPlotly({
     ggp <- qq_plot()
-    ggplotly(ggp, tooltip = paste("label",1:8,sep=""))
+    ggplotly(ggp, tooltip = paste0("label", 1:8))
   })
-  
-  
   
   output$qq_plot_download <- renderUI({
     tagList(
@@ -582,8 +567,8 @@ shinyServer(function(input,output){
         column(1,
                downloadButton("qq_plot_download_button")),
         column(2,
-               radioButtons("qq_plot_download_format",label=NULL,
-                            choices = c("png","pdf")))
+               radioButtons("qq_plot_download_format", label=NULL,
+                            choices = c("png", "pdf")))
       )
     )
   })
@@ -609,11 +594,11 @@ shinyServer(function(input,output){
   # Choose discrete or continuous color scale (only relevant for numeric values)
   output$lady_manhattan_plot_choices <- renderUI({
     tagList(
-      checkboxInput("lady_coloring","Coloring according to column"),
+      checkboxInput("lady_coloring", "Coloring according to column"),
       conditionalPanel("input.lady_coloring == true",
                        radioButtons("lady_coloring_type",NULL,
                                     choices = c("Continuous", "Discrete")),
-                       selectizeInput("lady_coloring_column","Column",
+                       selectizeInput("lady_coloring_column", "Column",
                                       choices = colnames(associations_list()$dframe),
                                       options = list(maxItems = 1,
                                                      placeholder = 'Choose a column',
@@ -627,10 +612,10 @@ shinyServer(function(input,output){
     }
     if (nrow(associations_list()$dframe) > 10000){
       out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                   plotOutput("lady_manhattan_plot_static", height = paste(input$window_size[2] - 100,"px",sep="")))
+                   plotOutput("lady_manhattan_plot_static", height = paste0(input$window_size[2] - 100, "px")))
     }
     else{
-      out <- plotlyOutput("lady_manhattan_plotly", height = paste(input$window_size[2] - 100,"px",sep=""))
+      out <- plotlyOutput("lady_manhattan_plotly", height = paste0(input$window_size[2] - 100, "px"))
     }
     out <- tagList(out,
                    uiOutput("lady_manhattan_download"))
@@ -645,7 +630,7 @@ shinyServer(function(input,output){
     }
     else{
       lady_manhattan_plot(associations_list()$dframe, input$lady_log2,
-                          associations_list()$effect_type,associations_list()$varnum)
+                          associations_list()$effect_type, associations_list()$varnum)
     }
   })
   
@@ -655,7 +640,7 @@ shinyServer(function(input,output){
   
   output$lady_manhattan_plotly <- renderPlotly({
     ggp <- ladyplot()
-    ggplotly(ggp, tooltip = paste("label",1:8,sep=""))
+    ggplotly(ggp, tooltip = paste0("label", 1:8))
   })
   
   output$lady_manhattan_download <- renderUI({
@@ -665,15 +650,15 @@ shinyServer(function(input,output){
         column(1,
                downloadButton("lady_manhattan_download_button")),
         column(2,
-               radioButtons("lady_manhattan_download_format",label=NULL,
-                            choices = c("png","pdf")))
+               radioButtons("lady_manhattan_download_format", label = NULL,
+                            choices = c("png", "pdf")))
       )
     )
   })
   
   output$lady_manhattan_download_button <- downloadHandler(
     filename = function(){
-      paste("ninni_lady_manhattan_plot",input$lady_manhattan_download_format,sep=".")
+      paste("ninni_lady_manhattan_plot", input$lady_manhattan_download_format, sep = ".")
     },
     
     content = function(file){
@@ -683,7 +668,7 @@ shinyServer(function(input,output){
       } else{
         scale <- 1
       }
-      ggsave(file,p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
   

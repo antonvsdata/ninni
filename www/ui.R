@@ -22,28 +22,32 @@ shinyUI( fluidPage(
     # Sidebar contains inputs for searching Ninni's database for information
     # and filters for loaded datasets
     sidebarPanel(
+      # Search options for choosing a dataset
       h4("Dataset"),
       uiOutput("ds_choice"),
       uiOutput("metadata_tags_ui"),
       textInput("var_keywords","Variable keywords"),
-      #actionButton("query","Query"),
-      
+      # Filters for filtering associations
+      # Like variable names, p-value, effect size
       uiOutput("standard_filters"),
+      # Extra filters based on non-required columns.
       checkboxInput("toggle_extra_filters","Show extra filters"),
       conditionalPanel("input.toggle_extra_filters == true",
                        uiOutput("extra_filters")),
+      # Filter for variables, e.g. at least one association with p < 0.05
+      # Keeps all associations for particular variable
       uiOutput("variable_filters"),
       actionButton("filter",
                    label = "Filter"),
       
       br(),
       br(),
-      
+      # Basic information of the dataset
       htmlOutput("ds_info")
     ),
     mainPanel(
       tabsetPanel(
-        
+        # Welcom text and a list of the datasets in database
         tabPanel("Main",
                  h3("Welcome to use Ninni the visualization app!"),
                  p("You can browse Ninni's database using the search fields on the left."),
@@ -56,14 +60,14 @@ shinyUI( fluidPage(
                  h3("Datasets"),
                  DT::dataTableOutput("dstable")
         ),
-        
+        # All the chosen associations in table format
         tabPanel("Data Table",
                  h3("Associations"),
                  DT::dataTableOutput("tabular"),
                  br(),
                  uiOutput("download")
         ),
-        
+
         tabPanel("Heat Map",
                  # Toggle hierarchical clustering for heat map
                  radioButtons("clustering",
@@ -141,10 +145,10 @@ shinyUI( fluidPage(
         
         tabPanel("Q-Q plot",
                  radioButtons("qq_choice",
-                                         label = "Choose the type of Q-Q plot",
-                                         choices = c("P-values" = "P",
-                                                     "Effect" = "Effect"),
-                                         inline = TRUE),
+                              label = "Choose the type of Q-Q plot",
+                              choices = c("P-values" = "P",
+                                          "Effect" = "Effect"),
+                              inline = TRUE),
                  conditionalPanel("input.qq_choice == 'Effect'",
                                    checkboxInput("qq_log2",
                                                  label = "log2 transform")),
