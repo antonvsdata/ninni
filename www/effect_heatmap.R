@@ -33,13 +33,13 @@ discretize <- function(x, breaks, color_scale = "Sequential", midpoint = 0) {
     distance <- abs(x - midpoint)
     maxdist <- distance[distance == max(distance, na.rm = TRUE)][1]
     ends <- c(-1,1)* maxdist + midpoint
-    print(ends)
     breaks <- seq(ends[1], ends[2], length.out = breaks + 1)
-    print(breaks)
+    
   }
   x <- cut(x, breaks = breaks,
            dig.lab = 2)
   x <- factor(x, levels = rev(levels(x)))
+  x
 }
 
 #' Draw a heatmap of effects between variables, such as correlations
@@ -108,7 +108,7 @@ plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequen
     if (color_scale == "Diverging") {
       fill_scale <- ggplot2::scale_fill_manual(values = RColorBrewer::brewer.pal(breaks, "RdBu"))
     } else {
-      fill_scale <- ggplot2::scale_fill_viridis_d()
+      fill_scale <- ggplot2::scale_fill_viridis_d(direction = -1)
     }
   } else {
     if (color_scale == "Diverging") {
