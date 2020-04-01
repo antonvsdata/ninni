@@ -391,11 +391,13 @@ shinyServer(function(input,output){
     if (nrow(associations_list()$dframe) > plotly_limit){
       out <- tagList(out,
                      h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("heatmap_static", height = paste0(input$window_size[2] - 100, "px")))
+                     plotOutput("heatmap_static", height = input$window_size[2] - 100))
     }
     else{
+      height <- min(input$window_size) * 0.95
+      width <- height * 1.04
       out <- tagList(out,
-                     plotlyOutput("heatmaply", width = input$window_size[2], height = input$window_size[2] - 100))
+                     plotlyOutput("heatmaply", width = width, height = height))
     }
     out <- tagList(out,
                    uiOutput("heatmap_download"))
