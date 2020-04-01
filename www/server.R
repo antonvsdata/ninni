@@ -364,6 +364,8 @@ shinyServer(function(input,output){
   # All the visualizations can be interactive plotly figures,
   # or static figures, if dataset has more than 10 000 associations
   
+  plotly_limit <- 10000
+  
   # -------------- Heat map --------------------
   
   
@@ -386,14 +388,14 @@ shinyServer(function(input,output){
                                    Removed ", n_not_plotted," associations, plotted ",
                                    n_plotted, " associations.")))
     }
-    if (nrow(associations_list()$dframe) > 10000){
+    if (nrow(associations_list()$dframe) > plotly_limit){
       out <- tagList(out,
                      h5("Wow, your data is BIG! Plotting static figure."),
                      plotOutput("heatmap_static", height = paste0(input$window_size[2] - 100, "px")))
     }
     else{
       out <- tagList(out,
-                     plotlyOutput("heatmaply", height = paste0(input$window_size[2] - 100, "px")))
+                     plotlyOutput("heatmaply", width = input$window_size[2], height = input$window_size[2] - 100))
     }
     out <- tagList(out,
                    uiOutput("heatmap_download"))
@@ -436,7 +438,7 @@ shinyServer(function(input,output){
     
     content = function(file){
       p <- heatmap()
-      if(nrow(associations_list()$dframe) > 10000){
+      if(nrow(associations_list()$dframe) > plotly_limit){
         scale <- 1.5
       } else{
         scale <- 1
@@ -451,7 +453,7 @@ shinyServer(function(input,output){
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
     }
-    if (nrow(associations_list()$dframe) > 10000){
+    if (nrow(associations_list()$dframe) > plotly_limit){
       out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
               plotOutput("volcano_static", height = paste0(input$window_size[2] - 100, "px")))
     }
@@ -500,7 +502,7 @@ shinyServer(function(input,output){
     
     content = function(file){
       p <- volcanoplot()
-      if(nrow(associations_list()$dframe) > 10000){
+      if(nrow(associations_list()$dframe) > plotly_limit){
         scale <- 1.5
       } else{
         scale <- 1
@@ -530,7 +532,7 @@ shinyServer(function(input,output){
       return(h5("Multiple different effect types can't be plotted together"))
     }
     
-    if (nrow(associations_list()$dframe) > 10000){
+    if (nrow(associations_list()$dframe) > plotly_limit){
       out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
                      plotOutput("qq_plot_static", height = paste0(input$window_size[2] - 100, "px")))
     }
@@ -579,7 +581,7 @@ shinyServer(function(input,output){
     },
     
     content = function(file){
-      if(nrow(associations_list()$dframe) > 10000){
+      if(nrow(associations_list()$dframe) > plotly_limit){
         scale <- 1.5
       } else{
         scale <- 1
@@ -610,7 +612,7 @@ shinyServer(function(input,output){
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
     }
-    if (nrow(associations_list()$dframe) > 10000){
+    if (nrow(associations_list()$dframe) > plotly_limit){
       out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
                    plotOutput("lady_manhattan_plot_static", height = paste0(input$window_size[2] - 100, "px")))
     }
@@ -663,7 +665,7 @@ shinyServer(function(input,output){
     
     content = function(file){
       p <- ladyplot()
-      if(nrow(associations_list()$dframe) > 10000){
+      if(nrow(associations_list()$dframe) > plotly_limit){
         scale <- 1.5
       } else{
         scale <- 1
