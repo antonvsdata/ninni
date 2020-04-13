@@ -405,6 +405,9 @@ shinyServer(function(input,output){
   })
   
   heatmap <- reactive({
+    if (associations_list()$varnum == 1) {
+      return(NULL)
+    }
     plot_effect_heatmap(associations_list()$dframe, log2_effect = input$heatmap_log2,
                         color_scale = input$heatmap_color_scale, midpoint = input$heatmap_midpoint,
                         discretize_effect = input$heatmap_discrete, breaks = input$heatmap_breaks,
@@ -426,13 +429,18 @@ shinyServer(function(input,output){
       br(),
       fluidRow(
         column(1,
-               downloadButton("heatmap_download_button")),
+               downloadButton("heatmap_download_button"),
+               br(),
+               br(),
+               uiOutput("heatmap_download_plotly"),
+               br()),
         column(2,
                radioButtons("heatmap_download_format", label=NULL,
                             choices = c("png", "pdf")))
       )
     )
   })
+  
   
   output$heatmap_download_button <- downloadHandler(
     filename = function(){
@@ -447,6 +455,25 @@ shinyServer(function(input,output){
         scale <- 1
       }
       ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+    }
+  )
+  
+  output$heatmap_download_plotly <- renderUI({
+    if (nrow(associations_list()$dframe) <= plotly_limit) {
+      downloadButton("heatmap_downloadly", "Download Interactive")
+    } else {
+      NULL
+    }
+  })
+  
+  output$heatmap_downloadly <- downloadHandler(
+    filename = function(){
+      "ninni_heatmap.html"
+    },
+    
+    content = function(file){
+      p <- ggplotly(heatmap(), tooltip = paste0("label", 1:9))
+      saveWidget(as_widget(ggplotly(p)), file, selfcontained = TRUE, title = "Ninni heat map")
     }
   )
   
@@ -490,7 +517,11 @@ shinyServer(function(input,output){
       br(),
       fluidRow(
         column(1,
-               downloadButton("volcano_download_button")),
+               downloadButton("volcano_download_button"),
+               br(),
+               br(),
+               uiOutput("volcano_download_plotly"),
+               br()),
         column(2,
                radioButtons("volcano_download_format",label=NULL,
                             choices = c("png","pdf")))
@@ -511,6 +542,25 @@ shinyServer(function(input,output){
         scale <- 1
       }
       ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+    }
+  )
+  
+  output$volcano_download_plotly <- renderUI({
+    if (nrow(associations_list()$dframe) <= plotly_limit) {
+      downloadButton("volcano_downloadly", "Download Interactive")
+    } else {
+      NULL
+    }
+  })
+  
+  output$volcano_downloadly <- downloadHandler(
+    filename = function(){
+      "ninni_volcano_plot.html"
+    },
+    
+    content = function(file){
+      p <- ggplotly(volcanoplot(), tooltip = paste0("label", 1:9))
+      saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni volcano plot")
     }
   )
   
@@ -562,7 +612,7 @@ shinyServer(function(input,output){
   
   output$qq_plotly <- renderPlotly({
     ggp <- qq_plot()
-    ggplotly(ggp, tooltip = paste0("label", 1:8))
+    ggplotly(ggp, tooltip = paste0("label", 1:9))
   })
   
   output$qq_plot_download <- renderUI({
@@ -570,7 +620,11 @@ shinyServer(function(input,output){
       br(),
       fluidRow(
         column(1,
-               downloadButton("qq_plot_download_button")),
+               downloadButton("qq_plot_download_button"),
+               br(),
+               br(),
+               uiOutput("qq_download_plotly"),
+               br()),
         column(2,
                radioButtons("qq_plot_download_format", label=NULL,
                             choices = c("png", "pdf")))
@@ -590,6 +644,25 @@ shinyServer(function(input,output){
         scale <- 1
       }
       ggsave(file, qq_plot(), width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+    }
+  )
+  
+  output$qq_download_plotly <- renderUI({
+    if (nrow(associations_list()$dframe) <= plotly_limit) {
+      downloadButton("qq_downloadly", "Download Interactive")
+    } else {
+      NULL
+    }
+  })
+  
+  output$qq_downloadly <- downloadHandler(
+    filename = function(){
+      "ninni_qq_plot.html"
+    },
+    
+    content = function(file){
+      p <- ggplotly(qq_plot(), tooltip = paste0("label", 1:9))
+      saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni Q-Q plot")
     }
   )
   
@@ -645,7 +718,7 @@ shinyServer(function(input,output){
   
   output$lady_manhattan_plotly <- renderPlotly({
     ggp <- ladyplot()
-    ggplotly(ggp, tooltip = paste0("label", 1:8))
+    ggplotly(ggp, tooltip = paste0("label", 1:9))
   })
   
   output$lady_manhattan_download <- renderUI({
@@ -653,7 +726,11 @@ shinyServer(function(input,output){
       br(),
       fluidRow(
         column(1,
-               downloadButton("lady_manhattan_download_button")),
+               downloadButton("lady_manhattan_download_button"),
+               br(),
+               br(),
+               uiOutput("manhattan_download_plotly"),
+               br()),
         column(2,
                radioButtons("lady_manhattan_download_format", label = NULL,
                             choices = c("png", "pdf")))
@@ -674,6 +751,25 @@ shinyServer(function(input,output){
         scale <- 1
       }
       ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+    }
+  )
+  
+  output$manhattan_download_plotly <- renderUI({
+    if (nrow(associations_list()$dframe) <= plotly_limit) {
+      downloadButton("manhattan_downloadly", "Download Interactive")
+    } else {
+      NULL
+    }
+  })
+  
+  output$manhattan_downloadly <- downloadHandler(
+    filename = function(){
+      "ninni_manhattan.html"
+    },
+    
+    content = function(file){
+      p <- ggplotly(ladyplot(), tooltip = paste0("label", 1:9))
+      saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni Manhattan plot")
     }
   )
   

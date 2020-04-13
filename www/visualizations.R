@@ -72,11 +72,11 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
   
   if (varnum == 1){
     p <- ggplot(dframe, aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
-                            label4 = Effect, label5 = P_FDR, label6 = N))
+                            label4 = Effect, label5 = P, label6 = P_FDR, label7 = N))
   }
   if(varnum == 2){
     p <- ggplot(dframe, aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
-                            label5 = Description2, label6 = Effect, label7 = P_FDR, label8 = N))
+                            label5 = Description2, label6 = Effect, label7 = P, label8 = P_FDR, label9 = N))
   }
   if(shape){
     point_shape <- "Dataset"
@@ -188,13 +188,13 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
   if (varnum == 1){
     p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1",
                                    label3 = "Description1",
-                                   label4 = "Effect", label5 = "P_FDR", label6 = "N"))
+                                   label4 = "Effect", label5 = "P", label6 = "P_FDR", label7 = "N"))
   }
   if(varnum == 2){
     p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1",
                                    label3 = "Variable2", label4 = "Description1",
-                                   label5 = "Description2", label6 = "Effect",
-                                   label7 = "P_FDR", label8 = "N"))
+                                   label5 = "Description2", label6 = "Effect", label7 = "P",
+                                   label8 = "P_FDR", label9 = "N"))
   }
   p
 }
@@ -252,11 +252,12 @@ lady_manhattan_plot <- function(dframe, log2_effect, effect_type, varnum,
   
   if (varnum == 1){
     p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
-                            label4 = Effect, label5 = P_FDR, label6 = N))
+                            label4 = Effect, label5 = P, label6 = P_FDR, label7 = N))
   }
   if(varnum == 2){
     p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
-                            label5 = Description2, label6 = Effect, label7 = P_FDR, label8 = N))
+                            label5 = Description2, label6 = Effect, label7 = P,
+                            label8 = P_FDR, label9 = N))
   } 
 
   p
