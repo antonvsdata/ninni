@@ -56,19 +56,20 @@ discretize <- function(x, breaks, color_scale = "Sequential", midpoint = 0) {
 #' @param p_limit numeric, only p-values below the limit are plotted as points
 #' @param point_size_range a numeric vector of length 2. The upper and lower limits for the point sizes.
 #' This needs to be adjusted to make the point size look good when compared to the tiles
-#' @param log2_effect logical, whether the effect should be plotted on a logarithmic scale (in case of fold change etc.)
+#' @param log2_effect logical, whether the effect should be plotted on a logarithmic scale
+#' (in case of fold change etc.)
 #' @param discretize_effect logical, whether the effect range should be divided into discrete levels instead of using
 #' a continuous scale. Can sometimes make patterns more visible, but the hard limits can blur the big picture as well.
-#' @param breaks if \code{discretize_effect = TRUE}, either the number of breaks or the points where to cut for the levels,
+#' @param breaks if \code{discretize_effect = TRUE}, either the number of breaks or the points where to cut
+#' for the levels,
 #' see \code{\link{cut}}
 #' @param clustering logical, whether the order of rows and columns should be ordered by hierarchical clustering?
 #' @param dist_method distance method used in clustering, see \code{\link{dist}}
 #' @param clust_method clustering method used in clustering, see \code{\link{hclust}}
 #' @param lower_tri logical, should only the lower triangular be plotted?
-#' @param reverse_y logical, if \code{clustering = FALSE, lower_tri = FALSE}, should the order of the y-axis
-#' be reversed so that the diagonal is from top left to bottom right?
 #' @param title,subtitle the title and subtitle of the plot
-#' @param fill_scale fill scale for the heatmap as returned by a ggplot function. Set to NA to choose the appropriate scale based on the class of the effect variable.
+#' @param fill_scale fill scale for the heatmap as returned by a ggplot function. Set to NA to choose the
+#' appropriate scale based on the class of the effect variable.
 #'
 #' @return a ggplot object
 #'
@@ -94,14 +95,15 @@ discretize <- function(x, breaks, color_scale = "Sequential", midpoint = 0) {
 plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequential",
                                 midpoint = 0, discretize_effect = FALSE, breaks = 5,
                                 clustering = TRUE, dist_method = "euclidean", clust_method = "ward.D2",
-                                lower_tri = FALSE, reverse_y = TRUE) {
+                                symmetrical = FALSE, lower_tri = FALSE) {
   x <- "DS_Variable1"
   y <- "DS_Variable2"
   effect_name <- "Effect"
   
   data <- data %>% 
     filter(!is.na(Variable1), !is.na(Variable2)) %>%
-    mutate(DS_Variable1 = paste(Dataset, Variable1, sep = ""), DS_Variable2 = paste(Dataset, Variable2, sep = ""))
+    mutate(DS_Variable1 = paste(Dataset, Variable1, sep = ""),
+           DS_Variable2 = paste(Dataset, Variable2, sep = ""))
   
   # Get default fill scales
   if (discretize_effect | class(data[, effect_name]) %in% c("factor", "character")) {
@@ -112,7 +114,8 @@ plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequen
     }
   } else {
     if (color_scale == "Diverging") {
-      fill_scale <- ggplot2::scale_fill_gradient2(low = "#0571B0", mid = "#f0f0f0", high = "#CA0020", midpoint = midpoint)
+      fill_scale <- ggplot2::scale_fill_gradient2(low = "#0571B0", mid = "#f0f0f0", high = "#CA0020",
+                                                  midpoint = midpoint)
     } else {
       fill_scale <- ggplot2::scale_fill_viridis_c()
     }
@@ -130,10 +133,14 @@ plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequen
   if (lower_tri) {
     # Clustering is handled inside to_lowertri
     data <- to_lowertri(data, x, y, effect_name, clustering, clust_method, dist_method)
+  } else if (symmetrical) {
+    data <- to_lowertri(data, x, y, effect_name, clustering, clust_method, dist_method,
+                        lower_tri = FALSE)
   } else if (clustering) {
     data <- hclust_effects(data, x, y, effect_name, clust_method, dist_method)
-  } else if(reverse_y) {
+  } else {
     # Reverse order of y axis so diagonal is from top left to bottom right
+    data[x] <- factor(data[, x])
     data[y] <- factor(data[, y], levels = rev(levels(factor(data[, y]))))
   }
 
@@ -158,6 +165,7 @@ plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequen
 
   x_labels <- strip_ds(levels(data$DS_Variable1), data$Dataset)
   y_labels <- strip_ds(levels(data$DS_Variable2), data$Dataset)
+  
   
   ggp <- ggp +
     scale_x_discrete(drop = FALSE, labels = x_labels) +
@@ -201,7 +209,7 @@ hclust_effects <- function(data, x, y, effect, clust_method, dist_method) {
 
 
 # Converts data to only include the lower triangular
-to_lowertri <- function(data, x, y, effect, clustering, clust_method, dist_method) {
+to_lowertri <- function(data, x, y, effect, clustering, clust_method, dist_method, lower_tri = TRUE) {
 
 
   # Rename columns for simplicity
@@ -245,14 +253,12 @@ to_lowertri <- function(data, x, y, effect, clustering, clust_method, dist_metho
     data_w_zeros[is.na(data_w_zeros)] <- 0
     hc <- hclust(dist(data_w_zeros, dist_method), method = clust_method)
     dat_w_whole <- dat_w_whole[hc$order, hc$order]
-    dat_w_whole
   }
-
+  
   # Only half of the associations are needed for plotting
-  dat_w_whole[upper.tri(dat_w_whole)] <- NA
-  # Diagonal should be included in the plot
-
-
+  if (lower_tri) {
+    dat_w_whole[upper.tri(dat_w_whole)] <- NA
+  }
   # Melt back to long format for ggplot2
   dat_w_whole$x <- rownames(dat_w_whole)
   dat_l <- tidyr::gather(dat_w_whole, y, effect, -x)

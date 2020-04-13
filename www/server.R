@@ -408,7 +408,8 @@ shinyServer(function(input,output){
     plot_effect_heatmap(associations_list()$dframe, log2_effect = input$heatmap_log2,
                         color_scale = input$heatmap_color_scale, midpoint = input$heatmap_midpoint,
                         discretize_effect = input$heatmap_discrete, breaks = input$heatmap_breaks,
-                        clustering = input$clustering, lower_tri = TRUE)
+                        clustering = input$clustering, symmetrical = input$symmetrical,
+                        lower_tri = input$lower_tri)
   })
   
   output$heatmaply <- renderPlotly({
