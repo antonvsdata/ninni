@@ -160,7 +160,7 @@ shinyUI( fluidPage(
                  uiOutput("qq_plot")
         ),
         
-        tabPanel("Lady Manhattan plot",
+        tabPanel("Signed Manhattan plot",
                  checkboxInput("lady_log2", label = "use sign of log2-transformed effect"),
                  uiOutput("lady_manhattan_plot_choices"),
                  uiOutput("lady_manhattan_plot"))

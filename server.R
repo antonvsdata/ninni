@@ -740,7 +740,7 @@ shinyServer(function(input,output){
   
   output$lady_manhattan_download_button <- downloadHandler(
     filename = function(){
-      paste("ninni_lady_manhattan_plot", input$lady_manhattan_download_format, sep = ".")
+      paste("ninni_manhattan_plot", input$lady_manhattan_download_format, sep = ".")
     },
     
     content = function(file){
