@@ -8,11 +8,11 @@ library(pool)
 library(ggplot2)
 library(plotly)
 
-source("visualizations.R")
-source("queries.R")
-source("effect_heatmap.R")
+source("www/visualizations.R")
+source("www/queries.R")
+source("www/effect_heatmap.R")
 
-db_info <- read_db_info("../src/database_import.config")
+db_info <- read_db_info("www/database_www.config")
 
 if(!exists("pool")){
   pool <- dbPool(

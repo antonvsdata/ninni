@@ -188,7 +188,7 @@ hclust_effects <- function(data, x, y, effect, clust_method, dist_method) {
 
   # Convert to wide format matrix for clustering
   data_wide <- data %>%
-    dplyr::select(x, y, effect) %>%
+    dplyr::select(all_of(c(x, y, effect))) %>%
     tidyr::spread(y, effect) %>%
     dplyr::filter(!is.na(x)) %>%
     tibble::column_to_rownames(x) %>%
