@@ -1,4 +1,6 @@
 # Ninni
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fantonvsdata%2Fninni.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fantonvsdata%2Fninni?ref=badge_shield)
+
 
 Ninni is a web application designed for representing results from scientific studies.
 
@@ -190,3 +192,7 @@ of the Shiny application from R console with the command:
 If you want to deploy the Shiny app publicly to the web use Shiny Server. Instructions are available online.
 
 
+
+
+## License
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fantonvsdata%2Fninni.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fantonvsdata%2Fninni?ref=badge_large)
