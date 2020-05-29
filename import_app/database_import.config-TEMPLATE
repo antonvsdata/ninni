@@ -1,0 +1,5 @@
+db_host	host
+db_port	1234
+db_name	ninni
+db_user	ninni_user
+db_password	abcd1234

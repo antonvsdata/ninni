@@ -1,4 +1,4 @@
 DATASET_FILENAME,VARIABLES_FILENAME,LABEL,DESCRIPTION,VARNUM,EFFECT_TYPE,METADATA_LABELS
-../example_data/metabolite_correlations.csv,,METABO_CORR,Correlations of metabolite levels,2,CORR,METABO
-../example_data/drugs_effect_on_arrhytmia.csv,../example_data/drug_descriptions.csv,DRUG_ARRHYTMIA,Effect of single drugs to the risk of arrhytmia,1,OR,DRUG;ARRHYTMIA
-../example_data/drug_interactions_effect_on_arrhytmia.csv,../example_data/drug_descriptions.csv,DRUG_INTER_ARRHYTMIA,Effect of interactions of drugs drugs to the risk of arrhytmia,2,OR,DRUG;DRUG_INTERACTION;ARRHYTMIA
+metabolite_correlations.csv,,METABO_CORR,Correlations of metabolite levels,2,CORR,METABO
+drugs_effect_on_arrhytmia.csv,drug_descriptions.csv,DRUG_ARRHYTMIA,Effect of single drugs to the risk of arrhytmia,1,OR,DRUG;ARRHYTMIA
+drug_interactions_effect_on_arrhytmia.csv,drug_descriptions.csv,DRUG_INTER_ARRHYTMIA,Effect of interactions of drugs drugs to the risk of arrhytmia,2,OR,DRUG;DRUG_INTERACTION;ARRHYTMIA
