@@ -672,6 +672,9 @@ shinyServer(function(input,output){
   # Choose discrete or continuous color scale (only relevant for numeric values)
   output$lady_manhattan_plot_choices <- renderUI({
     tagList(
+      selectizeInput("lady_x_column", "Column for x-axis",
+                     choices = c("Variables", colnames(associations_list()$dframe)),
+                     selected = "Variables"),
       checkboxInput("lady_coloring", "Coloring according to column"),
       conditionalPanel("input.lady_coloring == true",
                        radioButtons("lady_coloring_type",NULL,
@@ -702,12 +705,12 @@ shinyServer(function(input,output){
   
   ladyplot <- reactive({
     if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring_column != ""){
-      lady_manhattan_plot(associations_list()$dframe, input$lady_log2,
+      lady_manhattan_plot(associations_list()$dframe, input$lady_x_column, input$lady_log2,
                           associations_list()$effect_type, associations_list()$varnum,
                           input$lady_coloring_column,input$lady_coloring_type)
     }
     else{
-      lady_manhattan_plot(associations_list()$dframe, input$lady_log2,
+      lady_manhattan_plot(associations_list()$dframe, input$lady_x_column, input$lady_log2,
                           associations_list()$effect_type, associations_list()$varnum)
     }
   })

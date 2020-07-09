@@ -203,7 +203,7 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
 # Lady Manhattan plot
 # The y-axis of a traditional Manhattan plot, -log10(p) is multiplied by the sign of the effect
 # The plot can be colored by chosen column
-lady_manhattan_plot <- function(dframe, log2_effect, effect_type, varnum,
+lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum,
                                 color_col = NULL, color_type = NULL){
   
   dframe$P <- zero_to_min(dframe$P)
@@ -216,18 +216,22 @@ lady_manhattan_plot <- function(dframe, log2_effect, effect_type, varnum,
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(Effect))
     y_label <- paste0("-log10(P) * sign(", effect_type, ")")
   }
-  # For datasets with interactions, the combinations of variables are used as x-axis
-  if(varnum == 1){
-    x_axis <- "Variable1"
-    x_label <- "Variable"
-    x_breaks <- sort(dframe$Variable1)[seq(1, nrow(dframe), length.out = 40)]
+  if (x_axis == "Variables") {
+    # For datasets with interactions, the combinations of variables are used as x-axis
+    if(varnum == 1){
+      x_axis <- "Variable1"
+      x_label <- "Variable"
+    }
+    if(varnum == 2){
+      dframe <- dframe %>% mutate(X = paste(Variable1, Variable2, sep = "_x_"))
+      x_axis <- "X"
+      x_label <- "Variables"
+    }
+    
+  } else {
+    x_label <- x_axis
   }
-  if(varnum == 2){
-    dframe <- dframe %>% mutate(X = paste(Variable1, Variable2, sep = "_x_"))
-    x_axis <- "X"
-    x_label <- "Variables"
-    x_breaks <- sort(dframe$X)[seq(1, nrow(dframe), length.out = 40)]
-  }
+  
   # Color is discretised by changing the coloring column to factor
   if(!is.null(color_col)){
     if(color_type == "Discrete"){
@@ -236,12 +240,21 @@ lady_manhattan_plot <- function(dframe, log2_effect, effect_type, varnum,
   }
   
   p <- ggplot(dframe, aes_string(x = x_axis,y = "Y", color = color_col)) +
-    scale_x_discrete(breaks = x_breaks) +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          axis.text.x = element_text(angle = 90)) +
+          panel.grid.minor = element_blank()) +
     labs(x = x_label, y = y_label)
+  
+  if (class(dframe[,x_axis]) %in% c("character", "factor")) {
+    n_unique <-length(unique(dframe[, x_axis]))
+    if (n_unique > 40) {
+      x_breaks <- sort(dframe[, x_axis])[seq(1, nrow(dframe), length.out = 40)]
+      p <- p +
+        scale_x_discrete(breaks = x_breaks)
+    }
+    p <- p +
+      theme(axis.text.x = element_text(angle = 90))
+  }
   
   # Use color scale from colorbrewer when possible
   if(!is.null(color_col) && class(dframe[, color_col]) %in% c("character", "factor") &&
