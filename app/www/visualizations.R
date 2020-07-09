@@ -275,3 +275,43 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
 
   p
 }
+
+
+lollipop_plot <- function(dframe, main_col, n_top,
+                          color_col = NULL, color_type = NULL) {
+  
+  if (main_col == "Variables together") {
+    c1 <- dframe %>%
+      group_by(Variable1) %>%
+      summarize(n1 = n())
+    c2 <- dframe %>%
+      group_by(Variable2) %>%
+      summarize(n2 = n())
+    counts <- full_join(c1, c2, by = c("Variable1" = "Variable2"))
+    counts$n1[is.na(counts$n1)] <- 0
+    counts$n2[is.na(counts$n2)] <- 0
+    counts$count <- counts$n1 + counts$n2
+    main_col <- "Variable1"
+  } else {
+    counts <- dframe %>%
+      group_by(!!sym(main_col)) %>%
+      summarize(count = n())
+  }
+  
+  counts <- counts[order(counts$count, decreasing = TRUE), ][seq(min(n_top, nrow(counts))), ]
+  counts <- as.data.frame(counts)
+  counts[, main_col] <- factor(counts[, main_col], levels = rev(unique(counts[, main_col])))
+  
+  p <- ggplot(counts, aes_string(y = "count", x = main_col)) +
+    geom_segment(aes_string(x = main_col, xend = main_col, y = 0, yend="count"), color="grey") +
+    geom_point(size=3, color="#69b3a2") +
+    coord_flip() +
+    labs(x = "", y = "Count") +
+    theme_minimal()
+  
+  p
+  
+}
+
+
+

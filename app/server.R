@@ -704,7 +704,7 @@ shinyServer(function(input,output){
   })
   
   ladyplot <- reactive({
-    if(input$lady_coloring & !is.null(input$lady_coloring_column) & input$lady_coloring_column != ""){
+    if(input$lady_coloring && !is.null(input$lady_coloring_column) && input$lady_coloring_column != ""){
       lady_manhattan_plot(associations_list()$dframe, input$lady_x_column, input$lady_log2,
                           associations_list()$effect_type, associations_list()$varnum,
                           input$lady_coloring_column,input$lady_coloring_type)
@@ -773,6 +773,119 @@ shinyServer(function(input,output){
     content = function(file){
       p <- ggplotly(ladyplot(), tooltip = paste0("label", 1:9))
       saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni Manhattan plot")
+    }
+  )
+  
+  # ----------- Lollipop plot --------------
+  
+  # Toggle coloring by column
+  # Choose discrete or continuous color scale (only relevant for numeric values)
+  output$lollipop_choices <- renderUI({
+    if (associations_list()$varnum == 1){
+      selected <- "Variable1"
+      choices <- colnames(associations_list()$dframe)
+    } else {
+      selected <- "Variables together"
+      choices <- c("Variables together", colnames(associations_list()$dframe))
+    }
+    tagList(
+      selectizeInput("lollipop_column", "Column for column",
+                     choices = choices,
+                     selected = selected),
+      numericInput("lollipop_n", "Number of top values to show", value = 10, min = 1),
+      checkboxInput("lollipop_coloring", "Coloring according to column"),
+      conditionalPanel("input.lollipop_coloring == true",
+                       radioButtons("lollipop_coloring_type",NULL,
+                                    choices = c("Continuous", "Discrete")),
+                       selectizeInput("lollipop_coloring_column", "Column",
+                                      choices = colnames(associations_list()$dframe),
+                                      options = list(maxItems = 1,
+                                                     placeholder = 'Choose a column',
+                                                     onInitialize = I('function() { this.setValue(""); }'))))
+    )
+  })
+  
+  output$lollipop_plot <-renderUI({
+    if (nrow(associations_list()$dframe) > plotly_limit){
+      out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
+                     plotOutput("lollipop_plot_static", height = paste0(input$window_size[2] - 100, "px")))
+    }
+    else{
+      out <- plotlyOutput("lollipop_plotly", height = paste0(input$window_size[2] - 100, "px"))
+    }
+    out <- tagList(out,
+                   uiOutput("lollipop_download"))
+    out
+  })
+  
+  lolliplot <- reactive({
+    if(input$lollipop_coloring && !is.null(input$lollipop_coloring_column) && input$lollipop_coloring_column != ""){
+      lollipop_plot(associations_list()$dframe, input$lollipop_column, input$lollipop_n,
+                          input$lollipop_coloring_column,input$lollipop_coloring_type)
+    }
+    else{
+      lollipop_plot(associations_list()$dframe, input$lollipop_column, input$lollipop_n)
+    }
+  })
+  
+  output$lollipop_plot_static <- renderPlot({
+    lolliplot()
+  })
+  
+  output$lollipop_plotly <- renderPlotly({
+    ggp <- lolliplot()
+    ggplotly(ggp)
+  })
+  
+  output$lollipop_download <- renderUI({
+    tagList(
+      br(),
+      fluidRow(
+        column(1,
+               downloadButton("lollipop_download_button"),
+               br(),
+               br(),
+               uiOutput("lollipop_download_plotly"),
+               br()),
+        column(2,
+               radioButtons("lollipop_download_format", label = NULL,
+                            choices = c("png", "pdf")))
+      )
+    )
+  })
+  
+  output$lollipop_download_button <- downloadHandler(
+    filename = function(){
+      paste("ninni_lollipop_plot", input$lollipop_download_format, sep = ".")
+    },
+    
+    content = function(file){
+      p <- lolliplot()
+      if(nrow(associations_list()$dframe) > plotly_limit){
+        scale <- 1.5
+      } else{
+        scale <- 1
+      }
+      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+    }
+  )
+  
+  output$lollipop_download_plotly <- renderUI({
+    if (nrow(associations_list()$dframe) <= plotly_limit) {
+      downloadButton("lollipop_downloadly", "Download Interactive")
+    } else {
+      NULL
+    }
+  })
+  
+  output$lollipop_downloadly <- downloadHandler(
+    filename = function(){
+      "ninni_lollipop.html"
+    },
+    
+    content = function(file){
+      p <- ggplotly(lolliplot())
+      saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni lollipop plot")
     }
   )
   
