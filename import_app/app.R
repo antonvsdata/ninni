@@ -21,6 +21,8 @@ ui <- fluidPage(
   # to display the list of unzipped files
   tableOutput("unzipped_table"),
   
+  tableOutput("data_files"),
+  
   fluidRow(
     column(1,
            actionButton("import", "Import data")),
@@ -37,15 +39,8 @@ ui <- fluidPage(
 #### server code starts here
 server <- function(input, output, session) {
   
-  
-  
-  # Unzipping files on click of button and then rendering the result to dataframe
-  # file gets unzipped to the location where zip file was located in the local system
-  # observeEvent(input$unzip,
-  #              
-  # )
-  
-  unzipped <- eventReactive(input$unzip,{
+  unzipped <- reactive({
+    print("event reacted")
     if (is.null(input$zipfile)) {
       return(NULL)
     }
@@ -55,7 +50,6 @@ server <- function(input, output, session) {
   read <- reactive({
     dfs <- lapply(unzipped(), read.csv, stringsAsFactors = FALSE)
     names(dfs) <- gsub("data/", "", unzipped())
-    print(str(dfs))
     dfs
   })
   
@@ -63,11 +57,21 @@ server <- function(input, output, session) {
     if (is.null(input$zipfile)) {
       return(NULL)
     }
-    data.frame("File name" = gsub("data/", "", unzipped()),
+    data.frame("New files" = gsub("data/", "", unzipped()),
                "Number of rows" = sapply(read(), nrow),
                "Number of columns" = sapply(read(), ncol),
                check.names = FALSE)
     
+  })
+  
+  output$data_files <- renderTable({
+    files <- list.files("data/")
+    sizes <- sapply(files, function(f) {
+      round(file.info(paste0("data/", f))$size/1000)
+    })
+    files_df <- data.frame("Existing files" = files,
+                           "Size (kB)" = as.integer(sizes),
+                           check.names = FALSE)
   })
   
   datasets <- reactive({
@@ -98,6 +102,10 @@ server <- function(input, output, session) {
       return(NULL)
     }
     
+    progress <- Progress$new(session, min=0, max=1)
+    
+    progress$set(message = "Connecting to database")
+    
     con <- dbConnect(
       drv = RPostgres::Postgres(),
       dbname = db_info$db_name,
@@ -107,16 +115,22 @@ server <- function(input, output, session) {
       password = db_info$db_password)
     
     assocs <- read()[datasets()$DATASET_FILENAME]
-    print(sapply(assocs, dim))
     
     tryCatch({
       import_data(con, datasets = datasets(), metadata = metadata(),
-                  assocs = read()[datasets()$DATASET_FILENAME], append = input$append)
+                  assocs = read()[datasets()$DATASET_FILENAME], append = input$append,
+                  progress = progress)
     }, error = function(e) {
       print(e$message)
     })
     
+    progress$set(message = "Closing database connection", value = 0.99)
+    
     dbDisconnect(con)
+    
+    progress$set(message = "Data imported", value = 1)
+    Sys.sleep(4)
+    progress$close()
   })
   
 }

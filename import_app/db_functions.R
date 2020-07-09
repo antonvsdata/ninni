@@ -41,7 +41,8 @@ execute_sql_file <- function(file, con) {
   sql <- get_sql(file)
   
   for (query in sql) {
-    dbSendQuery(con, statement = query)
+    q <- dbSendQuery(con, statement = query)
+    dbClearResult(q)
   }
   
 }
@@ -185,7 +186,8 @@ update_dummy_vars <- function(con, variables, variables_old) {
   }
 }
 
-import_associations <- function(con, datasets, assocs, ids) {
+import_associations <- function(con, datasets, assocs, ids, progress) {
+  report(progress, "Reading datasets into right format", value = 0.15)
   # Import associations
   variables_old <- variables_all <-  dbReadTable(con, "variables")
   metavariables_old <- metavariables_all <- dbReadTable(con, "metavariables")
@@ -288,12 +290,23 @@ import_associations <- function(con, datasets, assocs, ids) {
               associationtovariable = assoc2var,
               numval = numval,
               strval = strval)
+  report(progress, "Importing data to database", value = 0.2)
+  n <- length(dfs)
+  steps <- seq(0.21, 0.95, length.out = n)
   for (i in seq_along(dfs)) {
+    report(progress, "Importing data to database", steps[i], detail = paste("Importing dataset", i, "/", n))
     append_table(con, dfs[[i]], names(dfs)[i], ids)
+  }
+  report(progress, "Importing data to database", 0.95, detail ="")
+}
+
+report <- function(progress, msg, value, detail = NULL) {
+  if (!is.null(progress)) {
+    progress$set(message = msg, detail = detail, value = value)
   }
 }
 
-import_data <- function(con, datasets, metadata, assocs, append) {
+import_data <- function(con, datasets, metadata, assocs, append, progress = NULL) {
   
   if (append) {
     
@@ -311,8 +324,10 @@ import_data <- function(con, datasets, metadata, assocs, append) {
   }
   
   # Import dataset metadata
+  report(progress, "Importing metadata", 0.05)
   import_metadata(con, metadata, ids)
   
+  report(progress, "Importing dataset information", 0.08)
   # Read associations
   colnames(datasets) <- tolower(colnames(datasets))
   # Record rowcount and ID for datasets
@@ -324,8 +339,9 @@ import_data <- function(con, datasets, metadata, assocs, append) {
   # Import dataset to metadata
   import_ds2md(con, datasets, ids)
   
+  report(progress, "Importing main data", 0.1)
   # Import associations
-  import_associations(con, datasets, assocs, ids)
+  import_associations(con, datasets, assocs, ids, progress)
   
 }
 
