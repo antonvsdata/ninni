@@ -7,6 +7,7 @@ library(RPostgreSQL)
 library(pool)
 library(ggplot2)
 library(plotly)
+library(UpSetR)
 
 source("www/visualizations.R")
 source("www/queries.R")

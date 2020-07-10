@@ -889,4 +889,80 @@ shinyServer(function(input,output){
     }
   )
   
+  # --------- UpSet plot -----------
+  
+  output$upset_choices <- renderUI({
+    if (associations_list()$varnum == 1){
+      selected <- "Variable1"
+      choices <- colnames(associations_list()$dframe)
+    } else {
+      selected <- "Variables together"
+      choices <- c("Variables together", colnames(associations_list()$dframe))
+    }
+    tagList(
+      selectizeInput("upset_group", "Group by",
+                     choices = colnames(associations_list()$dframe),
+                     selected = "Dataset"),
+      selectizeInput("upset_column", "Column for elements",
+                     choices = choices,
+                     selected = selected),
+      numericInput("upset_n", "Number of top intersections to show", value = 10, min = 1),
+      selectizeInput("upset_order", "Order by",
+                     choices = c("Degree & Frequency", "Frequency")),
+      sliderInput("upset_text_scale", "Text size",
+                  min = 0.5, max = 4, value = 1, step = 0.1),
+      checkboxInput("upset_empty", "Show empty intersections")
+    )
+  })
+  
+  output$upset_plot <- renderUI({
+    n_groups <- length(unique(associations_list()$dframe[, input$upset_group]))
+    if (n_groups < 2) {
+      return(h5("Minimum of two groups is needed"))
+    }
+    
+    tagList(h5("UpSet plots are only available as static figures"),
+            plotOutput("upset_plot_static", height = paste0(input$window_size[2] - 100, "px")),
+            uiOutput("upset_download"))
+
+  })
+  
+  upplot <- reactive({
+    upset_plot(associations_list()$dframe, input$upset_group, input$upset_column, input$upset_n,
+               input$upset_order, input$upset_text_scale, input$upset_empty)
+  })
+  
+  output$upset_plot_static <- renderPlot({
+    upplot()
+  })
+  
+  output$upset_download <- renderUI({
+    tagList(
+      br(),
+      fluidRow(
+        column(1,
+               downloadButton("upset_download_button")),
+        column(2,
+               radioButtons("upset_download_format", label = NULL,
+                            choices = c("png", "pdf")))
+      )
+    )
+  })
+  
+  output$upset_download_button <- downloadHandler(
+    filename = function(){
+      paste("ninni_upset_plot", input$upset_download_format, sep = ".")
+    },
+    
+    content = function(file){
+      p <- upplot()
+      if(nrow(associations_list()$dframe) > plotly_limit){
+        scale <- 1.5
+      } else{
+        scale <- 1
+      }
+      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+    }
+  )
+  
 })

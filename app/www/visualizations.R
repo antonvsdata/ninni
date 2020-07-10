@@ -285,6 +285,7 @@ lollipop_plot <- function(dframe, main_col, n_top,
       group_by(Variable1) %>%
       summarize(n1 = n())
     c2 <- dframe %>%
+      filter(!is.na(Variable2)) %>%
       group_by(Variable2) %>%
       summarize(n2 = n())
     counts <- full_join(c1, c2, by = c("Variable1" = "Variable2"))
@@ -293,7 +294,7 @@ lollipop_plot <- function(dframe, main_col, n_top,
     counts$count <- counts$n1 + counts$n2
     main_col <- "Variable1"
   } else {
-    counts <- dframe %>%
+    counts <- dframe[!is.na(dframe[, main_col]), ] %>%
       group_by(!!sym(main_col)) %>%
       summarize(count = n())
   }
@@ -314,4 +315,38 @@ lollipop_plot <- function(dframe, main_col, n_top,
 }
 
 
-
+upset_plot <- function(dframe, group, main_col, n_top,
+                       order_by, text_scale, show_empty) {
+  
+  groups <- unique(dframe[, group])
+  if (length(groups) < 2) {
+    return(NULL)
+  }
+  
+  if (main_col == "Variables together") {
+    main_col <- "Variable"
+    df1 <- dframe[!is.na(dframe$Variable1), c(group, "Variable1")]
+    df2 <- dframe[!is.na(dframe$Variable2), c(group, "Variable2")]
+    colnames(df1) <- colnames(df2) <- c(group, "Variable")
+    dframe <- rbind(df1, df2)
+  }
+  dframe <- dframe[!is.na(dframe[, main_col]), ]
+  
+  list_input <- lapply(groups, function(g){
+    unique(dframe[dframe[, group] == g, main_col])
+  })
+  names(list_input) <- groups
+  
+  order_by <- list("Degree & Frequency" = c("freq", "degree"),
+                   "Frequency" = "freq")[[order_by]]
+  if (show_empty) {
+    show_empty <- "on"
+  } else {
+    show_empty <- NULL
+  }
+  
+  upset(fromList(list_input), nintersects = n_top,
+        text.scale = text_scale,
+        order.by = order_by,
+        empty.intersections = show_empty)
+}

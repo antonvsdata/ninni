@@ -167,7 +167,11 @@ shinyUI( fluidPage(
         
         tabPanel("Lollipop plot",
                  uiOutput("lollipop_choices"),
-                 uiOutput("lollipop_plot"))
+                 uiOutput("lollipop_plot")),
+        
+        tabPanel("UpSet plot",
+                 uiOutput("upset_choices"),
+                 uiOutput("upset_plot"))
       )
     )
     
