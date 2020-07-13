@@ -345,5 +345,16 @@ import_data <- function(con, datasets, metadata, assocs, append, progress = NULL
   
 }
 
+# Time from seconds to a nice string
+format_time <- function(t){
+  t <- round(t)
+  paste0(t %/% (60*60*24), " d ",
+         formatC(t %/% (60*60) %% 24, width = 2, format = "d", flag = "0"), " h ",
+         formatC(t %/% 60 %% 60, width = 2, format = "d", flag = "0"), " min ",
+         formatC(t %% 60, width = 2, format = "d", flag = "0"), "s"
+               
+        
+  )
+}
 
 

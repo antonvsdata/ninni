@@ -106,31 +106,36 @@ server <- function(input, output, session) {
     
     progress$set(message = "Connecting to database")
     
-    con <- dbConnect(
-      drv = RPostgres::Postgres(),
-      dbname = db_info$db_name,
-      host = db_info$db_host,
-      port = db_info$db_port,
-      user = db_info$db_user,
-      password = db_info$db_password)
-    
-    assocs <- read()[datasets()$DATASET_FILENAME]
-    
-    tryCatch({
-      import_data(con, datasets = datasets(), metadata = metadata(),
-                  assocs = read()[datasets()$DATASET_FILENAME], append = input$append,
-                  progress = progress)
-    }, error = function(e) {
-      print(e$message)
+    t <- system.time({
+      con <- dbConnect(
+        drv = RPostgres::Postgres(),
+        dbname = db_info$db_name,
+        host = db_info$db_host,
+        port = db_info$db_port,
+        user = db_info$db_user,
+        password = db_info$db_password)
+      
+      assocs <- read()[datasets()$DATASET_FILENAME]
+      
+      tryCatch({
+        import_data(con, datasets = datasets(), metadata = metadata(),
+                    assocs = read()[datasets()$DATASET_FILENAME], append = input$append,
+                    progress = progress)
+      }, error = function(e) {
+        print(e$message)
+      })
+      
+      progress$set(message = "Closing database connection", value = 0.99)
+      dbDisconnect(con)
+      progress$close()
     })
     
-    progress$set(message = "Closing database connection", value = 0.99)
-    
-    dbDisconnect(con)
-    
-    progress$set(message = "Data imported", value = 1)
-    Sys.sleep(4)
-    progress$close()
+    showNotification(paste("Data imported in", format_time(t["elapsed"])))
+    showModal(modalDialog(
+      title = "Data imported",
+      paste("Data imported in", format_time(t["elapsed"])),
+      easyClose = TRUE
+    ))
   })
   
 }
