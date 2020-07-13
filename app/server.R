@@ -965,4 +965,79 @@ shinyServer(function(input,output){
     }
   )
   
+  # --------- P-value histograms -----------
+  
+  output$phist_choices <- renderUI({
+    
+    tagList(
+      fluidRow(
+        column(6,
+               selectizeInput("phist_facet", "Facet by",
+                              choices = colnames(associations_list()$dframe),
+                              selected = "Dataset",
+                              options = list(maxItems = 1,
+                                             placeholder = 'Choose a column',
+                                             onInitialize = I('function() { this.setValue(""); }')))
+               ),
+        column(6,
+               sliderInput("phist_width", "Plot width",
+                           min = 200, max = input$window_size[1],
+                           value = input$window_size[1] - 500),
+               sliderInput("phist_height", "Plot height",
+                           min = 200, max = input$window_size[2],
+                           value = input$window_size[2] * 0.5))
+      )
+      
+      
+    )
+  })
+  
+  output$phist_plot <- renderUI({
+    if (is.null(input$phist_width) || is.null(input$phist_height)) {
+      return(NULL)
+    }
+    tagList(plotOutput("phist_plot_static",
+                       width = input$phist_width,
+                       height = input$phist_height),
+            uiOutput("phist_download"))
+    
+  })
+  
+  phistplot <- reactive({
+    p_histogram(associations_list()$dframe, input$phist_facet)
+  })
+  
+  output$phist_plot_static <- renderPlot({
+    phistplot()
+  })
+  
+  output$phist_download <- renderUI({
+    tagList(
+      br(),
+      fluidRow(
+        column(1,
+               downloadButton("phist_download_button")),
+        column(2,
+               radioButtons("phist_download_format", label = NULL,
+                            choices = c("png", "pdf")))
+      )
+    )
+  })
+  
+  output$phist_download_button <- downloadHandler(
+    filename = function(){
+      paste("ninni_phist_plot", input$phist_download_format, sep = ".")
+    },
+    
+    content = function(file){
+      p <- phistplot()
+      if(nrow(associations_list()$dframe) > plotly_limit){
+        scale <- 1.5
+      } else{
+        scale <- 1
+      }
+      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
+    }
+  )
+  
 })

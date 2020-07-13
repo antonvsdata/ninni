@@ -350,3 +350,25 @@ upset_plot <- function(dframe, group, main_col, n_top,
         order.by = order_by,
         empty.intersections = show_empty)
 }
+
+
+p_histogram <- function(dframe, facet = NULL) {
+  # Custom breaks for the x-axis
+  breaks <- seq(0, 1, by = 0.05)
+  
+  finite_count <- sum(is.finite(dframe$P))
+  h_line <- finite_count/(length(breaks)-1)
+  
+  
+  p <- ggplot(dframe, aes(P)) +
+    geom_histogram(breaks = breaks, col = "grey50", fill = "grey80", size = 1) +
+    labs(x = "p-value", y = "Frequency") +
+    theme_minimal() +
+    theme(plot.title = element_text(face="bold", hjust=0.5)) +
+    geom_hline(yintercept = h_line, color="red", linetype = "dashed", size = 1)
+  
+  if (!is.null(facet) && facet != "") {
+    p <- p + facet_wrap(facet, ncol = 1)
+  }
+  p
+}

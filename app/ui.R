@@ -171,7 +171,11 @@ shinyUI( fluidPage(
         
         tabPanel("UpSet plot",
                  uiOutput("upset_choices"),
-                 uiOutput("upset_plot"))
+                 uiOutput("upset_plot")),
+        
+        tabPanel("P-value histograms",
+                 uiOutput("phist_choices"),
+                 uiOutput("phist_plot"))
       )
     )
     
