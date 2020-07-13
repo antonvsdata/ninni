@@ -16,7 +16,7 @@ ui <- fluidPage(
   # Upload zip files
   fileInput("zipfile", "Upload .zip file containing the actual results and variable descriptions as .csv files", accept = ".zip"),
   # action button to unzip the file
-  actionButton("unzip", "Unzip Files"),
+  # actionButton("unzip", "Unzip Files"),
   
   # to display the list of unzipped files
   tableOutput("unzipped_table"),
@@ -115,11 +115,14 @@ server <- function(input, output, session) {
         user = db_info$db_user,
         password = db_info$db_password)
       
-      assocs <- read()[datasets()$DATASET_FILENAME]
+      # Read .csv files
+      data_files <- datasets()$DATASET_FILENAME
+      assocs <- lapply(paste0("data/", data_files), read.csv, stringsAsFactors = FALSE)
+      names(assocs) <- gsub("data/", "", names(assocs))
       
       tryCatch({
         import_data(con, datasets = datasets(), metadata = metadata(),
-                    assocs = read()[datasets()$DATASET_FILENAME], append = input$append,
+                    assocs = assocs, append = input$append,
                     progress = progress)
       }, error = function(e) {
         print(e$message)
@@ -130,7 +133,6 @@ server <- function(input, output, session) {
       progress$close()
     })
     
-    showNotification(paste("Data imported in", format_time(t["elapsed"])))
     showModal(modalDialog(
       title = "Data imported",
       paste("Data imported in", format_time(t["elapsed"])),
