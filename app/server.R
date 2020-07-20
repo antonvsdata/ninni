@@ -84,32 +84,28 @@ shinyServer(function(input, output, session){
     
     asso_list <- associations_list_query()
     dframe <- as.data.frame(asso_list$dframe)
-    #Variable filters:
+    # List of all filters
+    # Combined to one logical in the end
+    keeps <- list()
     
+    #Variable filters
+    # keep variable with at least one association that satisfies constraints
     # P-value <
     if(input$toggle_variable_filters){
       if (input$var_p_limit != ""){
-        dframe <- dframe %>%
-          varfilter_p( as.numeric(input$var_p_limit), asso_list$varnum, input$var_p_limit_fdr)
+        keeps$var_p <- varfilter_p(input$var_p_limit,
+                                  asso_list$varnum, input$var_p_limit_fdr)
       }
       
       # Effect: min max
       if ((input$var_eff_min != "" | input$var_eff_max != "")){
-        if (input$var_eff_min == ""){
-          dframe <- varfilter_eff(dframe, eff_max = as.numeric(input$var_eff_max), varnum = asso_list$varnum)
-        }
-        else if (input$var_eff_max == ""){
-          dframe <- varfilter_eff(dframe, eff_min = as.numeric(input$var_eff_min), varnum = asso_list$varnum)
-        }
-        else{
-          dframe <- varfilter_eff(dframe, as.numeric(input$var_eff_min), as.numeric(input$var_eff_max),
-                                  asso_list$varnum)
-        }
+        keeps$var_eff <- varfilter_eff(dframe, eff_min = input$var_eff_min,
+                                       eff_max = input$var_eff_max,
+                                       varnum = asso_list$varnum)
       }
     }
     
     # Association filters:
-    
     if(input$toggle_standard_filters){
       # Variable
       # Keywords, comma separated
@@ -120,7 +116,7 @@ shinyServer(function(input, output, session){
         else{
           cols <- "Variable1"
         }
-        dframe <- filter_by_keyword(dframe, cols, input$var_labels)
+        keeps$variables <- filter_by_keyword(dframe, cols, input$var_labels)
       }
       # Description
       # Keywords, comma separated
@@ -131,38 +127,25 @@ shinyServer(function(input, output, session){
         else{
           cols <- "Description1"
         }
-        dframe <- filter_by_keyword(dframe, cols, input$description_labels)
+        keeps$description <- filter_by_keyword(dframe, cols, input$description_labels)
       }
       # P-value <
       if(input$p_limit != ""){
         if (input$p_limit_fdr){
-          dframe <- dframe %>%
-            filter(P_FDR < as.numeric(input$p_limit))
+          keeps$assoc_p <- dframe$P_FDR < as.numeric(input$p_limit)
         }
         else{
-          dframe <- dframe %>%
-            filter(P < as.numeric(input$p_limit))
+          keeps$assoc_p <- dframe$P < as.numeric(input$p_limit)
         }
       }
       # Minimum N
       if (input$n_limit != ""){
-        dframe <- dframe %>%
-          filter(N >= as.numeric(input$n_limit))
+        keeps$assoc_n <- dframe$N >= as.numeric(input$n_limit)
       }
       # Effect size: min max
       if (input$eff_min != "" || input$eff_max != ""){
-        if (input$eff_min == ""){
-          dframe <- dframe %>%
-            filter(Effect < as.numeric(input$eff_max))
-        }
-        else if (input$eff_max == ""){
-          dframe <- dframe %>%
-            filter(Effect > as.numeric(input$eff_min))
-        }
-        else{
-          dframe <- dframe %>%
-            filter(Effect > as.numeric(input$eff_min) & Effect < as.numeric(input$eff_max))
-        }
+        keeps$assoc_eff <- filter_min_max(dframe, "Effect",
+                                          input$eff_min, input$eff_max)
       }
     }
     
@@ -178,7 +161,7 @@ shinyServer(function(input, output, session){
         extra_cols <- colnames(dframe)[seq(col_limit + 1, ncol(dframe))]
         for(col in extra_cols){
           if(class(dframe[, col]) == "numeric"){
-            dframe <- filter_min_max(dframe,
+            keeps[[col]] <- filter_min_max(dframe,
                                      col = col,
                                      min = input[[paste0(col, "_min")]],
                                      max = input[[paste0(col, "_max")]])
@@ -186,14 +169,19 @@ shinyServer(function(input, output, session){
           else if(class(dframe[, col]) == "character"){
             keywords <- input[[paste0(col, "_label")]]
             if(keywords != ""){
-              dframe <- filter_by_keyword(dframe, col, keywords)
+              keeps[[col]] <- filter_by_keyword(dframe, col, keywords)
             }
           }
         }
       }
       
     }
-    asso_list$dframe <- dframe
+    
+    if (length(keeps)) {
+      keep_master <- reduce(keeps, `&`)
+      asso_list$dframe <- dframe[keep_master, ]
+    }
+    
     return(asso_list)
   })
   

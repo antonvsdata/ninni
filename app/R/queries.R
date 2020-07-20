@@ -91,36 +91,36 @@ filter_associations_by_variable <- function(pool,assocs_tbl,ds_tbl,var_keywords)
   var_tbl <- filtered_var_tbl(pool, keywords)
   
   assoc_to_var_tbl <- pool %>% tbl("associationtovariable") %>%
-    semi_join(var_tbl,by=c("variable_id" = "id"))
+    semi_join(var_tbl, by=c("variable_id" = "id"))
   assocs_tbl <- assocs_tbl %>%
-    semi_join(assoc_to_var_tbl,by = c("id" = "association_id"))
+    semi_join(assoc_to_var_tbl, by = c("id" = "association_id"))
   ds_tbl <- ds_tbl %>%
-    semi_join(assocs_tbl,by=c("id" = "dataset_id"))
+    semi_join(assocs_tbl, by=c("id" = "dataset_id"))
   
-  return(list(assocs_tbl,ds_tbl))
+  return(list(assocs_tbl, ds_tbl))
 }
 
 # Get variable table filtered by keywords
 filtered_var_tbl <- function(pool, var_keywords){
   # Get variable table as data frame
-  var_df <- pool %>% tbl("variables") %>% collect()
+  var_df <- pool %>% tbl("variables") %>% collect() %>% as.data.frame()
   
   # Get all variables where either label or description matches keywords
-  var_df_label <- filter_by_keyword(var_df,"label",var_keywords)
-  var_df_description <- filter_by_keyword(var_df,"description",var_keywords)
-  var_df <- union(var_df_label, var_df_description)
+  var_df <- var_df[filter_by_keyword(var_df, c("label", "description"), var_keywords), ]
   
-  accepted_labels <- var_df$label
+  accepted_ids <- var_df$id
   
-  if(!length(accepted_labels))
+  if(!length(accepted_ids)){
     stop("No variables matching the search found in the database")
+  }
   
-  if(length(accepted_labels) == 1){
-    var_tbl <- pool %>% tbl("variables") %>% filter(label == accepted_labels)
+  if(length(accepted_ids) == 1){
+    var_tbl <- pool %>% tbl("variables") %>% filter(id == accepted_ids)
   }
   else{
-    var_tbl <- pool %>% tbl("variables") %>% filter(label %in% accepted_labels)
+    var_tbl <- pool %>% tbl("variables") %>% filter(id %in% accepted_ids)
   }
+  print(collect(var_tbl))
   
   var_tbl
 }
@@ -308,23 +308,28 @@ filter_by_keyword <- function(dframe, cols, keywords){
   
   if(length(inclusions)){
     # Limit associations to those matching inlcusions
+    keep <- rep(FALSE, nrow(dframe))
+    
     # First find all the values matching wildcards
-    wildcards <- inclusions[grepl("\\*$",inclusions)]
-    dframe_filtered <- dframe[1,][-1,] # empty data frame with same colnames as dframe
+    wildcards <- inclusions[grepl("\\*$", inclusions)]
     if(length(wildcards)){
       for(wc in wildcards){
-        wc <- paste("^",gsub("\\*",".\\*",wc),sep="")
-        dframe_tmp <- dframe %>% filter_at(.vars = cols, any_vars(grepl(wc,.)))
-        dframe_filtered <- union(dframe_filtered,dframe_tmp)
+        wc <- paste0("^", gsub("\\*", ".\\*", wc))
+        for (col in cols) {
+          keep <- keep | grepl(wc, dframe[, col])
+        }
       }
     }
     # Then add non-wildcard variables
     inclusions <- inclusions[!grepl("\\*$",inclusions)]
     if(length(inclusions)){
-      dframe_tmp <- dframe %>% filter_at(.vars = cols, any_vars(. %in% inclusions))
-      dframe_filtered <- union(dframe_filtered, dframe_tmp)
+      for (col in cols) {
+        keep <- keep | dframe[, col] %in% inclusions
+      }
     }
-    dframe <- dframe_filtered
+  } else {
+    # Keep all rows before exclusions
+    keep <- rep(TRUE, nrow(dframe))
   }
   
   # Exclude by keywords marked with '-'
@@ -332,67 +337,67 @@ filter_by_keyword <- function(dframe, cols, keywords){
     # Exclude variables marked with '*' wildcard
     wildcards <- exclusions[grepl("\\*$",exclusions)]
     for(wc in wildcards){
-      wc <- paste("^",gsub("\\*",".\\*",wc),sep="")
+      wc <- paste0("^", gsub("\\*", ".\\*", wc))
       # Remove all rows where any of the cols matches wildcard
-      dframe <- dframe %>% filter_at(.vars = cols, all_vars(!grepl(wc,.)))
+      for (col in cols) {
+        keep <- keep & !grepl(wc, dframe[, col])
+      }
     }
     # Exclude non-wildcard variables
-    exclusions <- exclusions[!grepl("\\*$",exclusions)]
+    exclusions <- exclusions[!grepl("\\*$", exclusions)]
     # Remove all rows where any of the cols matches any of the exclusions
-    dframe <- dframe %>% filter_at(.vars = cols, all_vars(! . %in% exclusions))
+    for (col in cols) {
+      keep <- keep & !dframe[, col] %in% exclusions
+    }
   }
   
-  dframe
+  keep
 }
 
 filter_min_max <- function(dframe, col, min, max) {
+  keep <- NULL
   if (min != "" || max != ""){
     if (min == ""){
-      dframe <- dframe[dframe[, col] < as.numeric(max), ]
+      keep <- dframe[, col] < as.numeric(max)
     }
     else if (max == ""){
-      dframe <- dframe[dframe[, col] > as.numeric(min), ]
+      keep <- dframe[, col] > as.numeric(min)
     }
     else{
-      dframe <- dframe[dframe[, col] < as.numeric(max) & dframe[, col] > as.numeric(min), ]
+      keep <- dframe[, col] < as.numeric(max) & dframe[, col] > as.numeric(min)
     }
   }
-  dframe
+  keep
+}
+
+varfilter_helper <- function(dframe, tmp_keep, varnum) {
+  if(varnum == 2){
+    vars_accepted <- c(dframe$Variable1[tmp_keep] , dframe$Variable2[tmp_keep]) %>% unique()
+    keep <- dframe$Variable1 %in% vars_accepted | dframe$Variable2 %in% vars_accepted
+  }
+  else{
+    vars_accepted <- unique(dframe$Variable1[tmp_keep])
+    keep <- dframe$Variable1 %in% vars_accepted
+  }
+  keep
 }
 
 # Filter variables by p-value, keep all variables that
 # have at least one association meeting criterion
-varfilter_p <- function(dframe,p_limit,varnum,fdr = FALSE){
+varfilter_p <- function(dframe, p_limit, varnum, fdr = FALSE){
   if (fdr){
-    dframe_fltrd <- dframe %>% filter(P_FDR < p_limit)
+    p_keep <- dframe$P_FDR < as.numeric(p_limit)
   }
   else{
-    dframe_fltrd <- dframe %>% filter(P < p_limit)
+    p_keep <- dframe$P < as.numeric(p_limit)
   }
-  if(varnum == 2){
-    vars_accepted <- c(dframe_fltrd$Variable1,dframe_fltrd$Variable2) %>% unique()
-    dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
-  }
-  else{
-    vars_accepted <- unique(dframe_fltrd$Variable1)
-    dframe <- dframe %>% filter(Variable1 %in% vars_accepted)
-  }
-  
-  dframe
+  keep <- varfilter_helper(dframe, p_keep, varnum)
 }
 
 # Filter variables by effect, keep all variables that
 # have at least one association meeting criterion
-varfilter_eff <- function(dframe,eff_min = -Inf,eff_max = Inf,varnum){
-  dframe_fltrd <- dframe %>% filter(Effect > eff_min & Effect < eff_max)
-  if (varnum == 2){
-    vars_accepted <- c(dframe_fltrd$Variable1,dframe_fltrd$Variable2) %>% unique()
-    dframe <- dframe %>% filter(Variable1 %in% vars_accepted | Variable2 %in% vars_accepted)
-  }
-  else{
-    vars_accepted <- unique(dframe_fltrd$Variable1)
-    dframe <- dframe %>% filter(Variable1 %in% vars_accepted)
-  }
-  
-  dframe
+varfilter_eff <- function(dframe, eff_min, eff_max, varnum){
+  eff_keep <- filter_min_max(dframe, col = "Effect", min = eff_min, max = eff_max)
+  keep <- varfilter_helper(dframe, eff_keep, varnum)
+  keep
 }
