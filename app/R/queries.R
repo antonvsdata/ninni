@@ -148,6 +148,16 @@ get_datasets <- function(pool){
   ds_tbl
 }
 
+extract_meta_labels <- function(ds_dframe) {
+  raw_labels <- na.omit(ds_dframe$Metadata_labels)
+  split_by_comma <- function(x){
+    strsplit(x, ",")[[1]]
+  }
+  reduce(raw_labels, .f = function(x, y) {
+    union(split_by_comma(x), split_by_comma(y))
+    })
+}
+
 # Get the metavariables matching associations
 get_metavariables <- function(pool,assocs_tbl){
   
@@ -332,6 +342,21 @@ filter_by_keyword <- function(dframe, cols, keywords){
     dframe <- dframe %>% filter_at(.vars = cols, all_vars(! . %in% exclusions))
   }
   
+  dframe
+}
+
+filter_min_max <- function(dframe, col, min, max) {
+  if (min != "" || max != ""){
+    if (min == ""){
+      dframe <- dframe[dframe[, col] < as.numeric(max), ]
+    }
+    else if (max == ""){
+      dframe <- dframe[dframe[, col] > as.numeric(min), ]
+    }
+    else{
+      dframe <- dframe[dframe[, col] < as.numeric(max) & dframe[, col] > as.numeric(min), ]
+    }
+  }
   dframe
 }
 

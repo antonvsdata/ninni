@@ -1,6 +1,6 @@
 shinyUI( fluidPage(
   
-  includeCSS("www/styles.css"),
+  #includeCSS("www/styles.css"),
   
   # a JavaScript script for capturing the window size
   # found from https://stackoverflow.com/questions/36995142/get-the-size-of-the-window-in-shiny
@@ -24,19 +24,76 @@ shinyUI( fluidPage(
     sidebarPanel(
       # Search options for choosing a dataset
       h4("Dataset"),
-      uiOutput("ds_choice"),
-      uiOutput("metadata_tags_ui"),
+      #uiOutput("ds_choice"),
+      selectizeInput("ds_label",label = "Dataset label", width = "100%", multiple = TRUE,
+                     choices = NULL, options = list(placeholder = "Choose a dataset")),
+      #uiOutput("metadata_tags_ui"),
+      selectizeInput("metadata_tags","Metadata tags", width = "100%", multiple = TRUE,
+                     choices = NULL,
+                     options = list(placeholder = "Choose metadata tags")),
       textInput("var_keywords","Variable keywords"),
+      
       # Filters for filtering associations
       # Like variable names, p-value, effect size
-      uiOutput("standard_filters"),
+      checkboxInput("toggle_standard_filters", "Show standard filters"),
+      conditionalPanel("input.toggle_standard_filters == true",
+                       h4("Association filters"),
+                       strong("Variable"),
+                       textInput("var_labels", "Keywords, comma separated"),
+                       
+                       fluidRow(
+                         column(6,
+                                textInput("p_limit", label = "P-value <")),
+                         column(4,
+                                radioButtons("p_limit_fdr", label = NULL,
+                                             choices = c("Unadjusted" = FALSE,
+                                                         "FDR" = TRUE),
+                                             selected = FALSE))),
+                       fluidRow(
+                         column(7,
+                                textInput("n_limit",
+                                          label = "Minimum n"))
+                       ),
+                       strong("Effect:"),
+                       fluidRow(
+                         column(5,
+                                textInput("eff_min", label="min")
+                         ),
+                         column(5,
+                                textInput("eff_max", label = "max"))),
+                       strong("Description"),
+                       textInput("description_labels","Keywords, comma separated")),
+      
       # Extra filters based on non-required columns.
       checkboxInput("toggle_extra_filters","Show extra filters"),
       conditionalPanel("input.toggle_extra_filters == true",
                        uiOutput("extra_filters")),
       # Filter for variables, e.g. at least one association with p < 0.05
       # Keeps all associations for particular variable
-      uiOutput("variable_filters"),
+      checkboxInput("toggle_variable_filters", "Show variable filters"),
+      conditionalPanel("input.toggle_variable_filters == true",
+                       h4("Variable filters"),
+                       h5("At least one association with"),
+                       
+                       fluidRow(
+                         column(6,
+                                textInput("var_p_limit", label = "P-value <")),
+                         column(4,
+                                radioButtons("var_p_limit_fdr", label = NULL,
+                                             choices = c("Unadjusted" = FALSE,
+                                                         "FDR" = TRUE),
+                                             selected = FALSE))
+                         
+                       ),
+                       strong("Effect size:"),
+                       fluidRow(
+                         column(5,
+                                textInput("var_eff_min", label = "min")
+                         ),
+                         column(5,
+                                textInput("var_eff_max", label = "max"))
+                       )
+      ),
       actionButton("filter",
                    label = "Filter"),
       

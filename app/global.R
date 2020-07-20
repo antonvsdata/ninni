@@ -8,10 +8,12 @@ library(pool)
 library(ggplot2)
 library(plotly)
 library(UpSetR)
+library(purrr)
 
-source("www/visualizations.R")
-source("www/queries.R")
-source("www/effect_heatmap.R")
+source("R/queries.R")
+source("R/effect_heatmap.R")
+source("R/visualizations.R")
+source("R/ui_functions.R")
 
 db_info <- read_db_info("www/database_www.config")
 
@@ -28,4 +30,3 @@ if(!exists("pool")){
   )
 }
 
-ds_dframe <- get_datasets(pool)

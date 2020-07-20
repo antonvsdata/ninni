@@ -1,19 +1,20 @@
 
 # All elements are ordered by the tabs in Ninni
-shinyServer(function(input,output){
+shinyServer(function(input, output, session){
+  
+  ds_dframe <- get_datasets(pool)
   
   #----------- Sidebar ----------------
   
   # Multiple choice dropwdown box for choosing datasets
-  output$ds_choice <- renderUI({
-    selectizeInput("ds_label",label = "Dataset label", width = "100%", multiple = TRUE,
-                   choices = ds_dframe$Label, options = list(placeholder = "Choose a dataset"))
+  observeEvent(ds_dframe, {
+    updateSelectizeInput(session, "ds_label", choices = ds_dframe$Label)
   })
+  
   # Multiple choice dropdown: search database for datasets by metadata tags
-  output$metadata_tags_ui <- renderUI({
-    selectizeInput("metadata_tags","Metadata tags", width = "100%", multiple = TRUE,
-                   choices = na.omit(ds_dframe$Metadata_labels),
-                   options = list(placeholder = "Choose metadata tags"))
+  observeEvent(ds_dframe, {
+    md_labels <- extract_meta_labels(ds_dframe)
+    updateSelectizeInput(session, "metadata_tags", choices = md_labels)
   })
   
   # Handles the query to the database
@@ -36,41 +37,7 @@ shinyServer(function(input,output){
     associations_list_query_()
   })
   
-  # Filters for associations, always visible
-  output$standard_filters <- renderUI({
-    
-    tagList(
-      checkboxInput("toggle_standard_filters", "Show standard filters"),
-      conditionalPanel("input.toggle_standard_filters == true",
-                       h4("Association filters"),
-                       strong("Variable"),
-                       textInput("var_labels", "Keywords, comma separated"),
-                       
-                       fluidRow(
-                         column(6,
-                                textInput("p_limit", label = "P-value <")),
-                         column(4,
-                                radioButtons("p_limit_fdr", label = NULL,
-                                             choices = c("Unadjusted" = FALSE,
-                                                         "FDR" = TRUE),
-                                             selected = FALSE))),
-                       fluidRow(
-                         column(7,
-                                textInput("n_limit",
-                                          label = "Minimum n"))
-                       ),
-                       strong("Effect:"),
-                       fluidRow(
-                         column(5,
-                                textInput("eff_min", label="min")
-                         ),
-                         column(5,
-                                textInput("eff_max", label = "max"))),
-                       strong("Description"),
-                       textInput("description_labels","Keywords, comma separated"))
-      
-    )
-  })
+  
   
   extra_filters_react <- reactive({
     if(is.null(associations_list_query())){
@@ -90,28 +57,11 @@ shinyServer(function(input,output){
     # Generate filters for these metavariables:
     # min & max if numeric
     # keyword search if character
-    out <- tagList()
-    for(i in seq(col_limit + 1, ncol(dframe))){
-      if(class(dframe[, i]) == "numeric"){
-        out <- tagList(out,
-                       strong(colnames(dframe)[i]),
-                       fluidRow(
-                         column(5,
-                                textInput(paste(colnames(dframe)[i], "min", sep = "_"), label = "min")
-                         ),
-                         column(5,
-                                textInput(paste(colnames(dframe)[i], "max", sep = "_"), label = "max")
-                         )
-                       ))
-        
-      }
-      if(class(dframe[,i]) == "character"){
-        out <- tagList(out,
-                       strong(colnames(dframe)[i]),
-                       textInput(paste(colnames(dframe)[i],"label",sep="_"),
-                                 label = "Keywords, comma separated"))
-      }
-    }
+    extra_cols <- colnames(dframe)[seq(col_limit + 1, ncol(dframe))]
+    
+    out <- map(extra_cols, ~ column_filter(associations_list_query()$dframe[, .x],
+                                           .x,
+                                           input = input))
     out
   })
   
@@ -120,37 +70,6 @@ shinyServer(function(input,output){
     extra_filters_react()
   })
   
-  
-  # Filters for filtering loaded data by variable
-  output$variable_filters <- renderUI({
-    
-    tagList(
-      checkboxInput("toggle_variable_filters", "Show variable filters"),
-      conditionalPanel("input.toggle_variable_filters == true",
-                       h4("Variable filters"),
-                       h5("At least one association with"),
-                       
-                       fluidRow(
-                         column(6,
-                                textInput("var_p_limit", label = "P-value <")),
-                         column(4,
-                                radioButtons("var_p_limit_fdr", label = NULL,
-                                             choices = c("Unadjusted" = FALSE,
-                                                         "FDR" = TRUE),
-                                             selected = FALSE))
-                         
-                       ),
-                       strong("Effect size:"),
-                       fluidRow(
-                         column(5,
-                                textInput("var_eff_min", label = "min")
-                         ),
-                         column(5,
-                                textInput("var_eff_max", label = "max"))
-                       )
-      )
-    )
-  })
   
   # Filter the associations dataframe
   # Returns a list with following objects:
@@ -247,7 +166,7 @@ shinyServer(function(input,output){
       }
     }
     
-    # Filters for metavariables
+    # Filters for extra variables
     if(input$toggle_extra_filters){
       if(asso_list$varnum == 2){
         col_limit <- 12
@@ -256,31 +175,18 @@ shinyServer(function(input,output){
         col_limit <- 10
       }
       if(ncol(dframe) > col_limit){
-        for(i in seq(col_limit + 1, ncol(dframe))){
-          if(class(dframe[, i]) == "numeric"){
-            inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i], "min", sep = "_"))]
-            expr <- paste("input",inputid,sep="$")
-            limit_min <- eval(parse(text = expr))
-            inputid <- names(input)[which(names(input) == paste(colnames(dframe)[i], "max", sep = "_"))]
-            expr <- paste("input", inputid, sep="$")
-            limit_max <- eval(parse(text = expr))
-            if (limit_min != "" || limit_max != ""){
-              if (limit_min == ""){
-                dframe <- dframe[dframe[, i] < as.numeric(limit_max), ]
-              }
-              else if (limit_max == ""){
-                dframe <- dframe[dframe[, i] > as.numeric(limit_min), ]
-              }
-              else{
-                dframe <- dframe[dframe[, i] < as.numeric(limit_max) & dframe[, i] > as.numeric(limit_min), ]
-              }
-            }
+        extra_cols <- colnames(dframe)[seq(col_limit + 1, ncol(dframe))]
+        for(col in extra_cols){
+          if(class(dframe[, col]) == "numeric"){
+            dframe <- filter_min_max(dframe,
+                                     col = col,
+                                     min = input[[paste0(col, "_min")]],
+                                     max = input[[paste0(col, "_max")]])
           }
-          else if(class(dframe[, i]) == "character"){
-            expr <- paste0("input$", colnames(dframe)[i], "_label")
-            keywords <- eval(parse(text = expr))
+          else if(class(dframe[, col]) == "character"){
+            keywords <- input[[paste0(col, "_label")]]
             if(keywords != ""){
-              dframe <- filter_by_keyword(dframe, colnames(dframe)[i], keywords)
+              dframe <- filter_by_keyword(dframe, col, keywords)
             }
           }
         }
@@ -982,10 +888,10 @@ shinyServer(function(input,output){
         column(6,
                sliderInput("phist_width", "Plot width",
                            min = 200, max = input$window_size[1],
-                           value = input$window_size[1] - 500),
+                           value = 800),
                sliderInput("phist_height", "Plot height",
                            min = 200, max = input$window_size[2],
-                           value = input$window_size[2] * 0.5))
+                           value = 600))
       )
       
       
@@ -1026,18 +932,40 @@ shinyServer(function(input,output){
   
   output$phist_download_button <- downloadHandler(
     filename = function(){
-      paste("ninni_phist_plot", input$phist_download_format, sep = ".")
+      paste0("ninni_phist_plot.", input$phist_download_format)
     },
     
     content = function(file){
       p <- phistplot()
-      if(nrow(associations_list()$dframe) > plotly_limit){
-        scale <- 1.5
-      } else{
-        scale <- 1
+      if (input$phist_download_format == "png") {
+        png(file, width = input$phist_width, height = input$phist_height)
+        print(p)
+        dev.off()
+      } else {
+        print(9*input$phist_height/input$phist_width)
+        if(large()){
+          scale <- 1.5
+        } else{
+          scale <- 1
+        }
+        ggsave(file, p,
+               width = 9, height = 9*input$phist_height/input$phist_width,
+               dpi = 300, units = "in", scale = scale)
       }
-      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
     }
   )
+  
+  # output$phist_download_button <- static_downloader(
+  #   file_name = "ninni_phist_plot",
+  #   plotter = phistplot,
+  #   file_format = input$phist_download_format,
+  #   width = input$phist_width,
+  #   height = input$phist_height,
+  #   large = large()
+  # )
+  
+  large <- reactive({
+    nrow(associations_list()$dframe) > plotly_limit
+  })
   
 })
