@@ -120,8 +120,6 @@ filtered_var_tbl <- function(pool, var_keywords){
   else{
     var_tbl <- pool %>% tbl("variables") %>% filter(id %in% accepted_ids)
   }
-  print(collect(var_tbl))
-  
   var_tbl
 }
 

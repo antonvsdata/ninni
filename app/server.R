@@ -25,7 +25,7 @@ shinyServer(function(input, output, session){
       return (NULL)
     }
     withProgress(message = "Retrieving dataset from database",{
-      asso_list <- get_associations(pool,input$ds_label, input$var_keywords, input$metadata_tags)
+      asso_list <- get_associations(pool, input$ds_label, input$var_keywords, input$metadata_tags)
       incProgress(0.3)
       asso_list$dframe <- join_variables(pool, asso_list$dframe, asso_list$datasets)
     })
@@ -260,6 +260,34 @@ shinyServer(function(input, output, session){
   
   plotly_limit <- 10000
   
+  # ----------- Common plot controls ------------
+  
+  observeEvent(associations_list()$dframe, {
+    # Set columns as choices
+    selectize_inputs <- c("qq_coloring_column",
+                          "lady_coloring_column",
+                          "lady_x_column",
+                          "lollipop_column",
+                          "lollipop_coloring_column",
+                          "upset_group",
+                          "upset_column",
+                          "phist_facet")
+    for (sel_input in selectize_inputs) {
+      if (sel_input %in% c("lady_x_column", "lollipop_column", "upset_column")){
+        if (associations_list()$varnum == 1){
+          choices <- colnames(associations_list()$dframe)
+        } else {
+          choices <- c("Variables together", colnames(associations_list()$dframe))
+        }
+      } else {
+        choices = colnames(associations_list()$dframe)
+      }
+      updateSelectizeInput(session, sel_input,
+                           choices = choices)
+    }
+    
+  })
+  
   # -------------- Heat map --------------------
   
   
@@ -460,19 +488,7 @@ shinyServer(function(input, output, session){
   
   # ---------------- Q-Q plot -------------------------
   
-  output$qq_plot_choices <- renderUI({
-    tagList(
-      checkboxInput("qq_coloring", "Coloring according to column"),
-      conditionalPanel("input.qq_coloring == true",
-                       radioButtons("qq_coloring_type",NULL,
-                                    choices = c("Continuous", "Discrete"), inline = TRUE),
-                       selectizeInput("qq_coloring_column","Column",
-                                      choices = colnames(associations_list()$dframe),
-                                      options = list(maxItems = 1,
-                                                     placeholder = 'Choose a column',
-                                                     onInitialize = I('function() { this.setValue(""); }'))))
-    )
-  })
+  
   
   output$qq_plot <-renderUI({
     if (associations_list()$effect_type == "Multiple"){
@@ -562,26 +578,7 @@ shinyServer(function(input, output, session){
   
   # ------------------ Lady Manhattan plot ---------------------
   
-  # Toggle coloring by column
-  # Choose discrete or continuous color scale (only relevant for numeric values)
-  output$lady_manhattan_plot_choices <- renderUI({
-    tagList(
-      selectizeInput("lady_x_column", "Column for x-axis",
-                     choices = c("Variables", colnames(associations_list()$dframe)),
-                     selected = "Variables"),
-      checkboxInput("lady_coloring", "Coloring according to column"),
-      conditionalPanel("input.lady_coloring == true",
-                       radioButtons("lady_coloring_type",NULL,
-                                    choices = c("Continuous", "Discrete")),
-                       selectizeInput("lady_coloring_column", "Column",
-                                      choices = colnames(associations_list()$dframe),
-                                      options = list(maxItems = 1,
-                                                     placeholder = 'Choose a column',
-                                                     onInitialize = I('function() { this.setValue(""); }'))))
-    )
-  })
-  
-  output$lady_manhattan_plot <-renderUI({
+ output$lady_manhattan_plot <-renderUI({
     if (associations_list()$effect_type == "Multiple"){
       return(h5("Multiple different effect types can't be plotted together"))
     }
@@ -672,33 +669,6 @@ shinyServer(function(input, output, session){
   
   # ----------- Lollipop plot --------------
   
-  # Toggle coloring by column
-  # Choose discrete or continuous color scale (only relevant for numeric values)
-  output$lollipop_choices <- renderUI({
-    if (associations_list()$varnum == 1){
-      selected <- "Variable1"
-      choices <- colnames(associations_list()$dframe)
-    } else {
-      selected <- "Variables together"
-      choices <- c("Variables together", colnames(associations_list()$dframe))
-    }
-    tagList(
-      selectizeInput("lollipop_column", "Column for column",
-                     choices = choices,
-                     selected = selected),
-      numericInput("lollipop_n", "Number of top values to show", value = 10, min = 1),
-      checkboxInput("lollipop_coloring", "Coloring according to column"),
-      conditionalPanel("input.lollipop_coloring == true",
-                       radioButtons("lollipop_coloring_type",NULL,
-                                    choices = c("Continuous", "Discrete")),
-                       selectizeInput("lollipop_coloring_column", "Column",
-                                      choices = colnames(associations_list()$dframe),
-                                      options = list(maxItems = 1,
-                                                     placeholder = 'Choose a column',
-                                                     onInitialize = I('function() { this.setValue(""); }'))))
-    )
-  })
-  
   output$lollipop_plot <-renderUI({
     if (nrow(associations_list()$dframe) > plotly_limit){
       out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
@@ -785,30 +755,6 @@ shinyServer(function(input, output, session){
   
   # --------- UpSet plot -----------
   
-  output$upset_choices <- renderUI({
-    if (associations_list()$varnum == 1){
-      selected <- "Variable1"
-      choices <- colnames(associations_list()$dframe)
-    } else {
-      selected <- "Variables together"
-      choices <- c("Variables together", colnames(associations_list()$dframe))
-    }
-    tagList(
-      selectizeInput("upset_group", "Group by",
-                     choices = colnames(associations_list()$dframe),
-                     selected = "Dataset"),
-      selectizeInput("upset_column", "Column for elements",
-                     choices = choices,
-                     selected = selected),
-      numericInput("upset_n", "Number of top intersections to show", value = 10, min = 1),
-      selectizeInput("upset_order", "Order by",
-                     choices = c("Degree & Frequency", "Frequency")),
-      sliderInput("upset_text_scale", "Text size",
-                  min = 0.5, max = 4, value = 1, step = 0.1),
-      checkboxInput("upset_empty", "Show empty intersections")
-    )
-  })
-  
   output$upset_plot <- renderUI({
     n_groups <- length(unique(associations_list()$dframe[, input$upset_group]))
     if (n_groups < 2) {
@@ -860,31 +806,6 @@ shinyServer(function(input, output, session){
   )
   
   # --------- P-value histograms -----------
-  
-  output$phist_choices <- renderUI({
-    
-    tagList(
-      fluidRow(
-        column(6,
-               selectizeInput("phist_facet", "Facet by",
-                              choices = colnames(associations_list()$dframe),
-                              selected = "Dataset",
-                              options = list(maxItems = 1,
-                                             placeholder = 'Choose a column',
-                                             onInitialize = I('function() { this.setValue(""); }')))
-               ),
-        column(6,
-               sliderInput("phist_width", "Plot width",
-                           min = 200, max = input$window_size[1],
-                           value = 800),
-               sliderInput("phist_height", "Plot height",
-                           min = 200, max = input$window_size[2],
-                           value = 600))
-      )
-      
-      
-    )
-  })
   
   output$phist_plot <- renderUI({
     if (is.null(input$phist_width) || is.null(input$phist_height)) {

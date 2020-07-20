@@ -216,7 +216,7 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
     dframe <- dframe %>% mutate(Y = -log10(P) * sign(Effect))
     y_label <- paste0("-log10(P) * sign(", effect_type, ")")
   }
-  if (x_axis == "Variables") {
+  if (x_axis == "Variables together") {
     # For datasets with interactions, the combinations of variables are used as x-axis
     if(varnum == 1){
       x_axis <- "Variable1"
