@@ -11,11 +11,7 @@ library(UpSetR)
 library(purrr)
 library(shinyFeedback)
 
-source("R/queries.R")
-source("R/effect_heatmap.R")
-source("R/visualizations.R")
-source("R/ui_functions.R")
-source("R/server_functions.R")
+source("r/queries.R")
 
 
 db_info <- read_db_info("www/database_www.config")

@@ -305,7 +305,7 @@ lollipop_plot <- function(dframe, main_col, n_top,
   
   p <- ggplot(counts, aes_string(y = "count", x = main_col)) +
     geom_segment(aes_string(x = main_col, xend = main_col, y = 0, yend="count"), color="grey") +
-    geom_point(size=3, color="#69b3a2") +
+    geom_point(aes_string(label1 = main_col, label2 = "count"), size=3, color="#69b3a2") +
     coord_flip() +
     labs(x = "", y = "Count") +
     theme_minimal()

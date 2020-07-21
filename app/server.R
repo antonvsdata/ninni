@@ -102,7 +102,8 @@ shinyServer(function(input, output, session){
     req(associations_list())
     
     make_ds_info_table(asso_list = associations_list())
-    },include.rownames=FALSE, include.colnames = FALSE)
+    },
+    include.rownames=FALSE, include.colnames = FALSE)
   
   # --------------- Main ------------------
   
@@ -141,6 +142,10 @@ shinyServer(function(input, output, session){
     }
   )
   
+  
+  
+  # ----------- Common plot controls ------------
+  
   # All the visualizations can be interactive plotly figures,
   # or static figures, if dataset has more than 10 000 associations
   
@@ -148,8 +153,6 @@ shinyServer(function(input, output, session){
   large <- reactive({
     nrow(associations_list()$dframe) > plotly_limit
   })
-  
-  # ----------- Common plot controls ------------
   
   observeEvent(associations_list()$dframe, {
     # Set columns as choices
@@ -180,45 +183,25 @@ shinyServer(function(input, output, session){
   # -------------- Heat map --------------------
   
   
-  output$heatmap <- renderUI({
-    if (associations_list()$effect_type == "Multiple"){
-      return(h5("Multiple different effect types can't be plotted together"))
-    }
-    if (associations_list()$varnum == 1){
-      return(h5("Heat map requires associations with 2 variables"))
-    }
-    
-    out <- tagList()
+  output$heatmap_n_plotted <- renderUI({
+     
     # Check if there are associations with only one variable
     # They will be removed before plotting the heatmap
     n_not_plotted <- length(which(is.na(associations_list()$dframe$Variable1) |
                                     is.na(associations_list()$dframe$Variable2)))
     if(n_not_plotted > 0){
       n_plotted <- nrow(associations_list()$dframe) - n_not_plotted
-      out <- tagList(out, h5(paste0("Only associations with 2 variables will be plotted in the heat map.
+      return(h5(paste0("Only associations with 2 variables will be plotted in the heat map.
                                    Removed ", n_not_plotted," associations, plotted ",
                                    n_plotted, " associations.")))
+    } else {
+      return(NULL)
     }
-    if (nrow(associations_list()$dframe) > plotly_limit){
-      out <- tagList(out,
-                     h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("heatmap_static", height = input$window_size[2] - 100))
-    }
-    else{
-      height <- min(input$window_size) * 0.95
-      width <- height * 1.04
-      out <- tagList(out,
-                     plotlyOutput("heatmaply", width = width, height = height))
-    }
-    out <- tagList(out,
-                   uiOutput("heatmap_download"))
-    out
   })
   
   heatmap <- reactive({
-    if (associations_list()$varnum == 1) {
-      return(NULL)
-    }
+    req(associations_list()$varnum != 1)
+    
     plot_effect_heatmap(associations_list()$dframe, log2_effect = input$heatmap_log2,
                         color_scale = input$heatmap_color_scale, midpoint = input$heatmap_midpoint,
                         discretize_effect = input$heatmap_discrete, breaks = input$heatmap_breaks,
@@ -226,84 +209,20 @@ shinyServer(function(input, output, session){
                         lower_tri = input$lower_tri)
   })
   
-  output$heatmaply <- renderPlotly({
-    ggp <- heatmap()
-    ggplotly(ggp, tooltip = paste0("label", 1:9))
-  })
-  
-  output$heatmap_static <- renderPlot({
-    heatmap()
-  })
-  
-  output$heatmap_download <- renderUI({
-    tagList(
-      br(),
-      fluidRow(
-        column(1,
-               downloadButton("heatmap_download_button"),
-               br(),
-               br(),
-               uiOutput("heatmap_download_plotly"),
-               br()),
-        column(2,
-               radioButtons("heatmap_download_format", label=NULL,
-                            choices = c("png", "pdf")))
-      )
-    )
-  })
-  
-  
-  output$heatmap_download_button <- downloadHandler(
-    filename = function(){
-      paste("ninni_heatmap", input$heatmap_download_format, sep=".")
-    },
-    
-    content = function(file){
-      p <- heatmap()
-      if(nrow(associations_list()$dframe) > plotly_limit){
-        scale <- 1.5
-      } else{
-        scale <- 1
-      }
-      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
-    }
-  )
-  
-  output$heatmap_download_plotly <- renderUI({
-    if (nrow(associations_list()$dframe) <= plotly_limit) {
-      downloadButton("heatmap_downloadly", "Download Interactive")
+  heatmap_msg <- reactive({
+    if (associations_list()$varnum == 1) {
+      return(h5("Two variables needed for heatmap"))
     } else {
-      NULL
+      return(NULL)
     }
   })
   
-  output$heatmap_downloadly <- downloadHandler(
-    filename = function(){
-      "ninni_heatmap.html"
-    },
-    
-    content = function(file){
-      p <- ggplotly(heatmap(), tooltip = paste0("label", 1:9))
-      saveWidget(as_widget(ggplotly(p)), file, selfcontained = TRUE, title = "Ninni heat map")
-    }
-  )
+  plotServer("heatmap", plotter = heatmap, large = large,
+             msg = heatmap_msg)
   
   # ------------------- Volcano plot ---------------
   
-  output$volcano <- renderUI({
-    if (associations_list()$effect_type == "Multiple"){
-      return(h5("Multiple different effect types can't be plotted together"))
-    }
-    if (nrow(associations_list()$dframe) > plotly_limit){
-      out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-              plotOutput("volcano_static", height = paste0(input$window_size[2] - 100, "px")))
-    }
-    else{
-      out <- plotlyOutput("volcanoly", height = paste0(input$window_size[2] - 100, "px"))
-    }
-    out <- tagList(out,
-                   uiOutput("volcano_download"))
-  })
+  
   
   volcanoplot <- reactive({
     plot_volcano(dframe = associations_list()$dframe, log2_effect = input$volcano_log2,
@@ -314,88 +233,11 @@ shinyServer(function(input, output, session){
                  shape = input$volcano_shape)
   })
   
-  output$volcano_static <- renderPlot({
-    volcanoplot()
-  })
-  
-  output$volcanoly <- renderPlotly({
-    ggp <- volcanoplot()
-    ggplotly(ggp, tooltip = paste0("label", 1:9))
-  })
-  
-  output$volcano_download <- renderUI({
-    tagList(
-      br(),
-      fluidRow(
-        column(1,
-               downloadButton("volcano_download_button"),
-               br(),
-               br(),
-               uiOutput("volcano_download_plotly"),
-               br()),
-        column(2,
-               radioButtons("volcano_download_format",label=NULL,
-                            choices = c("png","pdf")))
-      )
-    )
-  })
-  
-  output$volcano_download_button <- downloadHandler(
-    filename = function(){
-      paste("ninni_volcano_plot", input$volcano_download_format, sep=".")
-    },
-    
-    content = function(file){
-      p <- volcanoplot()
-      if(nrow(associations_list()$dframe) > plotly_limit){
-        scale <- 1.5
-      } else{
-        scale <- 1
-      }
-      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
-    }
-  )
-  
-  output$volcano_download_plotly <- renderUI({
-    if (nrow(associations_list()$dframe) <= plotly_limit) {
-      downloadButton("volcano_downloadly", "Download Interactive")
-    } else {
-      NULL
-    }
-  })
-  
-  output$volcano_downloadly <- downloadHandler(
-    filename = function(){
-      "ninni_volcano_plot.html"
-    },
-    
-    content = function(file){
-      p <- ggplotly(volcanoplot(), tooltip = paste0("label", 1:9))
-      saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni volcano plot")
-    }
-  )
+  plotServer("volcano_plot", plotter = volcanoplot, large = large)
   
   # ---------------- Q-Q plot -------------------------
   
   
-  
-  output$qq_plot <-renderUI({
-    if (associations_list()$effect_type == "Multiple"){
-      return(h5("Multiple different effect types can't be plotted together"))
-    }
-    
-    if (nrow(associations_list()$dframe) > plotly_limit){
-      out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("qq_plot_static", height = paste0(input$window_size[2] - 100, "px")))
-    }
-    else{
-      out <- plotlyOutput("qq_plotly", height = paste0(input$window_size[2] - 100, "px"))
-    }
-    
-    out <- tagList(out,
-                   uiOutput("qq_plot_download"))
-    out
-  })
   
   qq_plot <- reactive({
     ggp <- gg_qq(dframe = associations_list()$dframe, variable = input$qq_choice,
@@ -405,84 +247,11 @@ shinyServer(function(input, output, session){
     ggp
   })
   
-  output$qq_plot_static <- renderPlot({
-    qq_plot()
-  })
-  
-  output$qq_plotly <- renderPlotly({
-    ggp <- qq_plot()
-    ggplotly(ggp, tooltip = paste0("label", 1:9))
-  })
-  
-  output$qq_plot_download <- renderUI({
-    tagList(
-      br(),
-      fluidRow(
-        column(1,
-               downloadButton("qq_plot_download_button"),
-               br(),
-               br(),
-               uiOutput("qq_download_plotly"),
-               br()),
-        column(2,
-               radioButtons("qq_plot_download_format", label=NULL,
-                            choices = c("png", "pdf")))
-      )
-    )
-  })
-  
-  output$qq_plot_download_button <- downloadHandler(
-    filename = function(){
-      paste("ninni_qq_plot",input$qq_plot_download_format,sep=".")
-    },
-    
-    content = function(file){
-      if(nrow(associations_list()$dframe) > plotly_limit){
-        scale <- 1.5
-      } else{
-        scale <- 1
-      }
-      ggsave(file, qq_plot(), width = 9, height = 8, dpi = 300, units = "in", scale = scale)
-    }
-  )
-  
-  output$qq_download_plotly <- renderUI({
-    if (nrow(associations_list()$dframe) <= plotly_limit) {
-      downloadButton("qq_downloadly", "Download Interactive")
-    } else {
-      NULL
-    }
-  })
-  
-  output$qq_downloadly <- downloadHandler(
-    filename = function(){
-      "ninni_qq_plot.html"
-    },
-    
-    content = function(file){
-      p <- ggplotly(qq_plot(), tooltip = paste0("label", 1:9))
-      saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni Q-Q plot")
-    }
-  )
+  plotServer("qq_plot", plotter = qq_plot, large = large)
   
   # ------------------ Lady Manhattan plot ---------------------
   
- output$lady_manhattan_plot <-renderUI({
-    if (associations_list()$effect_type == "Multiple"){
-      return(h5("Multiple different effect types can't be plotted together"))
-    }
-    if (nrow(associations_list()$dframe) > plotly_limit){
-      out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                   plotOutput("lady_manhattan_plot_static", height = paste0(input$window_size[2] - 100, "px")))
-    }
-    else{
-      out <- plotlyOutput("lady_manhattan_plotly", height = paste0(input$window_size[2] - 100, "px"))
-    }
-    out <- tagList(out,
-                   uiOutput("lady_manhattan_download"))
-    out
-  })
-  
+ 
   ladyplot <- reactive({
     if(input$lady_coloring && !is.null(input$lady_coloring_column) && input$lady_coloring_column != ""){
       lady_manhattan_plot(associations_list()$dframe, input$lady_x_column, input$lady_log2,
@@ -495,81 +264,20 @@ shinyServer(function(input, output, session){
     }
   })
   
-  output$lady_manhattan_plot_static <- renderPlot({
-    ladyplot()
-  })
-  
-  output$lady_manhattan_plotly <- renderPlotly({
-    ggp <- ladyplot()
-    ggplotly(ggp, tooltip = paste0("label", 1:9))
-  })
-  
-  output$lady_manhattan_download <- renderUI({
-    tagList(
-      br(),
-      fluidRow(
-        column(1,
-               downloadButton("lady_manhattan_download_button"),
-               br(),
-               br(),
-               uiOutput("manhattan_download_plotly"),
-               br()),
-        column(2,
-               radioButtons("lady_manhattan_download_format", label = NULL,
-                            choices = c("png", "pdf")))
-      )
-    )
-  })
-  
-  output$lady_manhattan_download_button <- downloadHandler(
-    filename = function(){
-      paste("ninni_manhattan_plot", input$lady_manhattan_download_format, sep = ".")
-    },
-    
-    content = function(file){
-      p <- ladyplot()
-      if(nrow(associations_list()$dframe) > plotly_limit){
-        scale <- 1.5
-      } else{
-        scale <- 1
-      }
-      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
-    }
-  )
-  
-  output$manhattan_download_plotly <- renderUI({
-    if (nrow(associations_list()$dframe) <= plotly_limit) {
-      downloadButton("manhattan_downloadly", "Download Interactive")
+  lady_msg <- reactive({
+    if (is.null(input$lady_x_column) || input$lady_x_column == "") {
+      return(h5("Please select a column for x axis"))
     } else {
-      NULL
+      return(NULL)
     }
   })
   
-  output$manhattan_downloadly <- downloadHandler(
-    filename = function(){
-      "ninni_manhattan.html"
-    },
-    
-    content = function(file){
-      p <- ggplotly(ladyplot(), tooltip = paste0("label", 1:9))
-      saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni Manhattan plot")
-    }
-  )
+  plotServer("manhattan", plotter = ladyplot, large = large,
+             msg = lady_msg)
+  
+  
   
   # ----------- Lollipop plot --------------
-  
-  output$lollipop_plot <-renderUI({
-    if (nrow(associations_list()$dframe) > plotly_limit){
-      out <- tagList(h5("Wow, your data is BIG! Plotting static figure."),
-                     plotOutput("lollipop_plot_static", height = paste0(input$window_size[2] - 100, "px")))
-    }
-    else{
-      out <- plotlyOutput("lollipop_plotly", height = paste0(input$window_size[2] - 100, "px"))
-    }
-    out <- tagList(out,
-                   uiOutput("lollipop_download"))
-    out
-  })
   
   lolliplot <- reactive({
     if(input$lollipop_coloring && !is.null(input$lollipop_coloring_column) && input$lollipop_coloring_column != ""){
@@ -581,79 +289,19 @@ shinyServer(function(input, output, session){
     }
   })
   
-  output$lollipop_plot_static <- renderPlot({
-    lolliplot()
-  })
-  
-  output$lollipop_plotly <- renderPlotly({
-    ggp <- lolliplot()
-    ggplotly(ggp)
-  })
-  
-  output$lollipop_download <- renderUI({
-    tagList(
-      br(),
-      fluidRow(
-        column(1,
-               downloadButton("lollipop_download_button"),
-               br(),
-               br(),
-               uiOutput("lollipop_download_plotly"),
-               br()),
-        column(2,
-               radioButtons("lollipop_download_format", label = NULL,
-                            choices = c("png", "pdf")))
-      )
-    )
-  })
-  
-  output$lollipop_download_button <- downloadHandler(
-    filename = function(){
-      paste("ninni_lollipop_plot", input$lollipop_download_format, sep = ".")
-    },
-    
-    content = function(file){
-      p <- lolliplot()
-      if(nrow(associations_list()$dframe) > plotly_limit){
-        scale <- 1.5
-      } else{
-        scale <- 1
-      }
-      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
-    }
-  )
-  
-  output$lollipop_download_plotly <- renderUI({
-    if (nrow(associations_list()$dframe) <= plotly_limit) {
-      downloadButton("lollipop_downloadly", "Download Interactive")
-    } else {
-      NULL
-    }
-  })
-  
-  output$lollipop_downloadly <- downloadHandler(
-    filename = function(){
-      "ninni_lollipop.html"
-    },
-    
-    content = function(file){
-      p <- ggplotly(lolliplot())
-      saveWidget(as_widget(p), file, selfcontained = TRUE, title = "Ninni lollipop plot")
-    }
-  )
+  plotServer("lollipop", plotter = lolliplot, large = large)
   
   # --------- UpSet plot -----------
   
-  output$upset_plot <- renderUI({
+  upset_msg <- reactive({
     n_groups <- length(unique(associations_list()$dframe[, input$upset_group]))
     if (n_groups < 2) {
       return(h5("Minimum of two groups is needed"))
+    } else if (is.null(input$upset_column) || input$upset_column == "") {
+      return(h5("Please select a column for the elements"))
+    } else {
+      return(NULL)
     }
-    
-    tagList(h5("UpSet plots are only available as static figures"),
-            plotOutput("upset_plot_static", height = paste0(input$window_size[2] - 100, "px")),
-            uiOutput("upset_download"))
-
   })
   
   upplot <- reactive({
@@ -661,107 +309,20 @@ shinyServer(function(input, output, session){
                input$upset_order, input$upset_text_scale, input$upset_empty)
   })
   
-  output$upset_plot_static <- renderPlot({
-    upplot()
-  })
+  plotServer("upset_plot", plotter = upplot,
+             large = large,
+             include_plotly = FALSE,
+             msg = upset_msg)
   
-  output$upset_download <- renderUI({
-    tagList(
-      br(),
-      fluidRow(
-        column(1,
-               downloadButton("upset_download_button")),
-        column(2,
-               radioButtons("upset_download_format", label = NULL,
-                            choices = c("png", "pdf")))
-      )
-    )
-  })
-  
-  output$upset_download_button <- downloadHandler(
-    filename = function(){
-      paste("ninni_upset_plot", input$upset_download_format, sep = ".")
-    },
-    
-    content = function(file){
-      p <- upplot()
-      if(nrow(associations_list()$dframe) > plotly_limit){
-        scale <- 1.5
-      } else{
-        scale <- 1
-      }
-      ggsave(file, p, width = 9, height = 8, dpi = 300, units = "in", scale = scale)
-    }
-  )
   
   # --------- P-value histograms -----------
-  
-  output$phist_plot <- renderUI({
-    if (is.null(input$phist_width) || is.null(input$phist_height)) {
-      return(NULL)
-    }
-    tagList(plotOutput("phist_plot_static",
-                       width = input$phist_width,
-                       height = input$phist_height),
-            uiOutput("phist_download"))
-    
-  })
   
   phistplot <- reactive({
     p_histogram(associations_list()$dframe, input$phist_facet)
   })
   
-  output$phist_plot_static <- renderPlot({
-    phistplot()
-  })
-  
-  output$phist_download <- renderUI({
-    tagList(
-      br(),
-      fluidRow(
-        column(1,
-               downloadButton("phist_download_button")),
-        column(2,
-               radioButtons("phist_download_format", label = NULL,
-                            choices = c("png", "pdf")))
-      )
-    )
-  })
-  
-  output$phist_download_button <- downloadHandler(
-    filename = function(){
-      paste0("ninni_phist_plot.", input$phist_download_format)
-    },
-    
-    content = function(file){
-      p <- phistplot()
-      if (input$phist_download_format == "png") {
-        png(file, width = input$phist_width, height = input$phist_height)
-        print(p)
-        dev.off()
-      } else {
-        print(9*input$phist_height/input$phist_width)
-        if(large()){
-          scale <- 1.5
-        } else{
-          scale <- 1
-        }
-        ggsave(file, p,
-               width = 9, height = 9*input$phist_height/input$phist_width,
-               dpi = 300, units = "in", scale = scale)
-      }
-    }
-  )
-  
-  # output$phist_download_button <- static_downloader(
-  #   file_name = "ninni_phist_plot",
-  #   plotter = phistplot,
-  #   file_format = input$phist_download_format,
-  #   width = input$phist_width,
-  #   height = input$phist_height,
-  #   large = large()
-  # )
-  
-  
+  plotServer("p_histogram", plotter = phistplot,
+             large = large, include_plotly = FALSE)
+
   
 })

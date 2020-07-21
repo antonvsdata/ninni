@@ -1,13 +1,12 @@
-
 /* For the download buttons, push the option buttons away and moves button down slightly */
-.col-sm-1{
+.col-sm-1 {
   margin-right: 30px;
   margin-top: 15px;
 }
 
 /* Move the boxes for p-value and effect filters next to the text */
-.shiny-input-container input{
- display: inline-block;
+.shiny-input-container input {
+  display: inline-block;
 }
 
 /* Lock the sidebar to fixed width */
@@ -17,12 +16,12 @@
 }
 
 /* The unadjusted and FDR buttons appear right in the sidebar */
-.well .col-sm-4{
+.well .col-sm-4 {
   min-width: 0px;
 }
 
 /* Hold the boxes for p-value choice closer to unadjusted and FDR buttons */
-.shiny-input-container >label{
+.shiny-input-container > label {
   padding-top: 4px;
   display: inline-block;
   text-align: right;
@@ -35,31 +34,40 @@
 }
 
 /* Fit the p-value selection boxes in smaller space, so they fit on same line with label and buttons */
-.well .col-sm-6 .shiny-input-container input{
+.well .col-sm-6 .shiny-input-container input {
   width: 70px;
   margin-right: -30px;
 }
 
 /* Match the unadjusted and FDR buttons placing with the box */
-.well .col-sm-4 .shiny-input-radiogroup{
+.well .col-sm-4 .shiny-input-radiogroup {
   margin-left: 20px;
   margin-top: -15px;
 }
 
 /* Move min and max labels closer to the boxes */
-.well .col-sm-5 .shiny-input-container label{
+.well .col-sm-5 .shiny-input-container label {
   width: 30px;
   margin-right: 2px;
 }
 
 /* Min and max effect boxes fit on same line with labels */
-.well .col-sm-5 .shiny-input-container input{
+.well .col-sm-5 .shiny-input-container input {
   width: 70px;
   margin-right: -20px;
 }
 
 /* minimum n box fits on the same line with label */
-.well .col-sm-7 .shiny-input-container input{
+.well .col-sm-7 .shiny-input-container input {
   width: 70px;
   margin-right: -10px;
+}
+
+.shiny-download-link {
+  margin-bottom: 20px;
+}
+
+.col-sm-2 .shiny-input-radiogroup {
+  margin-left: 15px;
+  margin-top: -10px;
 }

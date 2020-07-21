@@ -158,7 +158,8 @@ shinyUI( fluidPage(
                  # sliderInput("heatmap_point_range",
                  #             "Size range of the p-value points",
                  #             value = c(1,4), min = 1, max = 10),
-                 uiOutput("heatmap")
+                 uiOutput("heatmap_n_plotted"),
+                 plotUI("heatmap")
         ),
         
         tabPanel("Volcano plot",
@@ -202,7 +203,7 @@ shinyUI( fluidPage(
                  
                  
                  # The actual volcano plot
-                 uiOutput("volcano")
+                 plotUI("volcano_plot")
         ),
         
         tabPanel("Q-Q plot",
@@ -225,7 +226,7 @@ shinyUI( fluidPage(
                                                  options = list(maxItems = 1,
                                                                 placeholder = 'Choose a column',
                                                                 onInitialize = I('function() { this.setValue(""); }')))),
-                 uiOutput("qq_plot")
+                 plotUI("qq_plot")
         ),
         
         tabPanel("Signed Manhattan plot",
@@ -244,14 +245,11 @@ shinyUI( fluidPage(
                                                  options = list(maxItems = 1,
                                                                 placeholder = 'Choose a column',
                                                                 onInitialize = I('function() { this.setValue(""); }')))),
-                 uiOutput("lady_manhattan_plot")),
+                 plotUI("manhattan")),
         
         tabPanel("Lollipop plot",
                  selectizeInput("lollipop_column", "Column for counting observations",
-                                choices = NULL,
-                                options = list(maxItems = 1,
-                                               placeholder = 'Choose a column',
-                                               onInitialize = I('function() { this.setValue(""); }'))),
+                                choices = NULL),
                  numericInput("lollipop_n", "Number of top values to show", value = 10, min = 1),
                  checkboxInput("lollipop_coloring", "Coloring according to column"),
                  conditionalPanel("input.lollipop_coloring == true",
@@ -262,7 +260,7 @@ shinyUI( fluidPage(
                                                  options = list(maxItems = 1,
                                                                 placeholder = 'Choose a column',
                                                                 onInitialize = I('function() { this.setValue(""); }')))),
-                 uiOutput("lollipop_plot")),
+                 plotUI("lollipop")),
         
         tabPanel("UpSet plot",
                  selectizeInput("upset_group", "Group by",
@@ -279,28 +277,17 @@ shinyUI( fluidPage(
                  sliderInput("upset_text_scale", "Text size",
                              min = 0.5, max = 4, value = 1, step = 0.1),
                  checkboxInput("upset_empty", "Show empty intersections"),
-                 uiOutput("upset_plot")),
+                 plotUI("upset_plot")),
         
         tabPanel("P-value histograms",
-                 fluidRow(
-                   column(6,
-                          selectizeInput("phist_facet", "Facet by",
-                                         choices = NULL,
-                                         options = list(maxItems = 1,
-                                                        placeholder = 'Choose a column',
-                                                        onInitialize = I('function() { this.setValue(""); }')))
-                   ),
-                   column(6,
-                          sliderInput("phist_width", "Plot width",
-                                      min = 200, max = 1000,
-                                      value = 800),
-                          sliderInput("phist_height", "Plot height",
-                                      min = 200, max = 1000,
-                                      value = 600))
-                 ),
-                 uiOutput("phist_plot"))
+                 selectizeInput("phist_facet", "Facet by",
+                                choices = NULL,
+                                options = list(maxItems = 1,
+                                               placeholder = 'Choose a column',
+                                               onInitialize = I('function() { this.setValue(""); }'))),
+                 plotUI("p_histogram")
       )
     )
     
   )
-))
+)))
