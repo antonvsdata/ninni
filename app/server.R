@@ -21,9 +21,12 @@ shinyServer(function(input, output, session){
   # Reactive expressions cache their value, so filtering the same dataset multiple times
   # does not provoke a new database query
   associations_list_query_ <-  reactive({
-    if (!length(input$ds_label) & input$var_keywords == "" & !length(input$metadata_tags)){
-      return (NULL)
+    query_given <- length(input$ds_label) || input$var_keywords != "" || length(input$metadata_tags)
+    if (!query_given) {
+      validate("Please submit a query")
     }
+    req(query_given)
+    
     withProgress(message = "Retrieving dataset from database",{
       asso_list <- get_associations(pool, input$ds_label, input$var_keywords, input$metadata_tags)
       incProgress(0.3)
@@ -40,9 +43,7 @@ shinyServer(function(input, output, session){
   
   
   extra_filters_react <- reactive({
-    if(is.null(associations_list_query())){
-      return(p("No data"))
-    }
+    req(associations_list_query())
     if(associations_list_query()$varnum == 2){
       col_limit <- 12
     }
@@ -70,6 +71,13 @@ shinyServer(function(input, output, session){
     extra_filters_react()
   })
   
+  # Check that filters have valid input values
+  valid_filters <- reactive({
+    req(associations_list_query())
+    
+    validate_filters(input)
+  })
+  
   
   # Filter the associations dataframe
   # Returns a list with following objects:
@@ -78,9 +86,8 @@ shinyServer(function(input, output, session){
   # - varnum: the number of variables in the dataset
   # - effect_type
   associations_list <- eventReactive(input$filter,{
-    if(is.null(associations_list_query())){
-      return(NULL)
-    }
+    req(associations_list_query())
+    req(valid_filters())
     
     asso_list <- associations_list_query()
     dframe <- as.data.frame(asso_list$dframe)
@@ -160,13 +167,16 @@ shinyServer(function(input, output, session){
       if(ncol(dframe) > col_limit){
         extra_cols <- colnames(dframe)[seq(col_limit + 1, ncol(dframe))]
         for(col in extra_cols){
-          if(class(dframe[, col]) == "numeric"){
+          if(class(dframe[, col]) == "numeric" &&
+             !is.null(input[[paste0(col, "_min")]]) &&
+             !is.null(input[[paste0(col, "_max")]])){
             keeps[[col]] <- filter_min_max(dframe,
                                      col = col,
                                      min = input[[paste0(col, "_min")]],
                                      max = input[[paste0(col, "_max")]])
           }
-          else if(class(dframe[, col]) == "character"){
+          else if(class(dframe[, col]) == "character" &&
+                  !is.null(input[[paste0(col, "_label")]])){
             keywords <- input[[paste0(col, "_label")]]
             if(keywords != ""){
               keeps[[col]] <- filter_by_keyword(dframe, col, keywords)
@@ -259,6 +269,9 @@ shinyServer(function(input, output, session){
   # or static figures, if dataset has more than 10 000 associations
   
   plotly_limit <- 10000
+  large <- reactive({
+    nrow(associations_list()$dframe) > plotly_limit
+  })
   
   # ----------- Common plot controls ------------
   
@@ -873,8 +886,6 @@ shinyServer(function(input, output, session){
   #   large = large()
   # )
   
-  large <- reactive({
-    nrow(associations_list()$dframe) > plotly_limit
-  })
+  
   
 })

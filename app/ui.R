@@ -1,6 +1,7 @@
 shinyUI( fluidPage(
   
-  #includeCSS("www/styles.css"),
+  includeCSS("www/styles.css"),
+  shinyFeedback::useShinyFeedback(),
   
   # a JavaScript script for capturing the window size
   # found from https://stackoverflow.com/questions/36995142/get-the-size-of-the-window-in-shiny
