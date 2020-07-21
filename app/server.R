@@ -89,110 +89,7 @@ shinyServer(function(input, output, session){
     req(associations_list_query())
     req(valid_filters())
     
-    asso_list <- associations_list_query()
-    dframe <- as.data.frame(asso_list$dframe)
-    # List of all filters
-    # Combined to one logical in the end
-    keeps <- list()
-    
-    #Variable filters
-    # keep variable with at least one association that satisfies constraints
-    # P-value <
-    if(input$toggle_variable_filters){
-      if (input$var_p_limit != ""){
-        keeps$var_p <- varfilter_p(input$var_p_limit,
-                                  asso_list$varnum, input$var_p_limit_fdr)
-      }
-      
-      # Effect: min max
-      if ((input$var_eff_min != "" | input$var_eff_max != "")){
-        keeps$var_eff <- varfilter_eff(dframe, eff_min = input$var_eff_min,
-                                       eff_max = input$var_eff_max,
-                                       varnum = asso_list$varnum)
-      }
-    }
-    
-    # Association filters:
-    if(input$toggle_standard_filters){
-      # Variable
-      # Keywords, comma separated
-      if (input$var_labels != ""){
-        if(asso_list$varnum == 2){
-          cols <- c("Variable1", "Variable2")
-        }
-        else{
-          cols <- "Variable1"
-        }
-        keeps$variables <- filter_by_keyword(dframe, cols, input$var_labels)
-      }
-      # Description
-      # Keywords, comma separated
-      if (input$description_labels != ""){
-        if(asso_list$varnum == 2){
-          cols <- c("Description1", "Description2")
-        }
-        else{
-          cols <- "Description1"
-        }
-        keeps$description <- filter_by_keyword(dframe, cols, input$description_labels)
-      }
-      # P-value <
-      if(input$p_limit != ""){
-        if (input$p_limit_fdr){
-          keeps$assoc_p <- dframe$P_FDR < as.numeric(input$p_limit)
-        }
-        else{
-          keeps$assoc_p <- dframe$P < as.numeric(input$p_limit)
-        }
-      }
-      # Minimum N
-      if (input$n_limit != ""){
-        keeps$assoc_n <- dframe$N >= as.numeric(input$n_limit)
-      }
-      # Effect size: min max
-      if (input$eff_min != "" || input$eff_max != ""){
-        keeps$assoc_eff <- filter_min_max(dframe, "Effect",
-                                          input$eff_min, input$eff_max)
-      }
-    }
-    
-    # Filters for extra variables
-    if(input$toggle_extra_filters){
-      if(asso_list$varnum == 2){
-        col_limit <- 12
-      }
-      else{ # each varnum == 1
-        col_limit <- 10
-      }
-      if(ncol(dframe) > col_limit){
-        extra_cols <- colnames(dframe)[seq(col_limit + 1, ncol(dframe))]
-        for(col in extra_cols){
-          if(class(dframe[, col]) == "numeric" &&
-             !is.null(input[[paste0(col, "_min")]]) &&
-             !is.null(input[[paste0(col, "_max")]])){
-            keeps[[col]] <- filter_min_max(dframe,
-                                     col = col,
-                                     min = input[[paste0(col, "_min")]],
-                                     max = input[[paste0(col, "_max")]])
-          }
-          else if(class(dframe[, col]) == "character" &&
-                  !is.null(input[[paste0(col, "_label")]])){
-            keywords <- input[[paste0(col, "_label")]]
-            if(keywords != ""){
-              keeps[[col]] <- filter_by_keyword(dframe, col, keywords)
-            }
-          }
-        }
-      }
-      
-    }
-    
-    if (length(keeps)) {
-      keep_master <- reduce(keeps, `&`)
-      asso_list$dframe <- dframe[keep_master, ]
-    }
-    
-    return(asso_list)
+    filter_associations_dframe(asso_list = associations_list_query(), input)
   })
   
   # Contains information about the loaded data
@@ -202,31 +99,10 @@ shinyServer(function(input, output, session){
   
   # Table showing information of the loaded data
   output$ds_info_table <- renderTable({
-    if(is.null(associations_list())){
-      return(NULL)
-    }
-    string <- c("Number of datasets","Effect type(s)", "Number of associations:",
-                "Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
-             "P-value range:","Effect range:")
-    values <- c(nrow(associations_list()$datasets),
-                associations_list()$datasets$effect_type %>% unique() %>% paste(collapse=","),
-                nrow(associations_list()$dframe))
-    if (associations_list()$varnum == 2){
-      values <- c(values, c(associations_list()$dframe$Variable1, associations_list()$dframe$Variable2) %>%
-                    unique() %>% length())
-    }
-    else{
-      values <- c(values, associations_list()$dframe$Variable1 %>%
-                    unique() %>% length())
-    }
-    values <- c(values, associations_list()$dframe %>% filter(P < 0.05) %>% nrow(),
-                associations_list()$dframe %>% filter(P_FDR < 0.05) %>% nrow(),
-                paste((associations_list()$dframe$P) %>% min() %>% signif(digits = 3), "...",
-                      (associations_list()$dframe$P) %>% max() %>% signif(digits = 3)),
-                paste((associations_list()$dframe$Effect) %>% min() %>% signif(digits = 3), "...",
-                      (associations_list()$dframe$Effect) %>% max() %>% signif(digits = 3)))
-    data.frame(string,values)
-  },include.rownames=FALSE, include.colnames = FALSE)
+    req(associations_list())
+    
+    make_ds_info_table(asso_list = associations_list())
+    },include.rownames=FALSE, include.colnames = FALSE)
   
   # --------------- Main ------------------
   
