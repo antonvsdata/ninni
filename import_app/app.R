@@ -2,6 +2,7 @@ library(shiny)
 library(DBI)
 source("db_functions.R")
 db_info <- read_db_info("database_import.config")
+options(shiny.maxRequestSize = 300*1024^2)
 
 ui <- fluidPage(
   
