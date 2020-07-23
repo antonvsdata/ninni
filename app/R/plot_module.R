@@ -17,8 +17,8 @@ downloadUI <- function(id) {
                                   value = 8, min = 1),
                      numericInput(ns("pdf_height"), "PDF height in inches",
                                   value = 8, min = 1)),
-    downloadButton(ns("download_plotly"), "Download Interactive")
-    #uiOutput(ns("interactive_download"))
+    downloadButton(ns("download_plotly"), "Download Interactive"),
+    uiOutput(ns("plotly_warning"))
   )
   
   
@@ -52,14 +52,11 @@ downloadServer <- function(id, plotter, include_plotly = TRUE, large = reactive(
       }
     )
     
-    # output$interactive_download <- renderUI({
-    #   if (include_plotly && !large()) {
-    #     tagList(downloadButton(ns("download_plotly"), "Download Interactive"))
-    #   } else {
-    #     return(NULL)
-    #   }
-    # })
-    
+    output$plotly_warning <- renderUI({
+      if (large()) {
+        return(p("Interactive download disabled for large result sets"))
+      }
+    })
     
     output$download_plotly <- downloadHandler(
       filename = function(){
@@ -67,10 +64,13 @@ downloadServer <- function(id, plotter, include_plotly = TRUE, large = reactive(
       },
       
       content = function(file) {
-        p <- ggplotly(plotter(), tooltip = paste0("label", 1:9),
-                      width = width(), height = height())
-        saveWidget(as_widget(p), file, selfcontained = TRUE,
-                   title = "Plot by Ninni")
+        if (!large()) {
+          p <- ggplotly(plotter(), tooltip = paste0("label", 1:9),
+                        width = width(), height = height())
+          saveWidget(as_widget(p), file, selfcontained = TRUE,
+                     title = "Plot by Ninni")
+        }
+        
       }
     )
   })
