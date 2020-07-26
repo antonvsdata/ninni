@@ -17,31 +17,33 @@ ui <- fluidPage(
   # Upload zip files
   fileInput("zipfile", "Upload .zip file containing the actual results and variable descriptions as .csv files", accept = ".zip"),
   # action button to unzip the file
-  # actionButton("unzip", "Unzip Files"),
-  
-  # to display the list of unzipped files
-  tableOutput("unzipped_table"),
   
   tableOutput("data_files"),
   
-  fluidRow(
-    column(1,
-           actionButton("import", "Import data")),
-    
-    column(2,
-           checkboxInput("append", "Append to database",
-                         value = TRUE))
-  ),
+  actionButton("clear_files", "Clear all data files"),
+  br(),
+  br(),
+  checkboxInput("append", "Clear the database before importing data",
+                value = FALSE),
+
+  actionButton("import", "Import data"),
+  
+
   
   htmlOutput("import_errors")
   
 )
 
+file_sizes <- function(files, title) {
+  
+ colnames(size_df)[1] <- title
+ size_df
+}
+
 #### server code starts here
 server <- function(input, output, session) {
   
-  unzipped <- reactive({
-    print("event reacted")
+  unzipped <- observe({
     if (is.null(input$zipfile)) {
       return(NULL)
     }
@@ -54,25 +56,27 @@ server <- function(input, output, session) {
     dfs
   })
   
-  output$unzipped_table <- renderTable({
-    if (is.null(input$zipfile)) {
-      return(NULL)
-    }
-    data.frame("New files" = gsub("data/", "", unzipped()),
-               "Number of rows" = sapply(read(), nrow),
-               "Number of columns" = sapply(read(), ncol),
-               check.names = FALSE)
+  output$data_files <- renderTable({
+    input$clear_files
+    input$zipfile
     
+    files <- list.files("data/")
+    if (length(files)) {
+      sizes <- sapply(paste0("data/", files), function(f) {
+        round(file.info(f)$size/1000)
+      })
+      size_df <- data.frame("Existing files" = files,
+                            "Size (kB)" = as.integer(sizes),
+                            check.names = FALSE)
+    } else {
+      size_df <- data.frame("Existing files" = "No files found",
+                            check.names = FALSE)
+    }
+    size_df
   })
   
-  output$data_files <- renderTable({
-    files <- list.files("data/")
-    sizes <- sapply(files, function(f) {
-      round(file.info(paste0("data/", f))$size/1000)
-    })
-    files_df <- data.frame("Existing files" = files,
-                           "Size (kB)" = as.integer(sizes),
-                           check.names = FALSE)
+  observeEvent(input$clear_files, {
+    unlink("data/*", recursive = TRUE, force = TRUE)
   })
   
   datasets <- reactive({
