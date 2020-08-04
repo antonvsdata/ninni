@@ -120,14 +120,8 @@ server <- function(input, output, session) {
         user = db_info$db_user,
         password = db_info$db_password)
       
-      # Read .csv files
-      data_files <- datasets()$DATASET_FILENAME
-      assocs <- lapply(paste0("data/", data_files), read.csv, stringsAsFactors = FALSE)
-      names(assocs) <- gsub("data/", "", names(assocs))
-      
       tryCatch({
-        import_data(con, datasets = datasets(), metadata = metadata(),
-                    assocs = assocs, append = input$append,
+        imported <- import_data(con, datasets = datasets(), metadata = metadata(), append = input$append,
                     progress = progress)
       }, error = function(e) {
         print(e$message)
@@ -138,11 +132,20 @@ server <- function(input, output, session) {
       progress$close()
     })
     
-    showModal(modalDialog(
-      title = "Data imported",
-      paste("Data imported in", format_time(t["elapsed"])),
-      easyClose = TRUE
-    ))
+    if (imported) {
+      showModal(modalDialog(
+        title = "Data imported",
+        paste("Data imported in", format_time(t["elapsed"])),
+        easyClose = TRUE
+      ))
+    } else {
+      showModal(modalDialog(
+        title = "Data already in database",
+        "All datasets are already´in the database",
+        easyClose = TRUE
+      ))
+    }
+    
   })
   
 }

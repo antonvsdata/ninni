@@ -1,4 +1,12 @@
-# Read inforamtion for connecting to the database
+#' Read inforamtion for connecting to the database
+#' 
+#' Read a config file of specified format for information required to connect to the local PostgreSQL database
+#' such as hostname, port, username and password
+#' 
+#' @param config_file path to the configuration file
+#' 
+#' @return named list of configuration information
+#' 
 read_db_info <- function(config_file){
   df <- read.table(config_file)
   
@@ -7,7 +15,14 @@ read_db_info <- function(config_file){
   l
 }
 
-# Read SQL statements from a file
+#' Read SQL statements from a file
+#' 
+#' Reads an SQL statement from a text file, and parses it. Used by execute_sql_file
+#' 
+#' @param file path to the file
+#' 
+#' @return character containing the SQL statement
+#' 
 get_sql <- function(file){
   conn <- file(file, "r")
   sql_string <- ""
@@ -36,6 +51,12 @@ get_sql <- function(file){
   return(sql_string)
 }
 
+#' Execute SQL statement from file
+#' 
+#' Reads an SQL statement from a file and executes that statement
+#' 
+#' @param file path to the file
+#' @param con a database connection object as returned by dbConnect
 execute_sql_file <- function(file, con) {
   
   sql <- get_sql(file)
@@ -47,7 +68,14 @@ execute_sql_file <- function(file, con) {
   
 }
 
-
+#' Which files are missing
+#' 
+#' Given a filename, checks if the file exist and returns the file name if missing
+#' 
+#' @param x file name
+#' @param dir directory to search for the file
+#' 
+#' @return input file name if missing, NA if the file exists
 get_missing <- function(x, dir = "data/") {
   if (x == "" || is.na(x)) {
     return(NA_character_)
@@ -60,11 +88,25 @@ get_missing <- function(x, dir = "data/") {
   }
 }
 
+#' HTML error message
+#' 
+#' Creates an HTML paragraph for an error message
+#' 
+#' @param messages the error messages to show
+#' 
+#' @return an HTML element showing the error messages
 error_html <- function(messages) {
   HTML(paste('<p style = "color: red;">', messages, '</p>'))
 }
 
-# Check that all listed files exist
+#' Check that all listed files exist
+#' 
+#' Checks that files to be imported exist
+#' 
+#' @param datasets data frame of dataset information, including paths to the .csv files
+#' @param metadata data frame of dataset metadata information
+#' 
+#' @return NULL if everything is ok, an HTML element with error message if problems are detected
 check_files <- function(datasets, metadata) {
   
   # Check datasets
@@ -119,27 +161,52 @@ check_files <- function(datasets, metadata) {
   }
 }
 
-# Get last ID used in all the tables, or 0 if the table is empty
+#' Get last IDs in tables
+#' 
+#' Get last ID used in all the tables of the database, or 0 if the table is empty
+#' 
+#' @param con a database connection object as returned by dbConnect
+#' 
+#' @return a named vector of the ids
 get_last_ids <- function(con) {
   sapply(dbListTables(con), function(x){
     max(dbReadTable(con, x)$id, 0)
   })
 }
 
-# link metavariables to associations
-link_metavars <- function(assoc_tmp, metavariables_tmp, assoc, type) {
-  val_tmp <- expand.grid(association_id = assoc_tmp$id,
-                         metavariable_label = metavariables_tmp$label[metavariables_tmp$type == type],
-                         stringsAsFactors = FALSE)
+#' Link metavariables to associations
+#' 
+#' Creates a table linking metavariables and associations
+#' 
+#' @param assoc_ids a vector of association ids
+#' @param metavariables_tmp a data frame of information on the metavariables of the current dataset
+#' @param assoc a data frame of associations
+#' @param type either "num" or "str", for the type of metavariables to link
+#' 
+#' @return data frame with association id, metavariable id and value
+#'  
+link_metavars <- function(assoc_ids, metavariables_tmp, assoc, type) {
+  tmp_vars <- metavariables_tmp$label[metavariables_tmp$type == type]
+  
+  val_tmp <- expand.grid(metavariable_label = tmp_vars,
+                            association_id = assoc_ids,
+                            stringsAsFactors = FALSE)
+  
   val_tmp$metavariable_id <- metavariables_tmp[val_tmp$metavariable_label, "id"]
-  val_tmp$value <- sapply(seq_len(nrow(val_tmp)), function(j) {
-    assoc[as.character(val_tmp$association_id[j]), val_tmp$metavariable_label[j]]
-  })
+  val_tmp$value <- as.vector(t(assoc[, tmp_vars]))
+  
   val_tmp$metavariable_label <- NULL
   val_tmp
 }
 
-# Helper function for appending data to database
+#' Helper function for appending data to database
+#' 
+#' Appends a dataframe to a table in the database
+#' 
+#' @param con a database connection object as returned by dbConnect
+#' @param df the data frame to append
+#' @param tbl the name of the table in the database
+#' @param ids a named vector of last ids in the database
 append_table <- function(con, df, tbl, ids) {
   if (!"id" %in% colnames(df)) {
     df$id <- seq_len(nrow(df)) + ids[tbl]
@@ -148,13 +215,26 @@ append_table <- function(con, df, tbl, ids) {
   dbAppendTable(con, tbl, df)
 }
 
-# Import metadata
+#' Import metadata
+#' 
+#' Imports dataset metadata
+#' 
+#' @param con a database connection object as returned by dbConnect
+#' @param metadata data frame, the metadata to import
+#' @param ids a named vector of last ids in the database
 import_metadata <- function(con, metadata, ids) {
   metadata_old <- dbReadTable(con, "datasetmetadata")
   metadata <- metadata[!metadata$LABEL %in% metadata_old$label, ]
   append_table(con, df = metadata, tbl = "datasetmetadata", ids = ids)
 }
 
+#' Import dataset information
+#' 
+#' Imports core dataset information
+#' 
+#' @param con a database connection object as returned by dbConnect
+#' @param datasets data frame, the dataset info to import
+#' @param ids a named vector of last ids in the database
 import_ds2md <- function(con, datasets, ids) {
   # Read the whole metadata table
   metadata <- dbReadTable(con, "datasetmetadata")
@@ -169,7 +249,15 @@ import_ds2md <- function(con, datasets, ids) {
   append_table(con, ds2md, "datasettometadata", ids)
 }
 
-
+#' Update description of dummy variables
+#' 
+#' If variables are already in the database, but their description is
+#' equal to their label, they are "dummy variables". If a description is 
+#' given later, this updates the description in the database.
+#' 
+#' @param con a database connection object as returned by dbConnect
+#' @param variables data frame, new information on variables
+#' @param variables_old data frame, exisintg variables 
 update_dummy_vars <- function(con, variables, variables_old) {
   # Find variables with only a dummy description in the database
   dummy_vars <- variables_old[variables_old$label %in% variables$label, ]
@@ -186,7 +274,17 @@ update_dummy_vars <- function(con, variables, variables_old) {
   }
 }
 
-import_associations <- function(con, datasets, assocs, ids, progress) {
+#' Import associations
+#' 
+#' Imports associations to the database and links them to datasets,
+#' variables and metavariables. 
+#' 
+#' @param con a database connection object as returned by dbConnect
+#' @param datasets data frame, dataset information
+#' @param ids a named vector of last ids in the database
+#' @param progress a progress object for the UI
+#' 
+import_associations <- function(con, datasets, ids, progress) {
   report(progress, "Reading datasets into right format", value = 0.15)
   # Import associations
   variables_old <- variables_all <-  dbReadTable(con, "variables")
@@ -208,7 +306,7 @@ import_associations <- function(con, datasets, assocs, ids, progress) {
     }
     
     # Define usual columns and list of current variables
-    assoc <- assocs[[i]]
+    assoc <- read.csv(paste0("data/", datasets$dataset_filename[i]), stringsAsFactors = FALSE)
     varnum <- datasets$varnum[i]
     if (varnum == 1){
       normal_columns = c("VARIABLE1_LABEL", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_FDR")
@@ -277,8 +375,8 @@ import_associations <- function(con, datasets, assocs, ids, progress) {
         }
       })
       # Link associations to metavariables
-      numval <- rbind(numval, link_metavars(associations_tmp, metavariables_tmp, assoc, type = "num"))
-      strval <- rbind(strval, link_metavars(associations_tmp, metavariables_tmp, assoc, type = "str"))
+      numval <- rbind(numval, link_metavars(associations_tmp$id, metavariables_tmp, assoc, type = "num"))
+      strval <- rbind(strval, link_metavars(associations_tmp$id, metavariables_tmp, assoc, type = "str"))
     }
     
   }
@@ -293,24 +391,52 @@ import_associations <- function(con, datasets, assocs, ids, progress) {
   report(progress, "Importing data to database", value = 0.2)
   n <- length(dfs)
   steps <- seq(0.21, 0.95, length.out = n)
+  details <- c(paste("Importing", c("variables", "additional information", "associations")),
+               paste("Linking associations to", c("main variables",
+                                                  "additional numeric information",
+                                                  "additional text information")))
   for (i in seq_along(dfs)) {
-    report(progress, "Importing data to database", steps[i], detail = paste("Importing dataset", i, "/", n))
+    report(progress, "Importing data to database", steps[i], detail = details[i])
     append_table(con, dfs[[i]], names(dfs)[i], ids)
   }
   report(progress, "Importing data to database", 0.95, detail ="")
 }
 
+#' Report progress
+#' 
+#' Uses the shiny progress tool to report progress of importing data.
+#' 
+#' @param progress a progress object for the UI
+#' @param msg the message to show
+#' @param value a value for the progress bar, between 0 and 1
+#' @param detail the minor text to display 
 report <- function(progress, msg, value, detail = NULL) {
   if (!is.null(progress)) {
     progress$set(message = msg, detail = detail, value = value)
   }
 }
 
-import_data <- function(con, datasets, metadata, assocs, append, progress = NULL) {
+#' Import data
+#' 
+#' The main function for importing data, calls the other functions.
+#' 
+#' @param con a database connection object as returned by dbConnect
+#' @param datasets data frame, dataset information
+#' @param metadata data frame, the metadata to import
+#' @param clear logical, whether the database should be cleaned before importing this data.
+#' @param progress a progress object for the UI
+import_data <- function(con, datasets, metadata, append, progress = NULL) {
+  colnames(datasets) <- tolower(colnames(datasets))
   
-  if (append) {
+  if (!clear) {
     
     # Check if datasets exist in database, skip those
+    old_datasets <- dbReadTable(con, "datasets")
+    datasets <- datasets[!datasets$label %in% old_datasets$label, ]
+    
+    if (nrow(datasets) == 0) {
+      return(FALSE)
+    }
     
     ids <- get_last_ids(con)
   } else {
@@ -328,10 +454,9 @@ import_data <- function(con, datasets, metadata, assocs, append, progress = NULL
   import_metadata(con, metadata, ids)
   
   report(progress, "Importing dataset information", 0.08)
-  # Read associations
-  colnames(datasets) <- tolower(colnames(datasets))
+  
   # Record rowcount and ID for datasets
-  datasets$rowcount <- sapply(assocs, nrow)
+  datasets$rowcount <- 0
   datasets$id <- seq_len(nrow(datasets)) + ids["datasets"]
   # Import datasets
   dbAppendTable(con, "datasets", datasets[c("id", "label", "rowcount", "description", "varnum", "effect_type")])
@@ -341,11 +466,16 @@ import_data <- function(con, datasets, metadata, assocs, append, progress = NULL
   
   report(progress, "Importing main data", 0.1)
   # Import associations
-  import_associations(con, datasets, assocs, ids, progress)
+  import_associations(con, datasets, ids, progress)
   
+  return(TRUE)
 }
 
-# Time from seconds to a nice string
+#' Format ime from seconds to a nice string
+#' 
+#' @param t time in seconds
+#' 
+#' @return a string with days, hours, minutes and seconds
 format_time <- function(t){
   t <- round(t)
   paste0(t %/% (60*60*24), " d ",
