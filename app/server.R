@@ -289,7 +289,7 @@ shinyServer(function(input, output, session){
     }
   })
   
-  plotServer("lollipop", plotter = lolliplot, large = large)
+  plotServer("lollipop", plotter = lolliplot, large = reactive(FALSE))
   
   # --------- UpSet plot -----------
   
