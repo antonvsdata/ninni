@@ -27,7 +27,7 @@ downloadUI <- function(id, large) {
   out
 }
 
-downloadServer <- function(id, plotter, include_plotly = TRUE, large = reactive(FALSE),
+downloadServer <- function(id, plotter, large = reactive(FALSE),
                            width, height) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
@@ -91,7 +91,7 @@ plotUI <- function(id) {
 }
 
 
-plotServer <- function(id, plotter, large, include_plotly = TRUE,
+plotServer <- function(id, plotter, large,
                        msg = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
     ns <- NS(id)
@@ -108,7 +108,7 @@ plotServer <- function(id, plotter, large, include_plotly = TRUE,
         return(msg())
       }
       
-      if (include_plotly && !large()) {
+      if (!large()) {
         plotlyOutput(ns("plot_plotly"),
                      height = "100%")
       } else {
@@ -135,7 +135,7 @@ plotServer <- function(id, plotter, large, include_plotly = TRUE,
       }
     })
     
-    downloadServer(paste0(id, "_download"), plotter, include_plotly, large,
+    downloadServer(paste0(id, "_download"), plotter, large,
                    width, height)
     
   }

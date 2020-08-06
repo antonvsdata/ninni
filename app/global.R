@@ -10,6 +10,7 @@ library(plotly)
 library(UpSetR)
 library(purrr)
 library(shinyFeedback)
+library(ggridges)
 
 source("r/queries.R")
 

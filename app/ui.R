@@ -271,14 +271,30 @@ shinyUI( fluidPage(
                  checkboxInput("upset_empty", "Show empty intersections"),
                  plotUI("upset_plot")),
         
-        tabPanel("P-value histograms",
+        tabPanel("P-value histogram",
                  selectizeInput("phist_facet", "Facet by",
                                 choices = NULL,
                                 options = list(maxItems = 1,
                                                placeholder = 'Choose a column',
                                                onInitialize = I('function() { this.setValue(""); }'))),
-                 plotUI("p_histogram")
-      )
+                 plotUI("p_histogram")),
+        
+        tabPanel("Ridgeplot",
+                 selectizeInput("ridge_x", "x-axis",
+                                choices = NULL,
+                                options = list(maxItems = 1,
+                                               placeholder = 'Choose a column',
+                                               onInitialize = I('function() { this.setValue(""); }'))),
+                 checkboxInput("ridge_log2", "log2-transform x-axis"),
+                 selectizeInput("ridge_y", "y-axis (split by)",
+                                choices = NULL,
+                                options = list(maxItems = 1,
+                                               placeholder = 'Choose a column',
+                                               onInitialize = I('function() { this.setValue(""); }'))),
+                 sliderInput("ridge_scale", "Curve heigth", min = 0.5, max = 5, value = 1.5, step = 0.05),
+                 selectizeInput("ridge_style", "Style",
+                                choices = c("Black & White" = "bw", "Grey" = "grey", "Colourful" = "colours")),
+                 plotUI("ridge"))
     )
     
   )

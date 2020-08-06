@@ -154,8 +154,9 @@ shinyServer(function(input, output, session){
     nrow(associations_list()$dframe) > plotly_limit
   })
   
+  # Set columns of association data frame as choices in drop downs
   observeEvent(associations_list()$dframe, {
-    # Set columns as choices
+    
     selectize_inputs <- c("qq_coloring_column",
                           "lady_coloring_column",
                           "lady_x_column",
@@ -163,17 +164,25 @@ shinyServer(function(input, output, session){
                           "lollipop_coloring_column",
                           "upset_group",
                           "upset_column",
-                          "phist_facet")
+                          "phist_facet",
+                          "ridge_x",
+                          "ridge_y")
     for (sel_input in selectize_inputs) {
-      if (sel_input %in% c("lady_x_column", "lollipop_column", "upset_column")){
-        if (associations_list()$varnum == 1){
-          choices <- colnames(associations_list()$dframe)
-        } else {
-          choices <- c("Variables together", colnames(associations_list()$dframe))
-        }
+      # Only numerics
+      if (sel_input %in% "ridge_x") {
+        choices <- colnames(associations_list()$dframe)[sapply(associations_list()$dframe, is.numeric)]
+      }
+      # Only discrete
+      else if (sel_input %in% c("upset_group", "ridge_y", "lollipop_column", "upset_column")) {
+        choices <- colnames(associations_list()$dframe)[!sapply(associations_list()$dframe, is.numeric)]
       } else {
         choices = colnames(associations_list()$dframe)
       }
+      # Variables together allowed
+      if (sel_input %in% c("lady_x_column", "lollipop_column", "upset_column") &&
+          associations_list()$varnum == 2){
+          choices <- c("Variables together", choices)
+      } 
       updateSelectizeInput(session, sel_input,
                            choices = choices)
     }
@@ -307,7 +316,6 @@ shinyServer(function(input, output, session){
   
   plotServer("upset_plot", plotter = upplot,
              large = reactive(TRUE),
-             include_plotly = FALSE,
              msg = upset_msg)
   
   
@@ -318,7 +326,24 @@ shinyServer(function(input, output, session){
   })
   
   plotServer("p_histogram", plotter = phistplot,
-             large = large, include_plotly = FALSE)
-
+             large = reactive(TRUE))
+  
+  
+  # ------- Ridge plots --------------
+  
+  ridge <- reactive({
+    req(input$ridge_x)
+    req(input$ridge_y)
+    ridge_plot(associations_list()$dframe, input$ridge_x, input$ridge_y,
+               input$ridge_log2, input$ridge_scale, input$ridge_style)
+  })
+  
+  ridge_msg <- reactive({
+    if (!is.numeric(associations_list()$dframe[, input$ridge_x])) {
+      return(h5("variable on the"))
+    }
+  })
+  
+  plotServer("ridge", plotter = ridge, large = reactive(TRUE))
   
 })

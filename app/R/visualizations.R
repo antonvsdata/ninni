@@ -441,3 +441,38 @@ p_histogram <- function(dframe, facet = NULL) {
   }
   p
 }
+
+
+ridge_plot <- function(dframe, x, y, x_log2, scale, style) {
+  
+  params <- list(bw = list(size = 1.2, fill = NA),
+                 grey = list(color = NA, fill = "grey50", alpha = 0.5),
+                 colours = list(mapping = aes_string(color = y, fill = y), alpha = 0.5))
+  
+  p <- ggplot(dframe, aes_string(x, y)) +
+    do.call(geom_density_ridges, c(list(scale = scale), params[[style]])) +
+    theme_minimal()
+  
+  if (style == "colours") {
+    if (length(unique(dframe[, y])) <= 9){
+      p <- p +
+        scale_color_brewer(type = "qual", palette = "Set1") +
+        scale_fill_brewer(type = "qual", palette = "Set1")
+    } else if (length(unique(dframe[, y])) <= 12){
+      p <- p +
+        scale_color_brewer(type = "qual", palette = "Paired") +
+        scale_fill_brewer(type = "qual", palette = "Paired")
+    }
+    p <- p +
+      theme(legend.position = "none")
+  }
+  
+  if (x_log2) {
+    p <- p +
+      scale_x_continuous(trans = "log2")
+  }
+  p
+}
+
+
+
