@@ -1,5 +1,5 @@
 
-downloadUI <- function(id) {
+downloadUI <- function(id, large) {
   
   ns <- NS(id)
   
@@ -16,10 +16,12 @@ downloadUI <- function(id) {
                      numericInput(ns("pdf_width"), "PDF width in inches",
                                   value = 8, min = 1),
                      numericInput(ns("pdf_height"), "PDF height in inches",
-                                  value = 8, min = 1)),
-    downloadButton(ns("download_plotly"), "Download Interactive"),
-    uiOutput(ns("plotly_warning"))
+                                  value = 8, min = 1))
   )
+  if (!large()) {
+    out <- tagList(out,
+                   downloadButton(ns("download_plotly"), "Download Interactive"))
+  }
   
   
   out
@@ -38,7 +40,6 @@ downloadServer <- function(id, plotter, include_plotly = TRUE, large = reactive(
       },
       
       content = function(file) {
-        print("hello")
         p <- plotter()
         
         if (input$download_format == "png") {
@@ -52,12 +53,6 @@ downloadServer <- function(id, plotter, include_plotly = TRUE, large = reactive(
       }
     )
     
-    output$plotly_warning <- renderUI({
-      if (large()) {
-        return(p("Interactive download disabled for large result sets"))
-      }
-    })
-    
     output$download_plotly <- downloadHandler(
       filename = function(){
         paste0(file_name, "html")
@@ -69,6 +64,8 @@ downloadServer <- function(id, plotter, include_plotly = TRUE, large = reactive(
                         width = width(), height = height())
           saveWidget(as_widget(p), file, selfcontained = TRUE,
                      title = "Plot by Ninni")
+        } else {
+          stop("nope")
         }
         
       }
@@ -134,7 +131,7 @@ plotServer <- function(id, plotter, large, include_plotly = TRUE,
     
     output$download_buttons <- renderUI({
       if (is.null(msg())) {
-        downloadUI(ns(paste0(id, "_download")))
+        downloadUI(ns(paste0(id, "_download")), large)
       }
     })
     
