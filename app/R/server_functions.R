@@ -1,7 +1,7 @@
 
 make_ds_info_table <- function(asso_list) {
   string <- c("Number of datasets","Effect type(s)", "Number of associations:",
-              "Number of unique variables:","P-value < 0.05","P-value (FDR) < 0.05",
+              "Number of unique variables:","P-value < 0.05","P-value (adjusted) < 0.05",
               "P-value range:","Effect range:")
   values <- c(nrow(asso_list$datasets),
               asso_list$datasets$effect_type %>% unique() %>% paste(collapse=","),
@@ -15,7 +15,7 @@ make_ds_info_table <- function(asso_list) {
                   unique() %>% length())
   }
   values <- c(values, asso_list$dframe %>% filter(P < 0.05) %>% nrow(),
-              asso_list$dframe %>% filter(P_FDR < 0.05) %>% nrow(),
+              asso_list$dframe %>% filter(P_adj < 0.05) %>% nrow(),
               paste((asso_list$dframe$P) %>% min() %>% signif(digits = 3), "...",
                     (asso_list$dframe$P) %>% max() %>% signif(digits = 3)),
               paste((asso_list$dframe$Effect) %>% min() %>% signif(digits = 3), "...",
@@ -60,8 +60,8 @@ filter_associations_dframe <- function(asso_list, input) {
   # P-value <
   if(input$toggle_variable_filters){
     if (input$var_p_limit != ""){
-      keeps$var_p <- varfilter_p(input$var_p_limit,
-                                 asso_list$varnum, input$var_p_limit_fdr)
+      keeps$var_p <- varfilter_p(dframe, input$var_p_limit,
+                                 asso_list$varnum, input$var_p_limit_adj)
     }
     
     # Effect: min max
@@ -98,8 +98,8 @@ filter_associations_dframe <- function(asso_list, input) {
     }
     # P-value <
     if(input$p_limit != ""){
-      if (input$p_limit_fdr){
-        keeps$assoc_p <- dframe$P_FDR < as.numeric(input$p_limit)
+      if (input$p_limit_adj){
+        keeps$assoc_p <- dframe$P_adj < as.numeric(input$p_limit)
       }
       else{
         keeps$assoc_p <- dframe$P < as.numeric(input$p_limit)
@@ -246,9 +246,9 @@ varfilter_helper <- function(dframe, tmp_keep, varnum) {
 
 # Filter variables by p-value, keep all variables that
 # have at least one association meeting criterion
-varfilter_p <- function(dframe, p_limit, varnum, fdr = FALSE){
-  if (fdr){
-    p_keep <- dframe$P_FDR < as.numeric(p_limit)
+varfilter_p <- function(dframe, p_limit, varnum, p_adj = FALSE){
+  if (p_adj){
+    p_keep <- dframe$P_adj < as.numeric(p_limit)
   }
   else{
     p_keep <- dframe$P < as.numeric(p_limit)

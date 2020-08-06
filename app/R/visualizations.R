@@ -6,20 +6,20 @@
 #-------------------------------------------------------------------------------------------------------
 
 # Volcano plot with double filtering
-# Input:  data frame with effect, p_fdr and point labels
+# Input:  data frame with effect, p_adj and point labels
 #         string containing the effect type
 #         varnum
 #         double_filter: boolean telling if double filtering is enabled (TRUE or FALSE)
 #         df_p_lim: double filtering limit for p-value
-#         fdr: boolean, TRUE: p-limit is for P_FDR FALSE: p-limit is for P
+#         p_adj: boolean, TRUE: p-limit is for P_adj FALSE: p-limit is for P
 #         df_effect_lim: double filtering limit for effect
 plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter, df_p_lim = NULL,
-                         fdr = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE, shape){
+                         p_adj = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE, shape){
   
   if (log2_effect && any(dframe$Effect < 0)) {
     stop("Negative values can't be log-transformed")
   }
-  # The points with p_fdr = 0 would not be plotted,
+  # The points with p_adj = 0 would not be plotted,
   # so they are replaced with minimum observed p-value
   dframe$P <- zero_to_min(dframe$P)
   # Create column for double filtering coloring
@@ -32,8 +32,8 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
     }
     if (log2_effect) {
       
-      if (fdr){
-        dframe <- dframe %>% mutate(df = ifelse(P_FDR < df_p_lim & abs(log2(Effect)) > df_effect_lim,
+      if (p_adj){
+        dframe <- dframe %>% mutate(df = ifelse(P_adj < df_p_lim & abs(log2(Effect)) > df_effect_lim,
                                                 "Pass", "Fail"))
       }
       else{
@@ -41,8 +41,8 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
                                                 "Pass", "Fail"))
       }
     } else {
-      if (fdr){
-        dframe <- dframe %>% mutate(df = ifelse(P_FDR < df_p_lim & abs(Effect) > df_effect_lim,
+      if (p_adj){
+        dframe <- dframe %>% mutate(df = ifelse(P_adj < df_p_lim & abs(Effect) > df_effect_lim,
                                                 "Pass", "Fail"))
       }
       else{
@@ -72,11 +72,11 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
   
   if (varnum == 1){
     p <- ggplot(dframe, aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
-                            label4 = Effect, label5 = P, label6 = P_FDR, label7 = N))
+                            label4 = Effect, label5 = P, label6 = P_adj, label7 = N))
   }
   if(varnum == 2){
     p <- ggplot(dframe, aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
-                            label5 = Description2, label6 = Effect, label7 = P, label8 = P_FDR, label9 = N))
+                            label5 = Description2, label6 = Effect, label7 = P, label8 = P_adj, label9 = N))
   }
   if(shape){
     point_shape <- "Dataset"
@@ -188,13 +188,13 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
   if (varnum == 1){
     p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1",
                                    label3 = "Description1",
-                                   label4 = "Effect", label5 = "P", label6 = "P_FDR", label7 = "N"))
+                                   label4 = "Effect", label5 = "P", label6 = "P_adj", label7 = "N"))
   }
   if(varnum == 2){
     p <- p + geom_point(aes_string(color = color_col, label1 = "Dataset", label2 = "Variable1",
                                    label3 = "Variable2", label4 = "Description1",
                                    label5 = "Description2", label6 = "Effect", label7 = "P",
-                                   label8 = "P_FDR", label9 = "N"))
+                                   label8 = "P_adj", label9 = "N"))
   }
   p
 }
@@ -265,12 +265,12 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
   
   if (varnum == 1){
     p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
-                            label4 = Effect, label5 = P, label6 = P_FDR, label7 = N))
+                            label4 = Effect, label5 = P, label6 = P_adj, label7 = N))
   }
   if(varnum == 2){
     p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
                             label5 = Description2, label6 = Effect, label7 = P,
-                            label8 = P_FDR, label9 = N))
+                            label8 = P_adj, label9 = N))
   } 
 
   p

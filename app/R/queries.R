@@ -273,16 +273,16 @@ join_variables <- function(pool,assocs_tbl,ds_df){
 make_pretty <- function(dframe,varnums){
   dframe <- dframe %>%
     rename(Dataset = dataset_label, Effect_type = effect_type, Effect_CIL95 = effect_l95, Effect_CIU95 = effect_u95,
-           Effect = effect, N = n, P = p, P_FDR = p_fdr)
+           Effect = effect, N = n, P = p, P_adj = p_adj)
   
   # The default columns should be the first columns of the data frame in this order
   if(any(varnums == 2)){
     first.cols <- c("Dataset", "Effect_type", "Variable1", "Variable2", "Effect_CIL95", "Effect_CIU95", "Effect", "N",
-                    "P", "P_FDR", "Description1", "Description2")
+                    "P", "P_adj", "Description1", "Description2")
   }
   else{
     first.cols <- c("Dataset", "Effect_type", "Variable1", "Effect_CIL95", "Effect_CIU95", "Effect", "N",
-                    "P", "P_FDR", "Description1")
+                    "P", "P_adj", "Description1")
   }
   # The rest of the columns in alphabetical order
   last.cols <- sort(setdiff(colnames(dframe),first.cols))

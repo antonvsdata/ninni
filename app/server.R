@@ -228,7 +228,7 @@ shinyServer(function(input, output, session){
     plot_volcano(dframe = associations_list()$dframe, log2_effect = input$volcano_log2,
                  effect_type = associations_list()$effect_type,
                  varnum = associations_list()$varnum, double_filter = input$double_filter,
-                 df_p_lim = as.numeric(input$df_p_limit), fdr = input$df_p_limit_fdr,
+                 df_p_lim = as.numeric(input$df_p_limit), p_adj = input$df_p_limit_adj,
                  df_effect_lim = input$df_effect_limit, eff_limit_log2 = input$df_eff_limit_log2,
                  shape = input$volcano_shape)
   })

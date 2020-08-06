@@ -309,11 +309,11 @@ import_associations <- function(con, datasets, ids, progress) {
     assoc <- read.csv(paste0("data/", datasets$dataset_filename[i]), stringsAsFactors = FALSE)
     varnum <- datasets$varnum[i]
     if (varnum == 1){
-      normal_columns = c("VARIABLE1_LABEL", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_FDR")
+      normal_columns = c("VARIABLE1_LABEL", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_ADJ")
       # Variables to import
       var_labels <- unique(assoc$VARIABLE1_LABEL)
     } else {
-      normal_columns = c("VARIABLE1_LABEL", "VARIABLE2_LABEL", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_FDR")
+      normal_columns = c("VARIABLE1_LABEL", "VARIABLE2_LABEL", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_ADJ")
       # Variables to import
       var_labels <- unique(c(assoc$VARIABLE1_LABEL, assoc$VARIABLE2_LABEL))
     }
@@ -339,7 +339,7 @@ import_associations <- function(con, datasets, ids, progress) {
     associations_tmp$id <- seq_len(nrow(associations_tmp)) + ids["associations"]
     ids["associations"] <- ids["associations"] + nrow(associations_tmp)
     rownames(assoc) <- associations_tmp$id
-    associations <- rbind(associations, associations_tmp[c("id", "Dataset_ID", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_FDR")])
+    associations <- rbind(associations, associations_tmp[c("id", "Dataset_ID", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_ADJ")])
     # Link associations to variables
     assoc2var_tmp <- data.frame(association_id = associations_tmp$id,
                                 variable_id = variables_tmp[associations_tmp$VARIABLE1_LABEL, "id"])
@@ -367,7 +367,7 @@ import_associations <- function(con, datasets, ids, progress) {
       rownames(metavariables_tmp) <- metavariables_tmp$label
       # Determine types of metavariables in this dataset
       # NOTE: same metavariable can have different types of values in different datasets
-      metavariables_tmp$type <- sapply(metavar_labels, function(x) {
+      metavariables_tmp$type <- sapply(metavariables_tmp$label, function(x) {
         if (is.numeric(assoc[, x])) {
           "num"
         } else {

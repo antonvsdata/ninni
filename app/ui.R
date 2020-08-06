@@ -46,9 +46,9 @@ shinyUI( fluidPage(
                          column(6,
                                 textInput("p_limit", label = "P-value <")),
                          column(4,
-                                radioButtons("p_limit_fdr", label = NULL,
+                                radioButtons("p_limit_adj", label = NULL,
                                              choices = c("Unadjusted" = FALSE,
-                                                         "FDR" = TRUE),
+                                                         "Adjusted" = TRUE),
                                              selected = FALSE))),
                        fluidRow(
                          column(7,
@@ -80,9 +80,9 @@ shinyUI( fluidPage(
                          column(6,
                                 textInput("var_p_limit", label = "P-value <")),
                          column(4,
-                                radioButtons("var_p_limit_fdr", label = NULL,
+                                radioButtons("var_p_limit_adj", label = NULL,
                                              choices = c("Unadjusted" = FALSE,
-                                                         "FDR" = TRUE),
+                                                         "Adjusted" = TRUE),
                                              selected = FALSE))
                          
                        ),
@@ -151,7 +151,7 @@ shinyUI( fluidPage(
                               label = "Midpoint of diverging scale", value = 0),
                  # radioButtons("heatmap_p",
                  #              "Include p-values?",
-                 #              choices = c("No" = "", "raw p-values" = "P", "FDR adjusted p-values" = "P_FDR")),
+                 #              choices = c("No" = "", "raw p-values" = "P", "Adjusted p-values" = "P_adj")),
                  # numericInput("heatmap_p_limit",
                  #              "Ignore p-values above",
                  #              value = 0.1, min = 0, max = 1, step = 0.05),
@@ -176,10 +176,10 @@ shinyUI( fluidPage(
                                            textInput("df_p_limit",
                                                      label = "P-value <",
                                                      value = "0.05")),
-                                    column(5, # Filter by unadjusted or FDR adjusted p-value
-                                           radioButtons("df_p_limit_fdr",label = NULL,
+                                    column(5, # Filter by unadjusted or adjusted p-value
+                                           radioButtons("df_p_limit_adj",label = NULL,
                                                         choices = c("Unadjusted" = FALSE,
-                                                                    "FDR" = TRUE),
+                                                                    "Adjusted" = TRUE),
                                                         selected = FALSE,
                                                         inline = TRUE))
                                     

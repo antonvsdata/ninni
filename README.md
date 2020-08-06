@@ -22,22 +22,24 @@ Currently, Ninni provides the following visualizations:
 
 Ninni is powered by [Shiny](https://shiny.rstudio.com).
 
-*Ninni is licensed under the terms of the MIT license*
+_Ninni is licensed under the terms of the MIT license_
 
 ## Installation and set up
 
-#### 1.  Download git repo
+#### 1. Download git repo
+
 ```
 git init
 git remote add origin https://github.com/antonmattsson/ninni
 git pull origin master
 ```
 
-#### 2.  Install required software
+#### 2. Install required software
 
 ##### PostgreSQL
+
 To set up Ninni's database you need to install PostgreSQL (we are using version 9.2.18 for Red Hat family Linux).
-   
+
 ##### Python
 
 The import script to Ninni's database was written in Python 3.5.3 and requires the psycopg2 library (v2.7.1) to connect to a postgreSQL database.
@@ -50,7 +52,6 @@ Once you have conda installed, you can install the ninni environment using src/n
 
 The correct version of Python and the psycopg2 library will be installed. The conda environment can also be used to run the script without having to worry about compatibility issues (see later).
 
-
 ##### R
 
 The Shiny web app uses R 3.3.3. You can install all the required R packages with `src/install.packages.R` script.
@@ -59,7 +60,6 @@ Unfortunately it is not possible to install R 3.3.3 nor these packages through c
 ###### Shiny Server
 
 To be able to host a Shiny application, you need to install Shiny Server (or Shiny Server Pro).
-
 
 #### 3. Set up the database
 
@@ -89,21 +89,21 @@ EFFECT_L95: lower end of 95% confidence interval
 EFFECT_U95: upper end of 95% confidence interval  
 N: sample size  
 P: p-value  
-P_FDR: adjusted p-value  
+P_ADJ: adjusted p-value
 
 Plus any number of additional columns
 
 Example: `study1.csv`
 
-VARIABLE1_LABEL,VARIABLE2_LABEL,EFFECT,EFFECT_L95,EFFECT_U95,N,P,P_FDR,CLASS  
+VARIABLE1_LABEL,VARIABLE2_LABEL,EFFECT,EFFECT_L95,EFFECT_U95,N,P,P_ADJ,CLASS  
 ABCD,TP53,8,5,10,100,0.01,0.2,A
 
-*NOTE: Any additional columns will be imported as numeric values if they look like numeric values*
+_NOTE: Any additional columns will be imported as numeric values if they look like numeric values in R_
 
 ##### Variable files
 
 You can add a .csv file describing the variables.
-If this file is not specified for the dataset, variable description is set to be the same as the variable label. 
+If this file is not specified for the dataset, variable description is set to be the same as the variable label.
 The file should have the following columns:
 
 LABEL: The variable label, same as in the previous csv file
@@ -127,14 +127,14 @@ VARNUM: number of variables per association in the dataset (1 or 2)
 EFFECT_TYPE: The effect type in the dataset: "OR" for odds-ratio, "FC" for fold-change or "CORR" for correlation  
 METADATA_LABELS: possible metadata labels for the dataset, separated by ';'
 
-*NOTE: it is recommended to use relative path from src folder as filenames, since the import script will most likely be run from the src folder*
+_NOTE: it is recommended to use relative path from src folder as filenames, since the import script will most likely be run from the src folder_
 
 Example: `datasets.csv`
 
-DATASET_FILENAME,VARIABLES_FILENAME	LABEL,DESCRIPTION,VARNUM,EFFECT_TYPE,METADATA_LABELS
+DATASET_FILENAME,VARIABLES_FILENAME LABEL,DESCRIPTION,VARNUM,EFFECT_TYPE,METADATA_LABELS
 ../data/study1_results.csv,../data/study1_variables.csv,DRUG_STUDY1,Drug interaction study using mortality as outcome,2,OR,DRUG_INTERACTION;MALES;T2D
 
-*NOTE: there is only one line of data in the above file*
+_NOTE: there is only one line of data in the above file_
 
 ##### Dataset metadata
 
@@ -152,41 +152,16 @@ T2D,Type 2 Diabetes
 
 ##### Importing data
 
-When all the files are in the right format, you can import the datasets using `import_data.py` script found in the `/src` directory.
-
-The script has 4 command line parameters:
-
-`-dsf --dataset_file`:&nbsp; dataset file (see section 3)  
-`-mdf --meta_data_file`:&nbsp; metadata file (see section 4)  
-`-a --append`:&nbsp; Add dataset to the databse instead of clearing the database before import  
-`-ml --maxlines`:&nbsp; Maximum number of lines imported per dataset (mainly for testing, defaults to unlimited)
-
-**!! NOTE !!** By default, the database schema is dropped i.e. all the data in the database is deleted prior to each import.
-If you wish to append datasets to the database without deleting existing data, you can use -a or --append flag.
--a will append any _**new**_ datasets to the database and fail if there already exists a dataset with the same label. Also note that the check is based purely on the dataset label, so be careful not to import the same data under different labels.
-
-Example data provided in the `example_data` folder can be used to test the import script.
-
-- The datasets are stored as .csv files
-- The .csv files are listed in datasets.csv file
-- The example_data folder also contains the metadata.csv file
-
-Running the following command from the `src` folder imports the datasets into Ninni's database:  
-`$ python import_data.py -dsf ../example_data/datasets.csv -mdf ../example_data/metadata.csv`
-
-*NOTE: you need to have the proper version of python and psycopg2 library installed*
-
-If you are using conda and have the conda environment installed, you can use the `import_example_data.sh` bash script located in the `src` folder for facilitated import.  
-The bash script activates the conda environment, imports the data and then deactivates the conda environment, making sure that everything runs smoothly.
+When all the files are in the right format, you can import the datasets using a GUI made in Shiny.
+This complementary app is found in the `import_app` folder and can be started with the command:
+`shiny::runApp("path/to/ninni/import_app")`
 
 #### 5. Shiny app
 
 Once you have imported data into your database and added connection information you can run a local version
 of the Shiny application from R console with the command:  
-`shiny::runApp("path/to/ninni/www")`
+`shiny::runApp("path/to/ninni/app")`
 
-*NOTE Ninni currently displays warnings related to plotly widget IDs and ggplot aesthetics. These warnings can be ignored*
+_NOTE Ninni currently displays warnings related to plotly widget IDs and ggplot aesthetics. These warnings can be ignored_
 
 If you want to deploy the Shiny app publicly to the web use Shiny Server. Instructions are available online.
-
-

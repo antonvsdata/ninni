@@ -152,7 +152,7 @@ plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequen
   ggp <- ggplot(data, aes_string(x = "DS_Variable1" , y = "DS_Variable2", fill = effect_name,
                           label1 = "Dataset", label2 = "Variable1", label3 = "Variable2",
                           label4 = "Description1", label5 = "Description2",
-                          label6 = "Effect", label7 = "P", label8 = "P_FDR", label9 = "N")) +
+                          label6 = "Effect", label7 = "P", label8 = "P_adj", label9 = "N")) +
     geom_tile() +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),
@@ -187,8 +187,8 @@ plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequen
 hclust_effects <- function(data, x, y, effect, clust_method, dist_method) {
 
   # Convert to wide format matrix for clustering
-  data_wide <- data %>%
-    dplyr::select(all_of(c(x, y, effect))) %>%
+  
+  data_wide <- data[, c(x, y, effect)] %>%
     tidyr::spread(y, effect) %>%
     dplyr::filter(!is.na(x)) %>%
     tibble::column_to_rownames(x) %>%
@@ -213,7 +213,7 @@ to_lowertri <- function(data, x, y, effect, clustering, clust_method, dist_metho
 
 
   # Rename columns for simplicity
-  data <- data %>% dplyr::rename("x" = x, "y" = y, "effect" = effect)
+  data <- data %>% dplyr::rename("x" = all_of(x), "y" = all_of(y), "effect" = all_of(effect))
 
   dat <- data[c("x", "y", "effect")]
   dat$x <- as.character(dat$x)
