@@ -425,7 +425,7 @@ report <- function(progress, msg, value, detail = NULL) {
 #' @param metadata data frame, the metadata to import
 #' @param clear logical, whether the database should be cleaned before importing this data.
 #' @param progress a progress object for the UI
-import_data <- function(con, datasets, metadata, append, progress = NULL) {
+import_data <- function(con, datasets, metadata, clear, progress = NULL) {
   colnames(datasets) <- tolower(colnames(datasets))
   
   if (!clear) {

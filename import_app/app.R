@@ -23,7 +23,7 @@ ui <- fluidPage(
   actionButton("clear_files", "Clear all data files"),
   br(),
   br(),
-  checkboxInput("append", "Clear the database before importing data",
+  checkboxInput("clear", "Clear the database before importing data",
                 value = FALSE),
 
   actionButton("import", "Import data"),
@@ -121,7 +121,7 @@ server <- function(input, output, session) {
         password = db_info$db_password)
       
       tryCatch({
-        imported <- import_data(con, datasets = datasets(), metadata = metadata(), append = input$append,
+        imported <- import_data(con, datasets = datasets(), metadata = metadata(), clear = input$clear,
                     progress = progress)
       }, error = function(e) {
         print(e$message)
