@@ -92,7 +92,9 @@ discretize <- function(x, breaks, color_scale = "Sequential", midpoint = 0) {
 #'                discretize_effect = TRUE, breaks = 7, lower_tri = TRUE)
 #'
 #' @export
-plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequential",
+plot_effect_heatmap <- function(data, log2_effect = FALSE,
+                                p = "P", p_limit = 0.1, point_size_range = c(1, 4),
+                                color_scale = "Sequential",
                                 midpoint = 0, discretize_effect = FALSE, breaks = 5,
                                 clustering = TRUE, dist_method = "euclidean", clust_method = "ward.D2",
                                 symmetrical = FALSE, lower_tri = FALSE) {
@@ -160,7 +162,6 @@ plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequen
           axis.text.x = element_text(angle = 90)) +
     labs(x = "", y = "", fill = legend_label) +
     coord_fixed() +
-    #theme(aspect.ratio=1) +
     fill_scale
 
   x_labels <- strip_ds(levels(data$DS_Variable1), data$Dataset)
@@ -170,6 +171,15 @@ plot_effect_heatmap <- function(data, log2_effect = FALSE, color_scale = "Sequen
   ggp <- ggp +
     scale_x_discrete(drop = FALSE, labels = x_labels) +
     scale_y_discrete(drop = FALSE, labels = y_labels)
+  
+  if (p != "") {
+    small_p <- data[data[,p] < p_limit, ]
+    small_p[p] <- -log10(small_p[, p])
+    ggp <- ggp +
+      geom_point(aes_string(size = p), data = small_p,
+                 colour = 'grey10', fill = 'grey30', alpha = 0.3, shape = 21) +
+      scale_size(name = '-log10(p-value)', range = point_size_range)
+  }
   
   
   vars1 <- levels(data$DS_Variable1)

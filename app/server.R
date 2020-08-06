@@ -203,6 +203,8 @@ shinyServer(function(input, output, session){
     req(associations_list()$varnum != 1)
     
     plot_effect_heatmap(associations_list()$dframe, log2_effect = input$heatmap_log2,
+                        p = input$heatmap_p, p_limit = input$heatmap_p_limit,
+                        point_size_range = input$heatmap_point_range,
                         color_scale = input$heatmap_color_scale, midpoint = input$heatmap_midpoint,
                         discretize_effect = input$heatmap_discrete, breaks = input$heatmap_breaks,
                         clustering = input$clustering, symmetrical = input$symmetrical,
