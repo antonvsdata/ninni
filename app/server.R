@@ -280,13 +280,7 @@ shinyServer(function(input, output, session){
   # ----------- Lollipop plot --------------
   
   lolliplot <- reactive({
-    if(input$lollipop_coloring && !is.null(input$lollipop_coloring_column) && input$lollipop_coloring_column != ""){
-      lollipop_plot(associations_list()$dframe, input$lollipop_column, input$lollipop_n,
-                          input$lollipop_coloring_column,input$lollipop_coloring_type)
-    }
-    else{
-      lollipop_plot(associations_list()$dframe, input$lollipop_column, input$lollipop_n)
-    }
+    lollipop_plot(associations_list()$dframe, input$lollipop_column, input$lollipop_n)
   })
   
   plotServer("lollipop", plotter = lolliplot, large = reactive(FALSE))
@@ -310,7 +304,7 @@ shinyServer(function(input, output, session){
   })
   
   plotServer("upset_plot", plotter = upplot,
-             large = large,
+             large = reactive(TRUE),
              include_plotly = FALSE,
              msg = upset_msg)
   

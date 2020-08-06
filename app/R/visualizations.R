@@ -5,14 +5,23 @@
 # the above causes new versions of ggplot2 to throw warnings, which can be ignored
 #-------------------------------------------------------------------------------------------------------
 
-# Volcano plot with double filtering
-# Input:  data frame with effect, p_adj and point labels
-#         string containing the effect type
-#         varnum
-#         double_filter: boolean telling if double filtering is enabled (TRUE or FALSE)
-#         df_p_lim: double filtering limit for p-value
-#         p_adj: boolean, TRUE: p-limit is for P_adj FALSE: p-limit is for P
-#         df_effect_lim: double filtering limit for effect
+#' Volcano plot with double filtering
+#' 
+#' Plot a volcano plot with optional double filtering, i.e. setting a limit to both p-value and effect
+#' size and highlighting points that satisfy the criteria.
+#' 
+#' @param dframe association data frame
+#' @param log2_effect logical, should the effect size be plotted on a log2 axis?
+#' @param effect_type character, the effect type (used as x-axis label)
+#' @param varnum numeric, number of variables in the dataset
+#' @param double_filter logical, whether to apply filters on p-value and effect size
+#' @param df_p_lim numeric, limit for p-value in double filtering
+#' @param p_adj logical, should p-value limit be applied on adjusted p-values instead of raw p-values
+#' @param df_effectlim numeric, limit for effect in double filtering
+#' @param eff_limit_log2 logical, is the effect limit given in the log2 space?
+#' @param shape logical, should the points be shaped by dataset?
+#' 
+#' @return ggplot object
 plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter, df_p_lim = NULL,
                          p_adj = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE, shape){
   
@@ -100,6 +109,21 @@ zero_to_min <- function(x) {
   ifelse(x == 0, min(x[x != 0], na.rm = TRUE), x)
 }
 
+#' Q-Q plot
+#' 
+#' Plot a Q-Q plot of -log10 p-values or normal Q-Q plot of effect sizes with confidence intervals
+#' 
+#' @param dframe association data frame
+#' @param variable either "P" or "Effect", Q-Q plot of p-values of effect sizes
+#' @param log2_effect logical, should the effect size be log2 transformed
+#' @param effect_type character, the effect type (used as x-axis label)
+#' @param varnum numeric, number of variables in the dataset
+#' @param ci confidence level for the confidence intervals
+#' @param color_col column for point color
+#' @param color_type "Continuous" or "Discrete". If Discrete, color column is converted to factor
+#' for a discrete color scale
+#' 
+#' @return ggplot object
 gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
                     color_col = NULL, color_type = NULL) {
   
@@ -199,10 +223,21 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
   p
 }
 
-
-# Lady Manhattan plot
-# The y-axis of a traditional Manhattan plot, -log10(p) is multiplied by the sign of the effect
-# The plot can be colored by chosen column
+#' Lady Manhattan plot
+#' 
+#' The y-axis of a traditional Manhattan plot, -log10(p) is multiplied by the sign of the effect
+#' The plot can be colored by chosen column.
+#' 
+#' @param dframe association data frame
+#' @param x_axis the column name for x-axis of the plot
+#' @param log2_effect logical, should the effect size be log2 transformed
+#' @param effect_type character, the effect type (used as x-axis label)
+#' @param varnum numeric, number of variables in the dataset
+#' @param color_col column for point color
+#' @param color_type "Continuous" or "Discrete". If Discrete, color column is converted to factor
+#' for a discrete color scale
+#' 
+#' @return ggplot object
 lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum,
                                 color_col = NULL, color_type = NULL){
   
@@ -257,10 +292,14 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
   }
   
   # Use color scale from colorbrewer when possible
-  if(!is.null(color_col) && class(dframe[, color_col]) %in% c("character", "factor") &&
-     length(unique(dframe[, color_col])) <= 12){
-    p <- p +
-      scale_color_brewer(type = "qual", palette = "Paired")
+  if(!is.null(color_col) && class(dframe[, color_col]) %in% c("character", "factor")) {
+    if (length(unique(dframe[, color_col])) <= 9){
+      p <- p +
+        scale_color_brewer(type = "qual", palette = "Set1")
+    } else if (length(unique(dframe[, color_col])) <= 12){
+      p <- p +
+        scale_color_brewer(type = "qual", palette = "Paired")
+    }
   }
   
   if (varnum == 1){
@@ -276,9 +315,18 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
   p
 }
 
-
-lollipop_plot <- function(dframe, main_col, n_top,
-                          color_col = NULL, color_type = NULL) {
+#' Lollipop plot
+#' 
+#' A lollipop plot of most common observations in chosen column(s). E.g. for variables
+#' finds the most common variables.
+#' 
+#' @param dframe association data frame
+#' @param x_axis the column name for x-axis of the plot,
+#' or "Variables together" to combine Variable1 and Variable2
+#' @param n_top the number of top observations to show
+#' 
+#' @return ggplot object
+lollipop_plot <- function(dframe, main_col, n_top) {
   
   if (main_col == "Variables together") {
     c1 <- dframe %>%
@@ -311,10 +359,24 @@ lollipop_plot <- function(dframe, main_col, n_top,
     theme_minimal()
   
   p
-  
 }
 
-
+#' Lollipop plot
+#' 
+#' A lollipop plot of most common observations in chosen column(s). E.g. for variables
+#' finds the most common variables.
+#' 
+#' @param dframe association data frame
+#' @param group column name giving the sets
+#' @param main_col the column name for observations,
+#' or "Variables together" to combine Variable1 and Variable2
+#' @param n_top the number of top intersections/sets to show
+#' @param order_by either "Degree & Frequeny" or "Frequency". Former first shows
+#' individual sets, then 2-way intersections etc. Latter only sorts by frequency
+#' @param text_scale numeric, the scale for al lthe text in the plot
+#' @param show_empty logical, whether to show empty sets & intersections
+#' 
+#' @return ggplot object
 upset_plot <- function(dframe, group, main_col, n_top,
                        order_by, text_scale, show_empty) {
   
@@ -351,7 +413,14 @@ upset_plot <- function(dframe, group, main_col, n_top,
         empty.intersections = show_empty)
 }
 
-
+#' P-value histograms
+#' 
+#' Draws p-value histograms
+#' 
+#' @param dframe association data frame
+#' @param facet column name to facet by, e.g. dataset
+#' 
+#' @return ggplot object
 p_histogram <- function(dframe, facet = NULL) {
   # Custom breaks for the x-axis
   breaks <- seq(0, 1, by = 0.05)
