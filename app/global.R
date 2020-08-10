@@ -11,9 +11,11 @@ library(UpSetR)
 library(purrr)
 library(shinyFeedback)
 library(ggridges)
+library(igraph)
+library(ggraph)
+library(ggrepel)
 
 source("r/queries.R")
-
 
 db_info <- read_db_info("www/database_www.config")
 

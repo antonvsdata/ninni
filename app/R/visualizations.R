@@ -204,9 +204,9 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
   
   
   if(!is.null(color_col) && class(dframe[, color_col]) %in% c("character", "factor") &&
-     length(unique(dframe[, color_col])) <= 12){
+     length(unique(dframe[, color_col])) <= 9){
     p <- p +
-      scale_color_brewer(type = "qual", palette = "Paired")
+      scale_color_brewer(type = "qual", palette = "Set1")
   }
   
   if (varnum == 1){
@@ -267,6 +267,8 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
     x_label <- x_axis
   }
   
+  color_col <- empty_to_null(color_col)
+  
   # Color is discretised by changing the coloring column to factor
   if(!is.null(color_col)){
     if(color_type == "Discrete"){
@@ -296,9 +298,6 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
     if (length(unique(dframe[, color_col])) <= 9){
       p <- p +
         scale_color_brewer(type = "qual", palette = "Set1")
-    } else if (length(unique(dframe[, color_col])) <= 12){
-      p <- p +
-        scale_color_brewer(type = "qual", palette = "Paired")
     }
   }
   
@@ -436,7 +435,8 @@ p_histogram <- function(dframe, facet = NULL) {
     theme(plot.title = element_text(face="bold", hjust=0.5)) +
     geom_hline(yintercept = h_line, color="red", linetype = "dashed", size = 1)
   
-  if (!is.null(facet) && facet != "") {
+  facet <- empty_to_null(facet)
+  if (!is.null(facet)) {
     p <- p + facet_wrap(facet, ncol = 1)
   }
   p
@@ -458,10 +458,6 @@ ridge_plot <- function(dframe, x, y, x_log2, scale, style) {
       p <- p +
         scale_color_brewer(type = "qual", palette = "Set1") +
         scale_fill_brewer(type = "qual", palette = "Set1")
-    } else if (length(unique(dframe[, y])) <= 12){
-      p <- p +
-        scale_color_brewer(type = "qual", palette = "Paired") +
-        scale_fill_brewer(type = "qual", palette = "Paired")
     }
     p <- p +
       theme(legend.position = "none")
@@ -475,26 +471,95 @@ ridge_plot <- function(dframe, x, y, x_log2, scale, style) {
 }
 
 
-network_plot <- function(dframe, type, layout = "kk", edge_color = NULL, edge_width = NULL) {
+empty_to_null <- function(x) {
+  if (x %in% c("", "none")) {
+    NULL
+  } else {
+    x
+  }
+}
+
+network_plot <- function(dframe, type, layout, edge_color, edge_width, edge_weight,
+                         edge_width_range,
+                         edge_color_log2, edge_width_log2, edge_weight_log2,
+                         edge_color_scale, edge_color_midpoint) {
+  
+  
+  edge_color <- empty_to_null(edge_color)
+  edge_width <- empty_to_null(edge_width)
+  edge_weight <- empty_to_null(edge_weight)
+  
+  dframe$weight <- dframe[, edge_weight]
+  dframe$width <- dframe[, edge_width]
+  
+  if (edge_width_log2) {
+    dframe$width <- log2(dframe$width)
+  }
+  if (edge_weight_log2) {
+    dframe$weight <- log2(dframe$weight)
+    dframe[is.na(dframe$weight), "weight"] <- 0
+  }
+  
   
   if (type == "var_to_var") {
     graph_data <- dframe[!is.na(dframe$Variable2), c("Variable1", "Variable2", edge_color, edge_width)]
+    
+    g <- graph_from_data_frame(graph_data)
   } else if (type == "var_to_outcome") {
     graph_data <- dframe[, c("Variable1", "Dataset", edge_color, edge_width) ]
     if ("Variable2" %in% colnames(dframe)) {
       graph_data2 <- dframe[!is.na(dframe$Variable2), c("Variable2", "Dataset", edge_color, edge_width)]
       colnames(graph_data2)[1] <- "Variable1" 
-      graph_data <- rbing(graph_data,
+      graph_data <- rbind(graph_data,
                           graph_data2)
     }
+    
+    vert <- data.frame(var = union(graph_data$Variable1, graph_data$Dataset))
+    vert$outcome <- vert$var %in% dframe$Dataset
+    
+    g <- graph_from_data_frame(graph_data, vertices = vert)
   }
   
-  g <- graph_from_data_frame(graph_data)
+  set.seed(38)
+  p <- ggraph(g, layout = layout) +
+    theme_graph() +
+    scale_edge_width(range = edge_width_range)
   
-  ggraph(g, layout = layout) +
-    geom_edge_link0(aes(edge_color = edge_color, edge_width = edge_width)) +
-    geom_node_point() +
-    geom_text_repel(aes(x=x, y=y, label = name)) +
-    theme_void()
+  # Get default fill scales
+  
+    
+  if (!is.null(edge_color)) {
+    p <- p +
+      geom_edge_link0(aes_string(edge_color = edge_color, edge_width = edge_width))
+    if (edge_color_scale == "Discrete") {
+      p <- p + 
+        scale_edge_color_brewer(palette = "Set1")
+    } else if (edge_color_scale == "Continuous") {
+      p <- p +
+        scale_edge_color_viridis(trans = ifelse(edge_color_log2, "log2", "identity"))
+    } else if (edge_color_scale == "Diverging") {
+      p <- p + 
+        scale_edge_color_gradient2(low = "#0571B0", mid = "#f0f0f0", high = "#CA0020",
+                                   midpoint = edge_color_midpoint,
+                                   trans = ifelse(edge_color_log2, "log2", "identity"))
+    }
+  } else {
+    
+    p <- p +
+      geom_edge_link0(aes_string(edge_width = edge_width), edge_color = "grey70")
+  }
+  
+  if (type == "var_to_var") {
+    p <- p + 
+      geom_node_point() +
+      geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"))
+  } else if (type == "var_to_outcome") {
+    p <- p + 
+      geom_node_point(aes(size = outcome, color = outcome)) +
+      scale_size_discrete(range = c(2, 32), guide = NULL) +
+      scale_color_manual(values = c("black", "yellow"), guide = NULL) +
+      geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"))
+  }
+  p
   
 }

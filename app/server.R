@@ -161,12 +161,14 @@ shinyServer(function(input, output, session){
                           "lady_coloring_column",
                           "lady_x_column",
                           "lollipop_column",
-                          "lollipop_coloring_column",
                           "upset_group",
                           "upset_column",
                           "phist_facet",
                           "ridge_x",
-                          "ridge_y")
+                          "ridge_y",
+                          "edge_color",
+                          "edge_width",
+                          "edge_weight")
     for (sel_input in selectize_inputs) {
       # Only numerics
       if (sel_input %in% "ridge_x") {
@@ -176,7 +178,10 @@ shinyServer(function(input, output, session){
       else if (sel_input %in% c("upset_group", "ridge_y", "lollipop_column", "upset_column")) {
         choices <- colnames(associations_list()$dframe)[!sapply(associations_list()$dframe, is.numeric)]
       } else {
-        choices = colnames(associations_list()$dframe)
+        choices <- colnames(associations_list()$dframe)
+      }
+      if (sel_input %in% c("lady_coloring_column", "phist_facet", "edge_color", "edge_width", "edge_weight")) {
+        choices <- c("none", choices)
       }
       # Variables together allowed
       if (sel_input %in% c("lady_x_column", "lollipop_column", "upset_column") &&
@@ -349,7 +354,15 @@ shinyServer(function(input, output, session){
   # ------- Network plot ----------
   
   networkp <- reactive({
-    network_plot()
+    network_plot(associations_list()$dframe, type = input$network_type, layout = input$network_layout,
+                 edge_color = input$edge_color, edge_width = input$edge_width, edge_weight = input$edge_weight,
+                 edge_width_range = input$edge_width_range,
+                 edge_color_log2 = input$edge_color_log2, edge_width_log2 = input$edge_width_log2,
+                 edge_weight_log2 = input$edge_weight_log2,
+                 edge_color_scale = input$edge_color_scale, edge_color_midpoint = input$edge_midpoint)
   })
+  
+  
+  plotServer("network", plotter = networkp, large = reactive(TRUE))
   
 })
