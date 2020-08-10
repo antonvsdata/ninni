@@ -475,4 +475,26 @@ ridge_plot <- function(dframe, x, y, x_log2, scale, style) {
 }
 
 
-
+network_plot <- function(dframe, type, layout = "kk", edge_color = NULL, edge_width = NULL) {
+  
+  if (type == "var_to_var") {
+    graph_data <- dframe[!is.na(dframe$Variable2), c("Variable1", "Variable2", edge_color, edge_width)]
+  } else if (type == "var_to_outcome") {
+    graph_data <- dframe[, c("Variable1", "Dataset", edge_color, edge_width) ]
+    if ("Variable2" %in% colnames(dframe)) {
+      graph_data2 <- dframe[!is.na(dframe$Variable2), c("Variable2", "Dataset", edge_color, edge_width)]
+      colnames(graph_data2)[1] <- "Variable1" 
+      graph_data <- rbing(graph_data,
+                          graph_data2)
+    }
+  }
+  
+  g <- graph_from_data_frame(graph_data)
+  
+  ggraph(g, layout = layout) +
+    geom_edge_link0(aes(edge_color = edge_color, edge_width = edge_width)) +
+    geom_node_point() +
+    geom_text_repel(aes(x=x, y=y, label = name)) +
+    theme_void()
+  
+}

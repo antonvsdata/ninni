@@ -294,7 +294,13 @@ shinyUI( fluidPage(
                  sliderInput("ridge_scale", "Curve heigth", min = 0.5, max = 5, value = 1.5, step = 0.05),
                  selectizeInput("ridge_style", "Style",
                                 choices = c("Black & White" = "bw", "Grey" = "grey", "Colourful" = "colours")),
-                 plotUI("ridge"))
+                 plotUI("ridge")),
+        
+        tabPanel("Network plot",
+                 selectInput("network_type", "Type",
+                             choices = c("Variables to variable" = "var_to_var",
+                                         "Variables to outcome" = "var_to_outcome")),
+                 plotUI("network"))
     )
     
   )

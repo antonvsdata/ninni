@@ -346,4 +346,10 @@ shinyServer(function(input, output, session){
   
   plotServer("ridge", plotter = ridge, large = reactive(TRUE))
   
+  # ------- Network plot ----------
+  
+  networkp <- reactive({
+    network_plot()
+  })
+  
 })
