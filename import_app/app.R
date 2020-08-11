@@ -56,6 +56,10 @@ server <- function(input, output, session) {
     dfs
   })
   
+  observeEvent(input$clear_files, {
+    unlink("data/*", recursive = TRUE, force = TRUE)
+  })
+  
   output$data_files <- renderTable({
     input$clear_files
     input$zipfile
@@ -73,10 +77,6 @@ server <- function(input, output, session) {
                             check.names = FALSE)
     }
     size_df
-  })
-  
-  observeEvent(input$clear_files, {
-    unlink("data/*", recursive = TRUE, force = TRUE)
   })
   
   datasets <- reactive({
