@@ -14,6 +14,7 @@ library(ggridges)
 library(igraph)
 library(ggraph)
 library(ggrepel)
+library(networkD3)
 
 source("r/queries.R")
 

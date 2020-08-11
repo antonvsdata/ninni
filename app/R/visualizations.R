@@ -557,9 +557,35 @@ network_plot <- function(dframe, type, layout, edge_color, edge_width, edge_weig
     p <- p + 
       geom_node_point(aes(size = outcome, color = outcome)) +
       scale_size_discrete(range = c(2, 32), guide = NULL) +
-      scale_color_manual(values = c("black", "yellow"), guide = NULL) +
+      scale_color_manual(values = c("black", "#FFFF00"), guide = NULL) +
       geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"))
   }
-  p
+  
+  return(list(graph = g, plot = p))
   
 }
+
+
+interactive_network <- function(g, type, node_size, link_distance, font_size) {
+  if (type == "var_to_var") {
+    group <- rep("A", length(V(g)))
+    d3g <- igraph_to_networkD3(g, group = group)
+    d3g$nodes$size <- node_size
+    col_scale <- JS("d3.scaleOrdinal(d3.schemeCategory20);")
+  } else if (type == "var_to_outcome") {
+    group <- ifelse(V(g)$outcome, "outcome", "variable")
+    d3g <- igraph_to_networkD3(g, group = group)
+    d3g$nodes$size <- ifelse(d3g$nodes$group == "outcome", node_size * 3, node_size)
+    col_scale <- JS("d3.scaleOrdinal(['000000', '#FFFF00']);")
+  }
+  
+  forceNetwork(Links = d3g$links, Nodes = d3g$nodes, 
+               Source = 'source', Target = 'target', 
+               NodeID = 'name', Group = 'group',
+               Nodesize = "size", zoom = TRUE,
+               linkDistance = link_distance, fontSize = font_size,
+               colourScale = col_scale)
+  
+}
+
+

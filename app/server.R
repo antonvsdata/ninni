@@ -353,7 +353,7 @@ shinyServer(function(input, output, session){
   
   # ------- Network plot ----------
   
-  networkp <- reactive({
+  networkgg <- reactive({
     network_plot(associations_list()$dframe, type = input$network_type, layout = input$network_layout,
                  edge_color = input$edge_color, edge_width = input$edge_width, edge_weight = input$edge_weight,
                  edge_width_range = input$edge_width_range,
@@ -362,7 +362,28 @@ shinyServer(function(input, output, session){
                  edge_color_scale = input$edge_color_scale, edge_color_midpoint = input$edge_midpoint)
   })
   
+  network_msg <- reactive({
+    if (nrow(associations_list()$dframe) > 5000) {
+      return(h5("Network plots are disabled for over 5000 associations, please filter the associations"))
+    }
+  })
   
-  plotServer("network", plotter = networkp, large = reactive(TRUE))
+  output$d3network <- renderUI({
+    if (nrow(associations_list()$dframe) < 1000) {
+      out <- tagList(forceNetworkOutput("d3network_plot", width = input$network_width,
+                                        height = input$network_height))
+    }
+    
+    out
+  })
+  
+  output$d3network_plot <- renderForceNetwork({
+    interactive_network(g = networkgg()$graph, type = input$network_type,
+                        node_size = input$node_size, link_distance = input$link_distance,
+                        font_size = input$font_size)
+  })
+  
+  
+  plotServer("network", plotter = reactive({networkgg()$plot}), large = reactive(TRUE), msg = network_msg)
   
 })
