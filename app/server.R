@@ -269,15 +269,10 @@ shinyServer(function(input, output, session){
   
  
   ladyplot <- reactive({
-    if(input$lady_coloring && !is.null(input$lady_coloring_column) && input$lady_coloring_column != ""){
-      lady_manhattan_plot(associations_list()$dframe, input$lady_x_column, input$lady_log2,
-                          associations_list()$effect_type, associations_list()$varnum,
-                          input$lady_coloring_column,input$lady_coloring_type)
-    }
-    else{
-      lady_manhattan_plot(associations_list()$dframe, input$lady_x_column, input$lady_log2,
-                          associations_list()$effect_type, associations_list()$varnum)
-    }
+    lady_manhattan_plot(associations_list()$dframe, input$lady_x_column, input$lady_log2,
+                        associations_list()$effect_type, associations_list()$varnum,
+                        input$lady_coloring_column,input$lady_coloring_type)
+    
   })
   
   lady_msg <- reactive({

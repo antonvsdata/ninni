@@ -282,7 +282,7 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
           panel.grid.minor = element_blank()) +
     labs(x = x_label, y = y_label)
   
-  if (class(dframe[,x_axis]) %in% c("character", "factor")) {
+  if (class(dframe[, x_axis]) %in% c("character", "factor")) {
     n_unique <-length(unique(dframe[, x_axis]))
     if (n_unique > 40) {
       x_breaks <- sort(dframe[, x_axis])[seq(1, nrow(dframe), length.out = 40)]
@@ -309,7 +309,7 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
     p <- p + geom_point(aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
                             label5 = Description2, label6 = Effect, label7 = P,
                             label8 = P_adj, label9 = N))
-  } 
+  }
 
   p
 }
@@ -442,7 +442,17 @@ p_histogram <- function(dframe, facet = NULL) {
   p
 }
 
-
+#' Density Ridge plot
+#' 
+#' Draws a density ridge plot of any column, separated by a factor
+#' 
+#' @param dframe association data frame
+#' @param x,y x and y axis column names for the plot
+#' @param x-log2 logical, apply log2-transformation to x-axis?
+#' @param scale numeric, height of individual plots
+#' @param style character, style of the plot
+#' 
+#' @return ggplot object
 ridge_plot <- function(dframe, x, y, x_log2, scale, style) {
   
   params <- list(bw = list(size = 1.2, fill = NA),
@@ -470,15 +480,29 @@ ridge_plot <- function(dframe, x, y, x_log2, scale, style) {
   p
 }
 
-
+# Helper function
 empty_to_null <- function(x) {
-  if (x %in% c("", "none")) {
+  if (is.null(x) || x %in% c("", "none")) {
     NULL
   } else {
     x
   }
 }
 
+#' Network plot
+#' 
+#' Creates a graph of the variables/outcomes and raws a static network plot.
+#' 
+#' @param dframe association data frame
+#' @param type either "var_to_var" or "var_to_outcome"
+#' @param layout layout method
+#' @param edge_color,edge_width,edge_weight column names to use as edge parameters
+#' @param edge_width_range range of edge width
+#' @param edge_color_log2,edge_width_log2,edge_weight_log2 logicals, apply log2 transformation to edge parameters
+#' @param edge_color_scale edge color scale type, "Discrete", "Continuous" or "Diverging"
+#' @param edge_color_midpoint midpoint for diverging scale
+#' 
+#' @return a list with graph = igraph object, plot = ggplot object made with ggraph
 network_plot <- function(dframe, type, layout, edge_color, edge_width, edge_weight,
                          edge_width_range,
                          edge_color_log2, edge_width_log2, edge_weight_log2,
@@ -565,7 +589,15 @@ network_plot <- function(dframe, type, layout, edge_color, edge_width, edge_weig
   
 }
 
-
+#' Network plot
+#' 
+#' Creates a graph of the variables/outcomes and raws a static network plot.
+#' 
+#' @param g igraph object
+#' @param type either "var_to_var" or "var_to_outcome"
+#' @param node_size,link_distance,font_size numerics, plot attributes
+#' 
+#' @return JS network plot
 interactive_network <- function(g, type, node_size, link_distance, font_size) {
   if (type == "var_to_var") {
     group <- rep("A", length(V(g)))
@@ -585,7 +617,4 @@ interactive_network <- function(g, type, node_size, link_distance, font_size) {
                Nodesize = "size", zoom = TRUE,
                linkDistance = link_distance, fontSize = font_size,
                colourScale = col_scale)
-  
 }
-
-
