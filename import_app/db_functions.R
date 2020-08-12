@@ -291,6 +291,8 @@ import_associations <- function(con, datasets, ids, progress) {
   metavariables_old <- metavariables_all <- dbReadTable(con, "metavariables")
   # Initialize new data frames to import
   variables <- metavariables <- associations <- assoc2var <- numval <- strval <- data.frame()
+  rowcounts <- data.frame(dataset_id = datasets$id,
+                          rowcount = 0)
   
   # Add stuff to be imported from each dataset
   for (i in seq_len(nrow(datasets))) {
@@ -307,6 +309,7 @@ import_associations <- function(con, datasets, ids, progress) {
     
     # Define usual columns and list of current variables
     assoc <- read.csv(paste0("data/", datasets$dataset_filename[i]), stringsAsFactors = FALSE)
+    rowcounts$rowcount[i] <- nrow(assoc)
     varnum <- datasets$varnum[i]
     if (varnum == 1){
       normal_columns = c("VARIABLE1_LABEL", "EFFECT", "EFFECT_L95", "EFFECT_U95", "N", "P", "P_ADJ")
@@ -379,6 +382,11 @@ import_associations <- function(con, datasets, ids, progress) {
       strval <- rbind(strval, link_metavars(associations_tmp$id, metavariables_tmp, assoc, type = "str"))
     }
     
+  }
+  # Update rowcount to datasets
+  for (i in seq_len(nrow(rowcounts))) {
+    dbSendQuery(con, paste0("UPDATE Datasets SET rowcount = ", rowcounts$rowcount[i],
+                            " WHERE id = ", rowcounts$dataset_id[i]))
   }
   
   # Append variables
