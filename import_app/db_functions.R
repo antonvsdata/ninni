@@ -15,6 +15,98 @@ read_db_info <- function(config_file){
   l
 }
 
+get_datasets_db <- function(con){
+  # Get dataset metadata
+  meta_tbl <- dbReadTable(con, "datasetmetadata")
+  ds_to_meta_tbl <- dbReadTable(con, "datasettometadata") %>%
+    inner_join(meta_tbl,by=c("datasetmetadata_id" = "id")) %>%
+    # Put all metadata tags from one dataset into one row
+    group_by(dataset_id) %>%
+    mutate(Metadata_labels = paste(label, collapse=","), Metadata_descriptions = paste(description, collapse=",")) %>%
+    ungroup() %>%
+    select(-label,-description, -id, -datasetmetadata_id) %>%
+    distinct()
+  # Join metadata to dataset table and rename columns
+  ds_tbl <- dbReadTable(con, "datasets") %>%
+    left_join(ds_to_meta_tbl,by=c("id" = "dataset_id")) %>%
+    dplyr::select(-id) %>%
+    rename(Label = label, Description = description, Number_of_variables = varnum,
+           Effect_type = effect_type, Number_of_associations = rowcount)
+  ds_tbl
+}
+
+delete_dataset <- function(con, label, progress) {
+  
+  success <- FALSE
+  
+  tryCatch({
+    ds_id <- dbGetQuery(con, paste0("SELECT id FROM datasets WHERE label = '", label, "'"))$id
+    
+    queries <- list()
+    # Delete datasets and dataset metadata links
+    queries$datasets <- paste0("DELETE FROM datasets WHERE id = ", ds_id)
+    queries$ds2md <- paste0("DELETE FROM datasettometadata WHERE dataset_id = ", ds_id)
+    # Delete associations
+    queries$associations <- paste0("DELETE FROM associations WHERE dataset_id = ", ds_id)
+    # Get association id
+    associations <- dbGetQuery(con, paste0("SELECT id FROM associations WHERE dataset_id = ", ds_id))
+    assoc_ids_query <- paste(associations$id, collapse = ", ")
+    
+    for (tbl_name in c("associationtovariable", "numval", "strval")) {
+      queries[[tbl_name]] <-  paste0("DELETE FROM ", tbl_name, " WHERE association_id IN (",
+                                     assoc_ids_query, ")")
+    }
+    
+    msgs <- paste("Deleting", c("links between associations and additional text variables",
+                                "links between associations and additional numeric variables",
+                                "links between associations and main variables",
+                                "associations",
+                                "linkse between datasets and metadata",
+                                "datasets"))
+    values <- c(0.1, 0.2, 0.3, 0.4, 0.8, 0.81)
+    queries <- rev(queries)
+    
+    for (i in seq_along(queries)) {
+      report(progress, msgs[i], values[i])
+      res <- dbSendQuery(con, queries[[i]])
+      dbClearResult(res)
+    }
+    
+    report(progress, "Cleaning redundant variables", value = 0.82)
+    clear_variables(con)
+    
+    success <- TRUE
+  }, error = function(e) {
+    print(e$message)
+  })
+  
+  return(success)
+}
+
+clear_variables <- function(con) {
+  ids <- list()
+  ids$variables <- dbGetQuery(con, "SELECT DISTINCT variable_id FROM associationtovariable")$variable_id
+  numvar_ids <- dbGetQuery(con, "SELECT DISTINCT metavariable_id FROM numval")
+  strvar_ids <- dbGetQuery(con, "SELECT DISTINCT metavariable_id FROM strval")
+  ids$metavariables <- union(numvar_ids$metavariable_id, strvar_ids$metavariable_id)
+  ids$datasetmetadata <- dbGetQuery(con, "SELECT DISTINCT datasetmetadata_id FROM datasettometadata")$datasetmetadata_id
+  
+  id_queries <- lapply(ids, paste, collapse = ", ")
+  
+  for (tbl_name in names(ids)) {
+    if (length(ids[[tbl_name]])) {
+      res <- dbSendQuery(con, paste0("DELETE FROM ", tbl_name, " WHERE id NOT IN (", id_queries[[tbl_name]], ")"))
+    } else {
+      res <- dbSendQuery(con, paste0("DELETE FROM ", tbl_name))
+    }
+    
+    dbClearResult(res)
+  }
+}
+
+
+
+
 #' Read SQL statements from a file
 #' 
 #' Reads an SQL statement from a text file, and parses it. Used by execute_sql_file
@@ -62,8 +154,8 @@ execute_sql_file <- function(file, con) {
   sql <- get_sql(file)
   
   for (query in sql) {
-    q <- dbSendQuery(con, statement = query)
-    dbClearResult(q)
+    res <- dbSendQuery(con, statement = query)
+    dbClearResult(res)
   }
   
 }
@@ -268,8 +360,9 @@ update_dummy_vars <- function(con, variables, variables_old) {
     dummy_vars <- dplyr::left_join(dummy_vars, variables, by = "label")
     # Update their descriptions with the new descriptions
     for (j in seq_len(nrow(dummy_vars))) {
-      dbSendQuery(con, statement = paste0("UPDATE variables set description = '", dummy_vars$description[j],
+      res <- dbSendQuery(con, statement = paste0("UPDATE variables set description = '", dummy_vars$description[j],
                                           "' WHERE id = ", dummy_vars$id[j]))
+      dbClearResult(res)
     }
   }
 }
@@ -385,8 +478,9 @@ import_associations <- function(con, datasets, ids, progress) {
   }
   # Update rowcount to datasets
   for (i in seq_len(nrow(rowcounts))) {
-    dbSendQuery(con, paste0("UPDATE Datasets SET rowcount = ", rowcounts$rowcount[i],
+    res <- dbSendQuery(con, paste0("UPDATE Datasets SET rowcount = ", rowcounts$rowcount[i],
                             " WHERE id = ", rowcounts$dataset_id[i]))
+    dbClearResult(res)
   }
   
   # Append variables

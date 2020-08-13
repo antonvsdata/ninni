@@ -1,36 +1,62 @@
 library(shiny)
 library(DBI)
+library(DT)
+library(dplyr)
 source("db_functions.R")
 db_info <- read_db_info("database_import.config")
 options(shiny.maxRequestSize = 300*1024^2)
 
 ui <- fluidPage(
+  tabsetPanel(
+    
+    tabPanel("Import data to Ninni",
+             br(),
+             br(),
+             
+             fileInput("dataset_file", "Upload a .csv file listing the datasets", accept = ".csv"),
+             
+             fileInput("metadata_file", "Upload a .csv file containing the dataset metadata", accept = ".csv"),
+             
+             # Upload zip files
+             fileInput("zipfile", "Upload .zip file containing the actual results and variable descriptions as .csv files", accept = ".zip"),
+             # action button to unzip the file
+             
+             tableOutput("data_files"),
+             
+             actionButton("clear_files", "Clear all data files"),
+             br(),
+             br(),
+             checkboxInput("clear", "Clear the database before importing data",
+                           value = FALSE),
+             
+             actionButton("import", "Import data"),
+             
+             
+             
+             htmlOutput("import_errors")),
+    
+    tabPanel("Delete data from database",
+             
+             br(),
+             br(),
+             
+             selectizeInput("dataset_label", "Dataset label to delete",
+                            choices = NULL,
+                            options = list(maxItems = 1,
+                                           placeholder = 'Choose a dataset',
+                                           onInitialize = I('function() { this.setValue(""); }'))),
+             
+             actionButton("delete", "Delete"),
+             
+             br(),
+             br(),
+             
+             DT::dataTableOutput("ds_table")
+             )
+    
+  )
   
-  titlePanel("Import data to Ninni"),
-  br(),
-  br(),
   
-  fileInput("dataset_file", "Upload a .csv file listing the datasets", accept = ".csv"),
-  
-  fileInput("metadata_file", "Upload a .csv file containing the dataset metadata", accept = ".csv"),
-  
-  # Upload zip files
-  fileInput("zipfile", "Upload .zip file containing the actual results and variable descriptions as .csv files", accept = ".zip"),
-  # action button to unzip the file
-  
-  tableOutput("data_files"),
-  
-  actionButton("clear_files", "Clear all data files"),
-  br(),
-  br(),
-  checkboxInput("clear", "Clear the database before importing data",
-                value = FALSE),
-
-  actionButton("import", "Import data"),
-  
-
-  
-  htmlOutput("import_errors")
   
 )
 
@@ -42,6 +68,14 @@ file_sizes <- function(files, title) {
 
 #### server code starts here
 server <- function(input, output, session) {
+  
+  con <- con <- dbConnect(
+    drv = RPostgres::Postgres(),
+    dbname = db_info$db_name,
+    host = db_info$db_host,
+    port = db_info$db_port,
+    user = db_info$db_user,
+    password = db_info$db_password)
   
   unzipped <- observe({
     if (is.null(input$zipfile)) {
@@ -110,42 +144,110 @@ server <- function(input, output, session) {
     progress <- Progress$new(session, min=0, max=1)
     
     progress$set(message = "Connecting to database")
-    
+    imported <- NA
+    error_msg <- ""
     t <- system.time({
-      con <- dbConnect(
-        drv = RPostgres::Postgres(),
-        dbname = db_info$db_name,
-        host = db_info$db_host,
-        port = db_info$db_port,
-        user = db_info$db_user,
-        password = db_info$db_password)
+      
       
       tryCatch({
         imported <- import_data(con, datasets = datasets(), metadata = metadata(), clear = input$clear,
                     progress = progress)
       }, error = function(e) {
+        error_msg <- e$message
         print(e$message)
       })
       
-      progress$set(message = "Closing database connection", value = 0.99)
-      dbDisconnect(con)
       progress$close()
     })
-    
-    if (imported) {
+    if (is.na(imported)) {
       showModal(modalDialog(
-        title = "Data imported",
-        paste("Data imported in", format_time(t["elapsed"])),
+        title = "Data not imported",
+        paste("Data could not be imported:", error_msg),
+        easyClose = TRUE
+      ))
+    } else {
+      if (imported) {
+        showModal(modalDialog(
+          title = "Data imported",
+          paste("Data imported in", format_time(t["elapsed"])),
+          easyClose = TRUE
+        ))
+      } else {
+        showModal(modalDialog(
+          title = "Data already in database",
+          "All datasets are already´in the database",
+          easyClose = TRUE
+        ))
+      }
+    }
+    
+  })
+  
+  modal_confirm <- reactive({modalDialog(
+    paste("Are you sure you want to delete", input$dataset_label),
+    title = "Deleting dataset",
+    footer = tagList(
+      actionButton("cancel", "Cancel"),
+      actionButton("ok", "Delete", class = "btn btn-danger")
+    )
+  )
+  })
+  
+  observeEvent(input$delete, {
+    if (input$dataset_label != "") {
+      showModal(modal_confirm())
+    }
+    
+  })
+  
+  observeEvent(input$cancel, 
+               removeModal()
+  )
+  
+  observeEvent(input$ok, {
+    
+    progress <- Progress$new(session, min=0, max=1)
+    
+    progress$set(message = "Connecting to database")
+    success <- delete_dataset(con, input$dataset_label, progress)
+    progress$close()
+    
+    if (success) {
+      updateSelectizeInput(session, "dataset_label",
+                           choices = ds_dframe()$Label)
+      showModal(modalDialog(
+        title = "Dataset deleted",
+        paste("Dataset", input$dataset_label, "deleted"),
         easyClose = TRUE
       ))
     } else {
       showModal(modalDialog(
-        title = "Data already in database",
-        "All datasets are already´in the database",
+        title = "Dataset not deleted",
+        paste("Dataset could not be deleted"),
         easyClose = TRUE
       ))
     }
     
+    
+  })
+  
+  ds_dframe <- reactive({
+    input$ok
+    get_datasets_db(con)
+  })
+  
+  observeEvent(ds_dframe, {
+      updateSelectizeInput(session, "dataset_label",
+                           choices = ds_dframe()$Label)
+    
+  })
+  
+  onStop(function() {
+    dbDisconnect(con)
+  })
+  
+  output$ds_table <- DT::renderDataTable({
+    datatable(ds_dframe(), selection = "none")
   })
   
 }
