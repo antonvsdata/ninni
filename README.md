@@ -4,12 +4,13 @@ Ninni is a web application designed for representing results from scientific stu
 
 The results represented by Ninni can be e.g. following:
 
+- The difference in levels of a metabolite between two study groups.
 - Effect of drugs to the risk of arrhytmia, measured in odds ratio
 - Effect of interaction of drugs to the risk of arrhytmia, measured in odds ratio
 - Differential expression of genes in healthy and diseased individuals, measures in fold change
 - Correlation of metabolite levels in human metabolome
 
-... or anything else that can be represented as an association between variables.
+... or anything else that can be represented as an association between variables and an outcome.
 
 Ninni saves results of multiple studies to a dedicated database. Users can then browse the database and combine results from different studies, download and visualize them.
 
@@ -18,20 +19,23 @@ Currently, Ninni provides the following visualizations:
 - Clustered heatmaps
 - Volcano plots
 - Q-Q plots
-- Lady Manhattan plots
+- Directed Manhattan plots
+- Lollipop plots of most common variables
+- Upset plots of common variables between result sets
+- P-value histograms
+- Ridge (aka Joy) plots
+- Network visualizations
 
 Ninni is powered by [Shiny](https://shiny.rstudio.com).
 
-_Ninni is licensed under the terms of the MIT license_
+_Ninni is developed at University of Eastern Finland and licensed under the terms of the MIT license_
 
 ## Installation and set up
 
-#### 1. Download git repo
+#### 1. Download/clone git repo
 
 ```
-git init
-git remote add origin https://github.com/antonmattsson/ninni
-git pull origin master
+git clone https://github.com/antonvsdata/ninni
 ```
 
 #### 2. Install required software
@@ -40,41 +44,27 @@ git pull origin master
 
 To set up Ninni's database you need to install PostgreSQL (we are using version 9.2.18 for Red Hat family Linux).
 
-##### Python
-
-The import script to Ninni's database was written in Python 3.5.3 and requires the psycopg2 library (v2.7.1) to connect to a postgreSQL database.
-
-You can install these prerequisites manually or use the conda environment file in the src folder.
-If you dont have conda installed, you can get it from here: https://conda.io/docs/install/quick.html.
-
-Once you have conda installed, you can install the ninni environment using src/ninni_env.json:  
-`$ conda env create -n ninni_env –f ninni_env.json`
-
-The correct version of Python and the psycopg2 library will be installed. The conda environment can also be used to run the script without having to worry about compatibility issues (see later).
-
 ##### R
 
-The Shiny web app uses R 3.3.3. You can install all the required R packages with `src/install.packages.R` script.
-Unfortunately it is not possible to install R 3.3.3 nor these packages through conda.
+The Shiny web app uses R 4.0.0. You can install all the required R packages with `src/install.packages.R` script.
 
 ###### Shiny Server
 
-To be able to host a Shiny application, you need to install Shiny Server (or Shiny Server Pro).
+To be able to host a Shiny application, you need to install Shiny Server (or Shiny Server Pro). Note that Ninni can be used locally without installing Shiny Server.
 
 #### 3. Set up the database
 
-Set up a PostgreSQL database add the connection information to following files:  
-`src/database_import.config`  
-`www/database_www.config`
+Set up a PostgreSQL database and add the connection information to following files:  
+`import_app/database_import.config`  
+`app/www/database_www.config`
 
 You can see the correct format from example files  
-`src/database_import.config-TEMPLATE` and `www/database_www.config-TEMPLATE`
+`import_app/database_import.config-TEMPLATE` and `app/www/database_www.config-TEMPLATE`
 
 The reason for having two files is that in our case we have two users for the database. One has both reading and writing permissions
 and is used by the import script. The other has only reading permissions and is used by the Shiny application. You can also use the same user for both if you prefer.
 
-By default, the import script drops and recreates the database schema in the beginning of every import. Thus, there is no need to create any
-tables prior to import of data, but the schema will be created automatically. For detailed structure of the database schema, see `docs/database_structure.txt` and `docs/db_schema.pdf`.
+The import app can drop and recreate the database schema in the beginning of any import. Thus, there is no need to create any tables prior to import of data, but the schema will be created automatically. For detailed structure of the database schema, see `docs/database_structure.txt` and `docs/db_schema.pdf`.
 
 #### 4. Import data to the database
 
