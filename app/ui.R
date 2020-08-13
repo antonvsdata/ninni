@@ -307,6 +307,8 @@ shinyUI( fluidPage(
                                                           "Force-directed by Fruchterman and Reingold"  = "fr",
                                                           "spring-based by Kamada and Kawai" = "kk",
                                                           "Tree" = "tree")),
+                                  checkboxInput("node_names", "Include node names"),
+                                  checkboxInput("node_repel", "Repel node names from node points"),
                                   selectizeInput("edge_color", "Edge color",
                                                  choices = NULL,
                                                  options = list(maxItems = 1,

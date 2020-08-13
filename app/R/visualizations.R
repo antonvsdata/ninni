@@ -496,6 +496,7 @@ empty_to_null <- function(x) {
 #' @param dframe association data frame
 #' @param type either "var_to_var" or "var_to_outcome"
 #' @param layout layout method
+#' @param node_names,names_repel logicals, draw and repel node names?
 #' @param edge_color,edge_width,edge_weight column names to use as edge parameters
 #' @param edge_width_range range of edge width
 #' @param edge_color_log2,edge_width_log2,edge_weight_log2 logicals, apply log2 transformation to edge parameters
@@ -503,7 +504,9 @@ empty_to_null <- function(x) {
 #' @param edge_color_midpoint midpoint for diverging scale
 #' 
 #' @return a list with graph = igraph object, plot = ggplot object made with ggraph
-network_plot <- function(dframe, type, layout, edge_color, edge_width, edge_weight,
+network_plot <- function(dframe, type, layout,
+                         node_names, names_repel,
+                         edge_color, edge_width, edge_weight,
                          edge_width_range,
                          edge_color_log2, edge_width_log2, edge_weight_log2,
                          edge_color_scale, edge_color_midpoint) {
@@ -575,14 +578,16 @@ network_plot <- function(dframe, type, layout, edge_color, edge_width, edge_weig
   
   if (type == "var_to_var") {
     p <- p + 
-      geom_node_point() +
-      geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"))
+      geom_node_point()
   } else if (type == "var_to_outcome") {
     p <- p + 
       geom_node_point(aes(size = outcome, color = outcome)) +
       scale_size_discrete(range = c(2, 32), guide = NULL) +
-      scale_color_manual(values = c("black", "#FFFF00"), guide = NULL) +
-      geom_node_text(aes(label = name), repel = TRUE, point.padding = unit(0.2, "lines"))
+      scale_color_manual(values = c("black", "#FFA500"), guide = NULL)
+  }
+  if (node_names) {
+      p <- p +
+        geom_node_text(aes(label = name), repel = names_repel, point.padding = unit(0.2, "lines"))
   }
   
   return(list(graph = g, plot = p))
@@ -608,7 +613,7 @@ interactive_network <- function(g, type, node_size, link_distance, font_size) {
     group <- ifelse(V(g)$outcome, "outcome", "variable")
     d3g <- igraph_to_networkD3(g, group = group)
     d3g$nodes$size <- ifelse(d3g$nodes$group == "outcome", node_size * 3, node_size)
-    col_scale <- JS("d3.scaleOrdinal(['000000', '#FFFF00']);")
+    col_scale <- JS("d3.scaleOrdinal(['000000', '#FFA500']);")
   }
   
   forceNetwork(Links = d3g$links, Nodes = d3g$nodes, 

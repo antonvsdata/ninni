@@ -350,6 +350,7 @@ shinyServer(function(input, output, session){
   
   networkgg <- reactive({
     network_plot(associations_list()$dframe, type = input$network_type, layout = input$network_layout,
+                 node_names = input$node_names, names_repel = input$node_repel,
                  edge_color = input$edge_color, edge_width = input$edge_width, edge_weight = input$edge_weight,
                  edge_width_range = input$edge_width_range,
                  edge_color_log2 = input$edge_color_log2, edge_width_log2 = input$edge_width_log2,
@@ -360,6 +361,8 @@ shinyServer(function(input, output, session){
   network_msg <- reactive({
     if (nrow(associations_list()$dframe) > 5000) {
       return(h5("Network plots are disabled for over 5000 associations, please filter the associations"))
+    } else if (input$network_type == "var_to_var" && associations_list()$varnum == 1) {
+      return(h5("Two variable dataset needed"))
     }
   })
   
