@@ -118,15 +118,15 @@ server <- function(input, output, session) {
   })
   
   metadata <- reactive({
+    if (is.null(input$metadata_file)){
+      return(NULL)
+    }
     read.csv(input$metadata_file$datapath, stringsAsFactors = FALSE)
   })
   
   file_errors <- eventReactive(input$import, {
     if (is.null(input$dataset_file)) {
       return(error_html("Datasets file not found"))
-    }
-    if (is.null(input$metadata_file)) {
-      return(error_html("Metadata file not found"))
     }
     check_files(datasets(), metadata())
   })
