@@ -16,6 +16,7 @@ read_db_info <- function(config_file){
 # - varnum: greatest number of variables per association
 # - effect_type: effect type of datasets, "Multiple" in case of variation
 get_associations <- function(pool,ds_labels,var_keywords,metadata_tags){
+  
   assocs_tbl <- pool %>% tbl("associations")
   ds_tbl <- pool %>% tbl("datasets")
   
@@ -129,17 +130,33 @@ get_datasets <- function(pool){
   meta_tbl <- pool %>% tbl("datasetmetadata")
   ds_to_meta_tbl <- pool %>% tbl("datasettometadata") %>%
     inner_join(meta_tbl,by=c("datasetmetadata_id" = "id")) %>%
-    collect() %>%
-    # Put all metadata tags from one dataset into one row
-    group_by(dataset_id) %>%
-    mutate(Metadata_labels = paste(label, collapse=","), Metadata_descriptions = paste(description, collapse=",")) %>%
-    ungroup() %>%
-    select(-label,-description, -id, -datasetmetadata_id) %>%
-    distinct()
+    collect()
+  
+  if (nrow(ds_to_meta_tbl)) {
+    ds_to_meta_tbl <- ds_to_meta_tbl %>%
+      # Put all metadata tags from one dataset into one row
+      group_by(dataset_id) %>%
+      mutate(Metadata_labels = paste(label, collapse=","), Metadata_descriptions = paste(description, collapse=",")) %>%
+      ungroup() %>%
+      select(-label,-description, -id, -datasetmetadata_id) %>%
+      distinct()
+  }
   # Join metadata to dataset table and rename columns
   ds_tbl <- pool %>% tbl("datasets") %>%
-    collect() %>%
-    left_join(ds_to_meta_tbl,by=c("id" = "dataset_id")) %>%
+    collect()
+  
+  if (!nrow(ds_tbl)) {
+    ds_tbl <- data.frame(matrix(ncol = 5, nrow = 0))
+    colnames(ds_tbl) <- c("Label", "Description", "Number_of_variables",
+                          "Effect_type", "Number_of_associations")
+    return(ds_tbl)
+  }
+  
+  if (nrow(ds_to_meta_tbl)) {
+    ds_tbl <- ds_tbl %>%
+      left_join(ds_to_meta_tbl,by=c("id" = "dataset_id"))
+  }
+  ds_tbl <- ds_tbl %>%
     dplyr::select(-id) %>%
     rename(Label = label, Description = description, Number_of_variables = varnum,
            Effect_type = effect_type, Number_of_associations = rowcount)
@@ -147,13 +164,19 @@ get_datasets <- function(pool){
 }
 
 extract_meta_labels <- function(ds_dframe) {
-  raw_labels <- na.omit(ds_dframe$Metadata_labels)
-  split_by_comma <- function(x){
-    strsplit(x, ",")[[1]]
+  if (nrow(ds_dframe)) {
+    raw_labels <- na.omit(ds_dframe$Metadata_labels)
+    if (length(raw_labels)) {
+      split_by_comma <- function(x){
+        strsplit(x, ",")[[1]]
+      }
+      return(reduce(raw_labels, .f = function(x, y) {
+        union(split_by_comma(x), split_by_comma(y))
+      }))
+    }
   }
-  reduce(raw_labels, .f = function(x, y) {
-    union(split_by_comma(x), split_by_comma(y))
-    })
+  return(NULL)
+    
 }
 
 # Get the metavariables matching associations

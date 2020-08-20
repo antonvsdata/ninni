@@ -352,6 +352,17 @@ shinyUI( fluidPage(
                                               min = 200, max = 3000,
                                               value = 600),
                                   uiOutput("d3network"))
+                 ),
+        
+        tabPanel("Admin",
+                 br(),
+                 
+                 textInput("username", "Username"),
+                 passwordInput("password", "Password"),
+                 actionButton("login", "Login"),
+                 br(),
+                 br(),
+                 uiOutput("admin_ui")
                  )
     )
     

@@ -2,25 +2,30 @@
 # All elements are ordered by the tabs in Ninni
 shinyServer(function(input, output, session){
   
-  ds_dframe <- get_datasets(pool)
-  
   #----------- Sidebar ----------------
   
   # Multiple choice dropwdown box for choosing datasets
   observeEvent(ds_dframe, {
-    updateSelectizeInput(session, "ds_label", choices = ds_dframe$Label)
+    updateSelectizeInput(session, "ds_label", choices = ds_dframe()$Label)
   })
   
   # Multiple choice dropdown: search database for datasets by metadata tags
   observeEvent(ds_dframe, {
-    md_labels <- extract_meta_labels(ds_dframe)
-    updateSelectizeInput(session, "metadata_tags", choices = md_labels)
+    if (!db_empty()) {
+      md_labels <- extract_meta_labels(ds_dframe())
+      updateSelectizeInput(session, "metadata_tags", choices = md_labels)
+    }
   })
   
   # Handles the query to the database
   # Reactive expressions cache their value, so filtering the same dataset multiple times
   # does not provoke a new database query
   associations_list_query_ <-  reactive({
+    if (db_empty()){
+      validate("Database is empty")
+    }
+    req(!db_empty())
+    
     query_given <- length(input$ds_label) || input$var_keywords != "" || length(input$metadata_tags)
     if (!query_given) {
       validate("Please submit a query")
@@ -109,7 +114,7 @@ shinyServer(function(input, output, session){
   
   # Shows all the datasets in database
   output$dstable <- DT::renderDataTable({
-    datatable(ds_dframe, selection = "none")
+    datatable(ds_dframe(), selection = "none")
   })
   
   # -------------- Data Table --------------
@@ -155,7 +160,7 @@ shinyServer(function(input, output, session){
   })
   
   # Set columns of association data frame as choices in drop downs
-  observeEvent(associations_list()$dframe, {
+  observeEvent(associations_list_query()$dframe, {
     
     selectize_inputs <- c("qq_coloring_column",
                           "lady_coloring_column",
@@ -172,20 +177,20 @@ shinyServer(function(input, output, session){
     for (sel_input in selectize_inputs) {
       # Only numerics
       if (sel_input %in% "ridge_x") {
-        choices <- colnames(associations_list()$dframe)[sapply(associations_list()$dframe, is.numeric)]
+        choices <- colnames(associations_list_query()$dframe)[sapply(associations_list_query()$dframe, is.numeric)]
       }
       # Only discrete
       else if (sel_input %in% c("upset_group", "ridge_y", "lollipop_column", "upset_column")) {
-        choices <- colnames(associations_list()$dframe)[!sapply(associations_list()$dframe, is.numeric)]
+        choices <- colnames(associations_list_query()$dframe)[!sapply(associations_list_query()$dframe, is.numeric)]
       } else {
-        choices <- colnames(associations_list()$dframe)
+        choices <- colnames(associations_list_query()$dframe)
       }
       if (sel_input %in% c("lady_coloring_column", "phist_facet", "edge_color", "edge_width", "edge_weight")) {
         choices <- c("none", choices)
       }
       # Variables together allowed
       if (sel_input %in% c("lady_x_column", "lollipop_column", "upset_column") &&
-          associations_list()$varnum == 2){
+          associations_list_query()$varnum == 2){
           choices <- c("Variables together", choices)
       } 
       updateSelectizeInput(session, sel_input,
@@ -383,5 +388,242 @@ shinyServer(function(input, output, session){
   
   
   plotServer("network", plotter = reactive({networkgg()$plot}), large = reactive(TRUE), msg = network_msg)
+  
+  
+  # ---------------- Admin -------------
+  
+  admin_ui_comp <- eventReactive(input$login, {
+    user <- read_db_info("www/user.config")
+    if (input$username == user$username && bcrypt::checkpw(input$password, user$password)){
+      tagList(
+        tabsetPanel(
+          
+          tabPanel("Import data to Ninni",
+                   br(),
+                   br(),
+                   
+                   fileInput("dataset_file", "Upload a .csv file listing the datasets", accept = ".csv"),
+                   
+                   fileInput("metadata_file", "Upload a .csv file containing the dataset metadata", accept = ".csv"),
+                   
+                   # Upload zip files
+                   fileInput("zipfile", "Upload .zip file containing the actual results and variable descriptions as .csv files", accept = ".zip"),
+                   # action button to unzip the file
+                   
+                   tableOutput("data_files"),
+                   
+                   actionButton("clear_files", "Clear all data files"),
+                   br(),
+                   br(),
+                   checkboxInput("clear", "Clear the database before importing data",
+                                 value = FALSE),
+                   
+                   actionButton("import", "Import data"),
+                   
+                   
+                   
+                   htmlOutput("import_errors")),
+          
+          tabPanel("Delete data from database",
+                   
+                   br(),
+                   br(),
+                   
+                   selectizeInput("dataset_label", "Dataset label to delete",
+                                  choices = NULL,
+                                  options = list(maxItems = 1,
+                                                 placeholder = 'Choose a dataset',
+                                                 onInitialize = I('function() { this.setValue(""); }'))),
+                   
+                   actionButton("delete", "Delete"),
+                   
+                   br(),
+                   br(),
+                   
+                   DT::dataTableOutput("ds_table")
+          )
+        )
+      )
+    } else {
+      error_html("wrong username or password")
+    }
+  })
+  
+  output$admin_ui <- renderUI({
+    admin_ui_comp()
+  })
+  
+  
+  unzipped <- observe({
+    if (is.null(input$zipfile)) {
+      return(NULL)
+    }
+    unzip(input$zipfile$datapath, exdir = "data")
+  })
+  
+  observeEvent(input$clear_files, {
+    unlink("data/*", recursive = TRUE, force = TRUE)
+  })
+  
+  output$data_files <- renderTable({
+    input$clear_files
+    input$zipfile
+    
+    files <- list.files("data/")
+    if (length(files)) {
+      sizes <- sapply(paste0("data/", files), function(f) {
+        round(file.info(f)$size/1000)
+      })
+      size_df <- data.frame("Existing files" = files,
+                            "Size (kB)" = as.integer(sizes),
+                            check.names = FALSE)
+    } else {
+      size_df <- data.frame("Existing files" = "No files found",
+                            check.names = FALSE)
+    }
+    size_df
+  })
+  
+  datasets <- reactive({
+    read.csv(input$dataset_file$datapath, stringsAsFactors = FALSE)
+  })
+  
+  metadata <- reactive({
+    if (is.null(input$metadata_file)){
+      return(NULL)
+    }
+    read.csv(input$metadata_file$datapath, stringsAsFactors = FALSE)
+  })
+  
+  file_errors <- eventReactive(input$import, {
+    if (is.null(input$dataset_file)) {
+      return(error_html("Datasets file not found"))
+    }
+    check_files(datasets(), metadata())
+  })
+  
+  output$import_errors <- renderUI({
+    file_errors()
+  })
+  
+  
+  observeEvent(input$import,{
+    if (!is.null(file_errors())) {
+      return(NULL)
+    }
+    
+    progress <- Progress$new(session, min=0, max=1)
+    
+    progress$set(message = "Connecting to database")
+    imported <- NA
+    error_msg <- ""
+    t <- system.time({
+      
+      
+      tryCatch({
+        imported <- import_data(pool, datasets = datasets(), metadata = metadata(), clear = input$clear,
+                                progress = progress)
+      }, error = function(e) {
+        error_msg <<- e$message
+        print(e$message)
+      })
+      
+      progress$close()
+    })
+    if (is.na(imported)) {
+      showModal(modalDialog(
+        title = "Data not imported",
+        paste("Data could not be imported:", error_msg),
+        easyClose = TRUE
+      ))
+    } else {
+      if (imported) {
+        showModal(modalDialog(
+          title = "Data imported",
+          paste("Data imported in", format_time(t["elapsed"])),
+          easyClose = TRUE
+        ))
+      } else {
+        showModal(modalDialog(
+          title = "Data already in database",
+          "All datasets are already´in the database",
+          easyClose = TRUE
+        ))
+      }
+    }
+    
+  })
+  
+  modal_confirm <- reactive({modalDialog(
+    paste("Are you sure you want to delete", input$dataset_label),
+    title = "Deleting dataset",
+    footer = tagList(
+      actionButton("cancel", "Cancel"),
+      actionButton("ok", "Delete", class = "btn btn-danger")
+    )
+  )
+  })
+  
+  observeEvent(input$delete, {
+    if (input$dataset_label != "") {
+      showModal(modal_confirm())
+    }
+    
+  })
+  
+  observeEvent(input$cancel, 
+               removeModal()
+  )
+  
+  observeEvent(input$ok, {
+    
+    progress <- Progress$new(session, min=0, max=1)
+    
+    progress$set(message = "Connecting to database")
+    success <- delete_dataset(pool, input$dataset_label, progress)
+    progress$close()
+    
+    if (success) {
+      updateSelectizeInput(session, "dataset_label",
+                           choices = ds_dframe()$Label)
+      showModal(modalDialog(
+        title = "Dataset deleted",
+        paste("Dataset", input$dataset_label, "deleted"),
+        easyClose = TRUE
+      ))
+    } else {
+      showModal(modalDialog(
+        title = "Dataset not deleted",
+        paste("Dataset could not be deleted"),
+        easyClose = TRUE
+      ))
+    }
+    
+    
+  })
+  
+  ds_dframe <- reactive({
+    input$ok
+    input$delete
+    get_datasets(pool)
+  })
+  
+  db_empty <- reactive({
+    nrow(ds_dframe()) == 0
+  })
+  
+  observeEvent(ds_dframe, {
+    updateSelectizeInput(session, "dataset_label",
+                         choices = ds_dframe()$Label)
+    
+  })
+  
+  onStop(function(){
+    unlink("data/*", recursive = TRUE, force = TRUE)
+  })
+  
+  output$ds_table <- DT::renderDataTable({
+    datatable(ds_dframe(), selection = "none")
+  })
   
 })

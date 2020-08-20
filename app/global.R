@@ -15,14 +15,15 @@ library(igraph)
 library(ggraph)
 library(ggrepel)
 library(networkD3)
+library(bcrypt)
 
-source("r/queries.R")
+source("R/queries.R")
 
 db_info <- read_db_info("www/database_www.config")
 
 if(!exists("pool")){
   pool <- dbPool(
-    drv = RPostgreSQL::PostgreSQL(),
+    drv = RPostgres::Postgres(),
     dbname = db_info$db_name,
     host = db_info$db_host,
     port = db_info$db_port,
