@@ -1,0 +1,9 @@
+DROP TABLE IF EXISTS associations;
+DROP TABLE IF EXISTS associationtovariable;
+DROP TABLE IF EXISTS datasetmetadata;
+DROP TABLE IF EXISTS datasets;
+DROP TABLE IF EXISTS datasettometadata;
+DROP TABLE IF EXISTS metavariables;
+DROP TABLE IF EXISTS numval;
+DROP TABLE IF EXISTS strval;
+DROP TABLE IF EXISTS variables;

@@ -533,15 +533,14 @@ import_data <- function(pool, datasets, metadata, clear, progress = NULL) {
     
     ids <- get_last_ids(con)
   } else {
-    execute_sql_file("www/drop_schema.sql", con)
+    execute_sql_file("www/drop_schema_sqlite.sql", con)
     cat("Dropped database schema\n")
-    execute_sql_file("www/create_schema.sql", con)
+    execute_sql_file("www/create_schema_sqlite.sql", con)
     cat("Created database schema\n")
     
     # Initialize all last IDs to 0
     ids <- sapply(dbListTables(con), function(x) {0})
   }
-  print(ids)
   
   # Import dataset metadata
   if (!is.null(metadata)) {
@@ -557,10 +556,8 @@ import_data <- function(pool, datasets, metadata, clear, progress = NULL) {
   datasets$id <- seq_len(nrow(datasets)) + ids["datasets"]
   # Import datasets
   dbAppendTable(con, "datasets", datasets[c("id", "label", "rowcount", "description", "varnum", "effect_type")])
-  print("datasets imported")
   # Import dataset to metadata
   import_ds2md(con, datasets, ids)
-  print("ds2md imported")
   
   report(progress, "Importing main data", 0.1)
   # Import associations

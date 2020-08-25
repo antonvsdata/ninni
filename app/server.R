@@ -5,9 +5,6 @@ shinyServer(function(input, output, session){
   #----------- Sidebar ----------------
   
   # Multiple choice dropwdown box for choosing datasets
-  observeEvent(ds_dframe, {
-    updateSelectizeInput(session, "ds_label", choices = ds_dframe()$Label)
-  })
   
   # Multiple choice dropdown: search database for datasets by metadata tags
   observeEvent(ds_dframe, {
@@ -431,6 +428,7 @@ shinyServer(function(input, output, session){
                    
                    selectizeInput("dataset_label", "Dataset label to delete",
                                   choices = NULL,
+                                  selected = isolate(input$dataset_label),
                                   options = list(maxItems = 1,
                                                  placeholder = 'Choose a dataset',
                                                  onInitialize = I('function() { this.setValue(""); }'))),
@@ -580,12 +578,10 @@ shinyServer(function(input, output, session){
     progress <- Progress$new(session, min=0, max=1)
     
     progress$set(message = "Connecting to database")
-    success <- delete_dataset(pool, input$dataset_label, progress)
+    success <- delete_dataset(pool, input$dataset_label, progress = NULL)
     progress$close()
     
     if (success) {
-      updateSelectizeInput(session, "dataset_label",
-                           choices = ds_dframe()$Label)
       showModal(modalDialog(
         title = "Dataset deleted",
         paste("Dataset", input$dataset_label, "deleted"),
@@ -602,21 +598,25 @@ shinyServer(function(input, output, session){
     
   })
   
+  # Load datasets from database and update selections for dataset label
   ds_dframe <- reactive({
     input$ok
-    input$delete
-    get_datasets(pool)
+    input$login
+    input$import
+    df <- get_datasets(pool)
+    updateSelectizeInput(session, "dataset_label",
+                         choices = df$Label,
+                         selected = isolate(input$dataset_label))
+    updateSelectizeInput(session, "ds_label",
+                         choices = df$Label)
+    df
   })
+  
   
   db_empty <- reactive({
     nrow(ds_dframe()) == 0
   })
   
-  observeEvent(ds_dframe, {
-    updateSelectizeInput(session, "dataset_label",
-                         choices = ds_dframe()$Label)
-    
-  })
   
   onStop(function(){
     unlink("data/*", recursive = TRUE, force = TRUE)
