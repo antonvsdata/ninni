@@ -1,11 +1,20 @@
 packages <- c("shiny",
-              "DT",
+              "bcrypt",
               "DBI",
               "dplyr",
-              "tidyr",
-              "pool",
+              "DT",
               "ggplot2",
+              "ggraph",
+              "ggrepel",
+              "ggridges",
+              "igraph",
+              "networkD3",
               "plotly",
-              "RPostgreSQL")
+              "pool",
+              "purrr",
+              "RSQLite",
+              "shinyFeedback",
+              "tidyr",
+              "UpSetR")
 
 install.packages(packages)
