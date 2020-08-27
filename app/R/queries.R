@@ -1,13 +1,4 @@
 
-# Read database info from .congif file
-read_db_info <- function(config_file){
-  df <- read.table(config_file)
-  
-  l <- as.list(as.character(df$V2))
-  names(l) <- df$V1
-  l
-}
-
 # Get associations from the database matching search
 # User can searh by dataset label, metadata tags or variable keywords
 # Return a list with following elements:

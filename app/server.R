@@ -372,6 +372,10 @@ shinyServer(function(input, output, session){
     if (nrow(associations_list()$dframe) < 1000) {
       out <- tagList(forceNetworkOutput("d3network_plot", width = input$network_width,
                                         height = input$network_height))
+    } else {
+      out <- tagList(
+        p("Interactive networks are disabled for large networks.")
+      )
     }
     
     out
@@ -390,7 +394,7 @@ shinyServer(function(input, output, session){
   # ---------------- Admin -------------
   
   admin_ui_comp <- eventReactive(input$login, {
-    user <- read_db_info("www/user.config")
+    user <- read_user_info("www/user.config")
     if (input$username == user$username && bcrypt::checkpw(input$password, user$password)){
       tagList(
         tabsetPanel(

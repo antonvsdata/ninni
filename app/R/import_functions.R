@@ -1,13 +1,14 @@
-#' Read inforamtion for connecting to the database
+
+#' Read inforamtion for user information
 #' 
-#' Read a config file of specified format for information required to connect to the local PostgreSQL database
-#' such as hostname, port, username and password
+#' Read a config file of specified format for information
+#' about a user
 #' 
 #' @param config_file path to the configuration file
 #' 
 #' @return named list of configuration information
 #' 
-read_db_info <- function(config_file){
+read_user_info <- function(config_file){
   df <- read.table(config_file)
   
   l <- as.list(as.character(df$V2))
