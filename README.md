@@ -32,41 +32,58 @@ _Ninni is developed at University of Eastern Finland and licensed under the term
 
 ## Installation and set up
 
-#### 1. Download/clone git repo
+First clone the git repository:
 
 ```
 git clone https://github.com/antonvsdata/ninni
 ```
 
-#### 2. Install required software
+Next, choose a username and password for admin access to Ninni. Admin access allows the user to import and delete data from the database. The information should be stored in app/www/user.config file. See app/www/user.config-TEMPLATE for a template of the format. In the template, the username is ninni, and password is ninni. The password is stored as a hash, computed with the bcrypt R package. To compute the hash for your password, run:
 
-##### PostgreSQL
+```
+if (!requireNamespace("bcrypt", quietly = TRUE)) {
+  install.packages("bcrypt)
+}
+bcrypt::hashpw("your_password")
+```
 
-To set up Ninni's database you need to install PostgreSQL (we are using version 9.2.18 for Red Hat family Linux).
+To continue, you have two options: host Ninni inside a docker container with Shiny Server, or try it out as a local Shiny app
 
-##### R
+### Option 1: Docker container
 
-The Shiny web app uses R 4.0.0. You can install all the required R packages with `src/install.packages.R` script.
+Ninni is dockerized, so you can build a docker image and start Ninni inside a docker container.
 
-###### Shiny Server
+Navigate to the root of the Ninni repository and build the docker image (this will take a while):
 
-To be able to host a Shiny application, you need to install Shiny Server (or Shiny Server Pro). Note that Ninni can be used locally without installing Shiny Server.
+```
+docker build -t ninni_app .
+```
 
-#### 3. Set up the database
+Next, create a docker volume. The volume is used to store the database of Ninni. Storing the database inside a volume ensures that the database is kept intact even if the docker container needs to be restarted.
 
-Set up a PostgreSQL database and add the connection information to following files:  
-`import_app/database_import.config`  
-`app/www/database_www.config`
+```
+docker volume create ninni_db_vol
+```
 
-You can see the correct format from example files  
-`import_app/database_import.config-TEMPLATE` and `app/www/database_www.config-TEMPLATE`
+Next, run the container and mount the volume:
 
-The reason for having two files is that in our case we have two users for the database. One has both reading and writing permissions
-and is used by the import script. The other has only reading permissions and is used by the Shiny application. You can also use the same user for both if you prefer.
+```
+docker run -d --name ninni_app -p 90:90 --mount source=ninni_db_vol,target=/srv/shiny-server/db ninni_app
+```
 
-The import app can drop and recreate the database schema in the beginning of any import. Thus, there is no need to create any tables prior to import of data, but the schema will be created automatically. For detailed structure of the database schema, see `docs/database_structure.txt` and `docs/db_schema.pdf`.
+NOTE: the port number 90 is defined in the Dockerfile, if you want Ninni to run in a different port, feel free to change it there and also in the command above.
 
-#### 4. Import data to the database
+### Option 2: Run Ninni locally
+
+To set up Ninni's database you need to install SQLite. The Shiny web app uses R 3.6.3 (but it should work with R 4.0.x). You can install all the required R packages with `docker/install.packages.R` script. You can then run Ninni by running the following command in R:
+
+```
+shiny::runApp("path/to/ninni/app")
+```
+
+#### Import data to the database
+
+If you have set up an admin user (see above), you can import data to the Ninni database through the "Admin" tab. This section describes the format of the data.
 
 ##### Result files
 
@@ -142,9 +159,7 @@ T2D,Type 2 Diabetes
 
 ##### Importing data
 
-When all the files are in the right format, you can import the datasets using a GUI made in Shiny.
-This complementary app is found in the `import_app` folder and can be started with the command:
-`shiny::runApp("path/to/ninni/import_app")`
+When all the files are in the right format, you can import the datasets via Ninni.
 
 #### 5. Shiny app
 

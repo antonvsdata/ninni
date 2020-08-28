@@ -394,6 +394,9 @@ shinyServer(function(input, output, session){
   # ---------------- Admin -------------
   
   admin_ui_comp <- eventReactive(input$login, {
+    if (!file.exists("www/user.config")) {
+      return(error_html("Admin user configuration file not found, check setup instructions on GitHub"))
+    }
     user <- read_user_info("www/user.config")
     if (input$username == user$username && bcrypt::checkpw(input$password, user$password)){
       tagList(
