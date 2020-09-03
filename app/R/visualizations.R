@@ -5,6 +5,16 @@
 # the above causes new versions of ggplot2 to throw warnings, which can be ignored
 #-------------------------------------------------------------------------------------------------------
 
+# Helper function for removing NAs
+remove_nas <- function(dframe, columns) {
+  columns <- columns[!is.null(columns) & !is.na(columns) & columns != ""]
+  if (length(columns)) {
+    dframe <- dframe
+  }
+  dframe
+}
+
+
 #' Volcano plot with double filtering
 #' 
 #' Plot a volcano plot with optional double filtering, i.e. setting a limit to both p-value and effect
@@ -24,7 +34,7 @@
 #' @return ggplot object
 plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter, df_p_lim = NULL,
                          p_adj = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE, shape){
-  
+  dframe <- remove_nas(dframe, c("Effect", "P", "P_adj"))
   if (log2_effect && any(dframe$Effect < 0)) {
     stop("Negative values can't be log-transformed")
   }
@@ -126,7 +136,7 @@ zero_to_min <- function(x) {
 #' @return ggplot object
 gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
                     color_col = NULL, color_type = NULL) {
-  
+  dframe <- remove_nas(dframe, variable)
   if (color_col == "") color_col <- NULL
   
   if (variable == "P") {
@@ -240,7 +250,7 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
 #' @return ggplot object
 lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum,
                                 color_col = NULL, color_type = NULL){
-  
+  dframe <- remove_nas(dframe, c(x_axis, "Effect", "P", "P_adj"))
   dframe$P <- zero_to_min(dframe$P)
   # For OR and FC, use log2 effect
   if(log2_effect){
@@ -326,7 +336,7 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
 #' 
 #' @return ggplot object
 lollipop_plot <- function(dframe, main_col, n_top) {
-  
+  dframe <- remove_nas(dframe, main_col)
   if (main_col == "Variables together") {
     c1 <- dframe %>%
       group_by(Variable1) %>%
@@ -360,10 +370,9 @@ lollipop_plot <- function(dframe, main_col, n_top) {
   p
 }
 
-#' Lollipop plot
+#' Upset plot
 #' 
-#' A lollipop plot of most common observations in chosen column(s). E.g. for variables
-#' finds the most common variables.
+#' An upset plot of e.g. common variables between datasets.
 #' 
 #' @param dframe association data frame
 #' @param group column name giving the sets
@@ -378,7 +387,7 @@ lollipop_plot <- function(dframe, main_col, n_top) {
 #' @return ggplot object
 upset_plot <- function(dframe, group, main_col, n_top,
                        order_by, text_scale, show_empty) {
-  
+  dframe <- remove_nas(dframe, c(group, main_col))
   groups <- unique(dframe[, group])
   if (length(groups) < 2) {
     return(NULL)
@@ -421,6 +430,7 @@ upset_plot <- function(dframe, group, main_col, n_top,
 #' 
 #' @return ggplot object
 p_histogram <- function(dframe, facet = NULL) {
+  dframe <- remove_nas(dframe, "P")
   # Custom breaks for the x-axis
   breaks <- seq(0, 1, by = 0.05)
   
@@ -454,7 +464,7 @@ p_histogram <- function(dframe, facet = NULL) {
 #' 
 #' @return ggplot object
 ridge_plot <- function(dframe, x, y, x_log2, scale, style) {
-  
+  dframe <- remove_nas(dframe, c(x, y))
   params <- list(bw = list(size = 1.2, fill = NA),
                  grey = list(color = NA, fill = "grey50", alpha = 0.5),
                  colours = list(mapping = aes_string(color = y, fill = y), alpha = 0.5))
@@ -510,7 +520,7 @@ network_plot <- function(dframe, type, layout,
                          edge_width_range,
                          edge_color_log2, edge_width_log2, edge_weight_log2,
                          edge_color_scale, edge_color_midpoint) {
-  
+  dframe <- remove_nas(dframe, c(edge_color, edge_width, edge_weight))
   
   edge_color <- empty_to_null(edge_color)
   edge_width <- empty_to_null(edge_width)
