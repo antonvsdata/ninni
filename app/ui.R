@@ -24,7 +24,7 @@ shinyUI( fluidPage(
     # and filters for loaded datasets
     sidebarPanel(
       # Search options for choosing a dataset
-      h4("Dataset"),
+      h4("Database search"),
       #uiOutput("ds_choice"),
       selectizeInput("ds_label",label = "Dataset label", width = "100%", multiple = TRUE,
                      choices = NULL, options = list(placeholder = "Choose a dataset")),
@@ -33,6 +33,8 @@ shinyUI( fluidPage(
                      choices = NULL,
                      options = list(placeholder = "Choose metadata tags")),
       textInput("var_keywords","Variable keywords"),
+      
+      h4("Filter fetched dataset"),
       
       # Filters for filtering associations
       # Like variable names, p-value, effect size
@@ -96,7 +98,7 @@ shinyUI( fluidPage(
                        )
       ),
       actionButton("filter",
-                   label = "Filter"),
+                   label = "Submit"),
       
       br(),
       br(),

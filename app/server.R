@@ -424,6 +424,9 @@ shinyServer(function(input, output, session){
                    
                    actionButton("import", "Import data"),
                    
+                   br(),
+                   br(),
+                   
                    
                    
                    htmlOutput("import_errors")),
@@ -441,6 +444,7 @@ shinyServer(function(input, output, session){
                                                  onInitialize = I('function() { this.setValue(""); }'))),
                    
                    actionButton("delete", "Delete"),
+                   actionButton("refresh", "Refresh"),
                    
                    br(),
                    br(),
@@ -610,6 +614,7 @@ shinyServer(function(input, output, session){
     input$ok
     input$login
     input$import
+    input$refresh
     df <- get_datasets(pool)
     updateSelectizeInput(session, "dataset_label",
                          choices = df$Label,
