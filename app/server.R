@@ -240,7 +240,14 @@ shinyServer(function(input, output, session){
   
   # ------------------- Volcano plot ---------------
   
-  
+  volcano_msg <- reactive({
+    if (input$volcano_log2 &&
+        any(associations_list()$dframe$Effect < 0, na.rm = TRUE)) {
+      return(h5("Negative values can't be log-transformed"))
+    } else {
+      return(NULL)
+    }
+  })
   
   volcanoplot <- reactive({
     plot_volcano(dframe = associations_list()$dframe, log2_effect = input$volcano_log2,
@@ -251,11 +258,19 @@ shinyServer(function(input, output, session){
                  shape = input$volcano_shape)
   })
   
-  plotServer("volcano_plot", plotter = volcanoplot, large = large)
+  plotServer("volcano_plot", plotter = volcanoplot, large = large,
+             msg = volcano_msg)
   
   # ---------------- Q-Q plot -------------------------
   
-  
+  qq_msg <- reactive({
+    if (input$qq_choice == "Effect" && input$qq_log2 &&
+        any(associations_list()$dframe$Effect < 0, na.rm = TRUE)) {
+      return(h5("Negative values can't be log-transformed"))
+    } else {
+      return(NULL)
+    }
+  })
   
   qq_plot <- reactive({
     ggp <- gg_qq(dframe = associations_list()$dframe, variable = input$qq_choice,
@@ -265,7 +280,7 @@ shinyServer(function(input, output, session){
     ggp
   })
   
-  plotServer("qq_plot", plotter = qq_plot, large = large)
+  plotServer("qq_plot", plotter = qq_plot, large = large, msg = qq_msg)
   
   # ------------------ Lady Manhattan plot ---------------------
   
@@ -280,6 +295,9 @@ shinyServer(function(input, output, session){
   lady_msg <- reactive({
     if (is.null(input$lady_x_column) || input$lady_x_column == "") {
       return(h5("Please select a column for x axis"))
+    } else if (input$lady_log2 &&
+               any(associations_list()$dframe$Effect < 0, na.rm = TRUE)) {
+      return(h5("Negative values can't be log-transformed"))
     } else {
       return(NULL)
     }
@@ -341,12 +359,18 @@ shinyServer(function(input, output, session){
   })
   
   ridge_msg <- reactive({
-    if (!is.numeric(associations_list()$dframe[, input$ridge_x])) {
-      return(h5("variable on the"))
+    if (input$ridge_x == "" || input$ridge_y == "") {
+      return(h5("Please select columns for x and y axes"))
+    } else if (input$ridge_log2 &&
+               any(associations_list()$dframe[, input$ridge_x] < 0, na.rm = TRUE)) {
+      return(h5("Negative values can't be log-transformed"))
+    } else {
+      return(NULL)
     }
   })
   
-  plotServer("ridge", plotter = ridge, large = reactive(TRUE))
+  plotServer("ridge", plotter = ridge, large = reactive(TRUE),
+             msg = ridge_msg)
   
   # ------- Network plot ----------
   
@@ -361,7 +385,13 @@ shinyServer(function(input, output, session){
   })
   
   network_msg <- reactive({
-    if (nrow(associations_list()$dframe) > 5000) {
+    if (input$edge_color_log2 && any(associations_list()$dframe[, input$edge_color] < 0)) {
+      return(h5("Negative values can't be log-transformed"))
+    } else if (input$edge_width_log2 && any(associations_list()$dframe[, input$edge_width] < 0)) {
+      return(h5("Negative values can't be log-transformed"))
+    } else if (input$edge_weight_log2 && any(associations_list()$dframe[, input$edge_weight] < 0)) {
+      return(h5("Negative values can't be log-transformed"))
+    } else if (nrow(associations_list()$dframe) > 5000) {
       return(h5("Network plots are disabled for over 5000 associations, please filter the associations"))
     } else if (input$network_type == "var_to_var" && associations_list()$varnum == 1) {
       return(h5("Two variable dataset needed"))

@@ -9,7 +9,8 @@
 remove_nas <- function(dframe, columns) {
   columns <- columns[!is.null(columns) & !is.na(columns) & columns != ""]
   if (length(columns)) {
-    dframe <- dframe
+    dframe <- dframe %>%
+      filter_at(vars(all_of(columns)), all_vars(!is.na(.)))
   }
   dframe
 }
@@ -35,9 +36,6 @@ remove_nas <- function(dframe, columns) {
 plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter, df_p_lim = NULL,
                          p_adj = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE, shape){
   dframe <- remove_nas(dframe, c("Effect", "P", "P_adj"))
-  if (log2_effect && any(dframe$Effect < 0)) {
-    stop("Negative values can't be log-transformed")
-  }
   # The points with p_adj = 0 would not be plotted,
   # so they are replaced with minimum observed p-value
   dframe$P <- zero_to_min(dframe$P)
@@ -250,7 +248,11 @@ gg_qq <- function(dframe, variable, log2_effect, effect_type, varnum, ci = 0.95,
 #' @return ggplot object
 lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum,
                                 color_col = NULL, color_type = NULL){
-  dframe <- remove_nas(dframe, c(x_axis, "Effect", "P", "P_adj"))
+  if (x_axis == "Variables together") {
+    dframe <- remove_nas(dframe, c("Variable1", "Variable2", "Effect", "P", "P_adj"))
+  } else {
+    dframe <- remove_nas(dframe, x_axis, "Effect", "P", "P_adj")
+  }
   dframe$P <- zero_to_min(dframe$P)
   # For OR and FC, use log2 effect
   if(log2_effect){
@@ -286,11 +288,12 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
     }
   }
   
-  p <- ggplot(dframe, aes_string(x = x_axis,y = "Y", color = color_col)) +
+  p <- ggplot(dframe, aes_string(x = x_axis, y = "Y", color = color_col)) +
     theme_minimal() +
     theme(panel.grid.major = element_blank(),
           panel.grid.minor = element_blank()) +
-    labs(x = x_label, y = y_label)
+    labs(x = x_label, y = y_label) +
+    geom_hline(yintercept = 0, color = "grey")
   
   if (class(dframe[, x_axis]) %in% c("character", "factor")) {
     n_unique <-length(unique(dframe[, x_axis]))
@@ -336,7 +339,12 @@ lady_manhattan_plot <- function(dframe, x_axis, log2_effect, effect_type, varnum
 #' 
 #' @return ggplot object
 lollipop_plot <- function(dframe, main_col, n_top) {
-  dframe <- remove_nas(dframe, main_col)
+  if (main_col == "Variables together") {
+    dframe <- remove_nas(dframe, c("Variable1", "Variable2"))
+  } else {
+    dframe <- remove_nas(dframe, main_col)
+  }
+  
   if (main_col == "Variables together") {
     c1 <- dframe %>%
       group_by(Variable1) %>%
@@ -387,7 +395,12 @@ lollipop_plot <- function(dframe, main_col, n_top) {
 #' @return ggplot object
 upset_plot <- function(dframe, group, main_col, n_top,
                        order_by, text_scale, show_empty) {
-  dframe <- remove_nas(dframe, c(group, main_col))
+  if (main_col == "Variables together") {
+    dframe <- remove_nas(dframe, c(group, "Variable1", "Variable2"))
+  } else {
+    dframe <- remove_nas(dframe, c(group, main_col))
+  }
+  
   groups <- unique(dframe[, group])
   if (length(groups) < 2) {
     return(NULL)
