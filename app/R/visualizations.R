@@ -15,6 +15,43 @@ remove_nas <- function(dframe, columns) {
   dframe
 }
 
+# Helper function for computing ticks on log2 space
+log2_ticks <- function(x, symmetric = FALSE) {
+  r <- range(log2(x))
+  if (symmetric) {
+    max_point <- ceiling(max(abs(r)))
+    ticks <- seq(-max_point, max_point)
+  } else {
+    ticks <- seq(floor(r[1]), ceiling(r[2]))
+  }
+  
+  if (length(ticks) > 9) {
+    step <- round(length(ticks) / 9)
+    if (0 %in% ticks) {
+      new_ticks <- cur_tick <- 0
+      while (cur_tick > min(ticks)) {
+        cur_tick <- cur_tick - step
+        new_ticks <- c(new_ticks, cur_tick)
+      }
+      cur_tick <- 0
+      while (cur_tick < max(ticks)) {
+        cur_tick <- cur_tick + step
+        new_ticks <- c(new_ticks, cur_tick)
+      }
+    } else {
+      new_ticks <- cur_tick <- min(ticks)
+      while (cur_tick < max(ticks)) {
+        cur_tick <- cur_tick + step
+        new_ticks <- c(new_ticks, cur_tick)
+      }
+      
+      
+    }
+  }
+  new_ticks <- sort(signif(2^new_ticks, digits = 2))
+  new_ticks
+}
+
 
 #' Volcano plot with double filtering
 #' 
@@ -33,7 +70,7 @@ remove_nas <- function(dframe, columns) {
 #' @param shape logical, should the points be shaped by dataset?
 #' 
 #' @return ggplot object
-plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter, df_p_lim = NULL,
+plot_volcano <- function(dframe, log2_effect, symmetric, effect_type, varnum, double_filter, df_p_lim = NULL,
                          p_adj = NULL, df_effect_lim = NULL, eff_limit_log2 = FALSE, shape){
   dframe <- remove_nas(dframe, c("Effect", "P", "P_adj"))
   # The points with p_adj = 0 would not be plotted,
@@ -73,19 +110,7 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
   else{
     coloring <- NULL
   }
-  # OR and FC require log2 transformation before plotting
-  # Set x axis labels and limits for symmetrical plot in terms of zero
-  if (log2_effect) {
-    
-    x_axis <- "log2(Effect)"
-    x_label <- paste0("log2(", effect_type, ")")
-    x_lims <- c(-max(abs(log2(dframe$Effect))),max(abs(log2(dframe$Effect))))
-  }
-  else{
-    x_axis <- "Effect"
-    x_label <- effect_type
-    x_lims <- c(-max(abs(dframe$Effect)),max(abs(dframe$Effect)))
-  }
+  
   
   if (varnum == 1){
     p <- ggplot(dframe, aes(label1 = Dataset, label2 = Variable1, label3 = Description1,
@@ -95,6 +120,34 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
     p <- ggplot(dframe, aes(label1 = Dataset, label2 = Variable1, label3 = Variable2, label4 = Description1,
                             label5 = Description2, label6 = Effect, label7 = P, label8 = P_adj, label9 = N))
   }
+  
+  # OR and FC require log2 transformation before plotting
+  # Set x axis labels and limits for symmetrical plot in terms of zero
+  
+  if (log2_effect) {
+        if (symmetric) {
+      max_point <- max(abs(log2(dframe$Effect)))
+      x_lims <- 2^c(-max_point, max_point)
+    } else {
+      x_lims <- NULL
+    }
+    x_trans <- "log2"
+    x_breaks <- log2_ticks(dframe$Effect, symmetric)
+    
+  }
+  else{
+    
+    if (symmetric) {
+      max_point <- max(abs(dframe$Effect))
+      x_lims <- c(-max_point, max_point)
+    } else {
+      x_lims <- NULL
+    }
+    
+    x_trans <- "identity"
+    x_breaks <- NULL
+    
+  }
   if(shape){
     point_shape <- "Dataset"
   }
@@ -102,11 +155,12 @@ plot_volcano <- function(dframe, log2_effect, effect_type, varnum, double_filter
     point_shape <- NULL
   }
   p <- p +
-    geom_point(aes_string(x = x_axis, y = "-log10(P)", color = coloring, shape = point_shape)) +
+    geom_point(aes_string(x = "Effect", y = "-log10(P)", color = coloring, shape = point_shape)) +
     scale_colour_manual(breaks = c("TRUE","FALSE"), values = c("Pass" = "red", "Fail" = "grey"),
-                        guide = guide_legend(title = NULL)) +
-    xlim(x_lims[1],x_lims[2]) +
-    xlab(x_label) +
+                        guide = guide_legend(title = NULL)) + 
+    scale_x_continuous(breaks = x_breaks,
+                       limits = x_lims, trans = x_trans,
+                       name = effect_type) +
     theme_minimal()
   
   p
@@ -498,7 +552,7 @@ ridge_plot <- function(dframe, x, y, x_log2, scale, style) {
   
   if (x_log2) {
     p <- p +
-      scale_x_continuous(trans = "log2")
+      scale_x_continuous(breaks = log2_ticks(dframe[, x]), trans = "log2")
   }
   p
 }

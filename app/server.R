@@ -251,6 +251,7 @@ shinyServer(function(input, output, session){
   
   volcanoplot <- reactive({
     plot_volcano(dframe = associations_list()$dframe, log2_effect = input$volcano_log2,
+                 symmetric = input$volcano_symmetric,
                  effect_type = associations_list()$effect_type,
                  varnum = associations_list()$varnum, double_filter = input$double_filter,
                  df_p_lim = as.numeric(input$df_p_limit), p_adj = input$df_p_limit_adj,

@@ -168,7 +168,10 @@ shinyUI( fluidPage(
         tabPanel("Volcano plot",
                  # Log2 scale effect?
                  checkboxInput("volcano_log2",
-                               label = "log2 transform"),
+                               label = "log2 scale on x-axis"),
+                 checkboxInput("volcano_symmetric",
+                               "Center plot around zero effect",
+                               value = TRUE), 
                  # Choices for double filtering the volcano plot i.e. filtering by p-value and/or effect size
                  # Toggle double filtering
                  checkboxInput("double_filter",
